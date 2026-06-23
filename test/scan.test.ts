@@ -271,8 +271,7 @@ test('scanForSecrets detects export PREFIX for env vars (missing old gap)', () =
 });
 
 test('scanForSecrets assigns high severity to private key', () => {
-  const content =
-    '-----BEGIN RSA PRIVATE KEY-----\nFAKEKEYBODY\n-----END RSA PRIVATE KEY-----';
+  const content = '-----BEGIN RSA PRIVATE KEY-----\nFAKEKEYBODY\n-----END RSA PRIVATE KEY-----';
   const findings = scanForSecrets(content);
   assert(findings.length > 0);
   assert.equal(findings[0].severity, 'high');
