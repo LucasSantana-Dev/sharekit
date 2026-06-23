@@ -474,6 +474,107 @@ export function readInstalled(dirs: Dirs = DEFAULT_DIRS): Record<string, Install
   }
 }
 
+// List installed profiles with version, short commit SHA, and applied date
+export function list(dirs: Dirs = DEFAULT_DIRS): void {
+  const installed = readInstalled(dirs);
+  const records = Object.values(installed);
+
+  if (records.length === 0) {
+    console.log(kleur.dim('\n  Nothing installed yet.\n'));
+    return;
+  }
+
+  console.log(kleur.bold(`\n  Installed profiles:\n`));
+  for (const record of records) {
+    const shortSha = record.commit ? record.commit.slice(0, 7) : '?';
+    const dateStr = new Date(record.appliedAt).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+    });
+    const version = record.version ?? '(no version)';
+    console.log(
+      `  ${kleur.cyan(`${record.user}@${record.ref}`)}  ${version}  ${kleur.dim(shortSha)}  ${kleur.dim(dateStr)}`
+    );
+  }
+  console.log();
+}
+
+// Check if a ref is an immutable ref (tag or commit hash)
+function isImmutableRef(ref: string): boolean {
+  // Assume anything that looks like a full commit SHA (40 hex chars) or short SHA is immutable
+  if (/^[a-f0-9]{7,40}$/.test(ref)) return true;
+  // Assume refs that start with 'v' followed by numbers are version tags
+  if (/^v\d/.test(ref)) return true;
+  // Everything else (branches like main, master, dev, HEAD) are mutable
+  return false;
+}
+
+// Update an installed profile to the latest version
+export async function update(
+  user: string,
+  includeHooks = false,
+  dirs: Dirs = DEFAULT_DIRS
+): Promise<void> {
+  // Get the install record for this user
+  const installed = readInstalled(dirs);
+  const record = installed[user];
+
+  if (!record) {
+    throw new Error(`not installed — run 'sharekit install ${user}' first`);
+  }
+
+  const ref = record.ref;
+
+  // If ref is immutable (pinned to a tag or commit), don't update
+  if (isImmutableRef(ref)) {
+    console.log(kleur.yellow(`\n  pinned to ${ref} — nothing to update\n`));
+    return;
+  }
+
+  // Ref is mutable (branch or HEAD), so fetch the latest
+  const dir = fetchProfile(user, ref);
+  const manifest = readManifest(dir);
+  const files = plan(dir);
+  printPlan(files, manifest);
+
+  const todo = files.filter((f) => f.status !== 'same' && !isExecutable(f, includeHooks));
+  if (!todo.length) return void console.log(kleur.dim('\n  Already up to date.\n'));
+
+  // If hooks present and not explicitly included, warn
+  const hasHooks = files.some((f) => isExecutable(f, false));
+  if (hasHooks && !includeHooks) {
+    console.log(
+      kleur.yellow(`\n  ⚠  This profile's settings.json contains hooks that run shell commands.`)
+    );
+  }
+
+  // If hooks present and user wants to include them, ask for explicit confirm
+  if (hasHooks && includeHooks) {
+    if (
+      !(await confirm(
+        `This profile's settings.json contains hooks that run shell commands. Update with it?`
+      ))
+    ) {
+      return void console.log(kleur.dim('\n  Aborted.\n'));
+    }
+  }
+
+  if (!(await confirm(`Apply ${todo.length} change(s)?`)))
+    return void console.log(kleur.dim('\n  Aborted.\n'));
+
+  const { backupDir, filesWritten } = applyProfile(files, user, includeHooks, dirs);
+
+  // Update the install record with the new commit and timestamp
+  recordInstall(user, dir, ref, manifest.version, dirs);
+
+  console.log(
+    kleur.green(`\n  ✓ Updated ${filesWritten} file(s).`) +
+      kleur.dim(`  Backup: ${tildify(backupDir)}`)
+  );
+  console.log(kleur.dim(`  Undo: sharekit rollback ${user}\n`));
+}
+
 export async function install(user: string, opts?: InstallOpts): Promise<void> {
   const includeHooks = opts?.includeHooks ?? false;
   const userRef = user.includes('@') ? user.split('@').reverse()[0] : undefined;
