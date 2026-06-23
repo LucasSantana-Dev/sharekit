@@ -1,0 +1,178 @@
+import * as fs from "node:fs";
+import * as path from "node:path";
+import * as os from "node:os";
+import * as readline from "node:readline/promises";
+import { stdin as input, stdout as output } from "node:process";
+import { execSync } from "node:child_process";
+import TOML from "@iarna/toml";
+import kleur from "kleur";
+
+const HOME = os.homedir();
+const STATE = path.join(HOME, ".sharekit");
+
+// profile/<tool>/** mirrors into these roots — one rule, not a filename allowlist
+const ROOTS: Record<string, string> = {
+  claude: path.join(HOME, ".claude"),
+  cursor: path.join(HOME, ".cursor"),
+  shared: HOME,
+};
+
+type Status = "new" | "changed" | "same";
+interface PlanFile { tool: string; src: string; dest: string; rel: string; status: Status; }
+
+const tildify = (p: string) => (p.startsWith(HOME) ? "~" + p.slice(HOME.length) : p);
+
+function walk(dir: string): string[] {
+  return fs.readdirSync(dir, { withFileTypes: true }).flatMap((e) => {
+    const p = path.join(dir, e.name);
+    return e.isDirectory() ? walk(p) : [p];
+  });
+}
+
+// ponytail: profile lives at github.com/<user>/sharekit-profile — one convention, not a search
+export function fetchProfile(user: string): string {
+  const dir = path.join(STATE, "profiles", user);
+  if (fs.existsSync(dir)) {
+    try {
+      execSync(`git -C "${dir}" pull --ff-only`, { stdio: "pipe" });
+    } catch {
+      // ponytail: refresh is best-effort — offline / no-remote falls back to the cached copy
+    }
+    return dir;
+  }
+  fs.mkdirSync(path.dirname(dir), { recursive: true });
+  const url = `https://github.com/${user}/sharekit-profile`;
+  try {
+    execSync(`git clone --depth 1 "${url}" "${dir}"`, { stdio: "pipe" });
+  } catch {
+    throw new Error(
+      `No profile at ${url}\n` +
+        `  Publish yours: a repo named "sharekit-profile" with a sharekit.toml`,
+    );
+  }
+  return dir;
+}
+
+export function readManifest(profileDir: string): { name: string; version?: string; description?: string } {
+  const p = path.join(profileDir, "sharekit.toml");
+  if (!fs.existsSync(p)) throw new Error(`Not a sharekit profile (no sharekit.toml in ${profileDir})`);
+  const profile = (TOML.parse(fs.readFileSync(p, "utf8")).profile ?? {}) as Record<string, string>;
+  return { name: profile.name ?? "unknown", version: profile.version, description: profile.description };
+}
+
+export function plan(profileDir: string, roots = ROOTS): PlanFile[] {
+  const files: PlanFile[] = [];
+  for (const [tool, root] of Object.entries(roots)) {
+    const base = path.join(profileDir, tool);
+    if (!fs.existsSync(base)) continue;
+    for (const src of walk(base)) {
+      const rel = path.relative(base, src);
+      const dest = path.join(root, rel);
+      files.push({ tool, src, dest, rel, status: classify(src, dest) });
+    }
+  }
+  return files;
+}
+
+function classify(src: string, dest: string): Status {
+  if (!fs.existsSync(dest)) return "new";
+  return fs.readFileSync(src).equals(fs.readFileSync(dest)) ? "same" : "changed";
+}
+
+// ponytail: settings.json carries hooks (arbitrary shell). v1 never auto-installs it.
+//           add `--include-hooks` when someone actually asks.
+const isExecutable = (f: PlanFile) => f.tool === "claude" && path.basename(f.dest) === "settings.json";
+
+export function printPlan(files: PlanFile[], manifest: ReturnType<typeof readManifest>): void {
+  console.log(kleur.bold(`Profile: ${manifest.name}${manifest.version ? " v" + manifest.version : ""}`));
+  if (manifest.description) console.log(kleur.dim("  " + manifest.description));
+  const show = (s: Status, label: string, c: (x: string) => string) => {
+    const g = files.filter((f) => f.status === s);
+    if (!g.length) return;
+    console.log(c(`\n  ${label} (${g.length})`));
+    for (const f of g) console.log(c(`    ${tildify(f.dest)}`));
+  };
+  show("new", "+ new", kleur.green);
+  show("changed", "~ changed", kleur.yellow);
+  const same = files.filter((f) => f.status === "same").length;
+  if (same) console.log(kleur.dim(`\n  = ${same} unchanged`));
+  if (files.some(isExecutable))
+    console.log(kleur.yellow(`\n  ⚠  settings.json present — contains hooks; skipped. Merge manually.`));
+}
+
+async function confirm(q: string): Promise<boolean> {
+  const rl = readline.createInterface({ input, output });
+  const a = await rl.question(kleur.bold(`  ${q} (y/N) `));
+  rl.close();
+  return a.trim().toLowerCase() === "y";
+}
+
+function backup(files: PlanFile[], user: string): string {
+  const stamp = new Date().toISOString().replace(/[:.]/g, "-");
+  const dir = path.join(STATE, "backups", `${user}-${stamp}`);
+  const applied = files.filter((f) => f.status !== "same" && !isExecutable(f));
+  fs.mkdirSync(dir, { recursive: true });
+  for (const f of applied.filter((f) => f.status === "changed")) {
+    const t = path.join(dir, path.relative(HOME, f.dest));
+    fs.mkdirSync(path.dirname(t), { recursive: true });
+    fs.copyFileSync(f.dest, t);
+  }
+  fs.writeFileSync(
+    path.join(dir, "applied.json"),
+    JSON.stringify(applied.map((f) => ({ dest: f.dest, status: f.status })), null, 2),
+  );
+  return dir;
+}
+
+function write(files: PlanFile[]): number {
+  let n = 0;
+  for (const f of files) {
+    if (f.status === "same" || isExecutable(f)) continue;
+    fs.mkdirSync(path.dirname(f.dest), { recursive: true });
+    fs.copyFileSync(f.src, f.dest);
+    n++;
+  }
+  return n;
+}
+
+export async function install(user: string): Promise<void> {
+  const dir = fetchProfile(user);
+  const manifest = readManifest(dir);
+  const files = plan(dir);
+  console.log();
+  printPlan(files, manifest);
+  const todo = files.filter((f) => f.status !== "same" && !isExecutable(f));
+  if (!todo.length) return void console.log(kleur.dim("\n  Already up to date.\n"));
+  if (!(await confirm(`Apply ${todo.length} change(s)?`))) return void console.log(kleur.dim("\n  Aborted.\n"));
+  const b = backup(files, user);
+  const n = write(files);
+  console.log(kleur.green(`\n  ✓ Applied ${n} file(s).`) + kleur.dim(`  Backup: ${tildify(b)}`));
+  console.log(kleur.dim(`  Undo: sharekit rollback ${user}\n`));
+}
+
+export async function preview(user: string): Promise<void> {
+  const dir = fetchProfile(user);
+  console.log();
+  printPlan(plan(dir), readManifest(dir));
+  console.log();
+}
+
+export async function rollback(user: string): Promise<void> {
+  const root = path.join(STATE, "backups");
+  const last = fs.existsSync(root)
+    ? fs.readdirSync(root).filter((e) => e.startsWith(user + "-")).sort().pop()
+    : undefined;
+  if (!last) return void console.log(kleur.yellow(`No backup for ${user}.`));
+  const dir = path.join(root, last);
+  const applied: { dest: string; status: Status }[] = JSON.parse(fs.readFileSync(path.join(dir, "applied.json"), "utf8"));
+  console.log(kleur.bold(`\n  Rollback ${user} → ${tildify(dir)}  (${applied.length} file(s))\n`));
+  if (!(await confirm("Restore?"))) return void console.log(kleur.dim("\n  Aborted.\n"));
+  for (const a of applied) {
+    if (a.status === "new") fs.rmSync(a.dest, { force: true }); // ponytail: leaves empty parent dirs; harmless
+    else {
+      const src = path.join(dir, path.relative(HOME, a.dest));
+      if (fs.existsSync(src)) fs.copyFileSync(src, a.dest);
+    }
+  }
+  console.log(kleur.green("\n  ✓ Restored.\n"));
+}
