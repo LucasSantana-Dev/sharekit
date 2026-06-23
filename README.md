@@ -37,6 +37,31 @@ npx @lucassantana/sharekit install <github-user>@stable   # a branch
 
 Plain `install <github-user>` always tracks the profile's default branch (HEAD).
 
+## Manage installed profiles
+
+List all installed profiles with version, commit, and date applied:
+
+```bash
+npx @lucassantana/sharekit list
+```
+
+Output:
+
+```
+  Installed profiles:
+
+  user1@HEAD      v1.0.2    abc1234   Jun 15, 2025
+  user2@v1.0     (no version) ?        Jun  1, 2025
+```
+
+Update an installed profile (tracked profiles only; pinned refs are no-ops):
+
+```bash
+npx @lucassantana/sharekit update <github-user>
+```
+
+Shows what changed, asks for confirmation, and applies. Pinned refs (tags, commit SHAs) do not update.
+
 ### Hooks
 
 A profile's `.claude/settings.json` can define hooks that run shell commands, so it is **never installed by default** — it's flagged in the preview and skipped. To opt in after reviewing it, pass `--include-hooks` (you'll get a second explicit confirmation before it's written):

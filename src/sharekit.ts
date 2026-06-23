@@ -327,7 +327,10 @@ function readMetadata(backupDir: string): { sourceVersion?: string; sourceCommit
 
 // Helper: write metadata.json to backup directory
 // Only writes if metadata has keys
-function writeMetadata(backupDir: string, metadata: { sourceVersion?: string; sourceCommit?: string | null }): void {
+function writeMetadata(
+  backupDir: string,
+  metadata: { sourceVersion?: string; sourceCommit?: string | null }
+): void {
   if (Object.keys(metadata).length === 0) {
     return;
   }
@@ -943,10 +946,15 @@ export async function rollback(user: string, opts?: InstallOpts): Promise<void> 
   const summary = `${metadata.filesRestored} file(s) restored${
     metadata.filesRemoved > 0 ? `, ${metadata.filesRemoved} removed` : ''
   }`;
-  console.log(
-    kleur.green(`\n  ✓ ${summary}`) +
-      (metadata.sourceVersion ? ` (reverted to v${metadata.sourceVersion})` : '')
-  );
+  // Handle null sourceCommit (offline cache case)
+  let versionSuffix = '';
+  if (metadata.sourceCommit === null) {
+    versionSuffix = ' — from offline cache, exact version unknown';
+  } else if (metadata.sourceVersion) {
+    versionSuffix = ` (reverted to v${metadata.sourceVersion})`;
+  }
+
+  console.log(kleur.green(`\n  ✓ ${summary}${versionSuffix}`));
   console.log();
 }
 

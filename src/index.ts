@@ -178,13 +178,15 @@ export async function main(argv = process.argv.slice(2)) {
         process.exit(1);
       }
 
-      // Read version from metadata if available
+      // Read version and commit from metadata if available
       let versionStr = '';
+      let sourceCommit: string | null | undefined;
       const metadataPath = path.join(backupDir, 'metadata.json');
       if (fs.existsSync(metadataPath)) {
         try {
           const metadata = JSON.parse(fs.readFileSync(metadataPath, 'utf8'));
           if (metadata.sourceVersion) versionStr = ` (v${metadata.sourceVersion})`;
+          sourceCommit = metadata.sourceCommit;
         } catch {
           // If metadata can't be read, just continue without version info
         }
@@ -202,10 +204,16 @@ export async function main(argv = process.argv.slice(2)) {
       const summary = `${filesRestored} file(s) restored${
         filesRemoved > 0 ? `, ${filesRemoved} removed` : ''
       }`;
-      console.log(
-        kleur.green(`\n  ✓ ${summary}`) +
-          (versionStr ? ` (reverted to v${versionStr.slice(4, -1)})` : '')
-      );
+
+      // Handle null sourceCommit (offline cache case)
+      let versionSuffix = '';
+      if (sourceCommit === null) {
+        versionSuffix = ' — from offline cache, exact version unknown';
+      } else if (versionStr) {
+        versionSuffix = ` (reverted to v${versionStr.slice(4, -1)})`;
+      }
+
+      console.log(kleur.green(`\n  ✓ ${summary}${versionSuffix}`));
       console.log();
       return;
     }
