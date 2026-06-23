@@ -36,12 +36,20 @@ test('plan: skips symlinks and does not include them in plan results', () => {
   fs.mkdirSync(path.join(profile, 'claude'), { recursive: true });
   fs.writeFileSync(path.join(profile, 'claude', 'CLAUDE.md'), 'content');
   fs.writeFileSync(path.join(profile, 'claude', 'real-file.txt'), 'real');
-  fs.symlinkSync(path.join(profile, 'claude', 'real-file.txt'), path.join(profile, 'claude', 'linked-file.txt'), 'file');
+  fs.symlinkSync(
+    path.join(profile, 'claude', 'real-file.txt'),
+    path.join(profile, 'claude', 'linked-file.txt'),
+    'file'
+  );
   fs.mkdirSync(path.join(home, '.claude'), { recursive: true });
-  const roots = { claude: path.join(home, '.claude'), cursor: path.join(home, '.cursor'), shared: home };
+  const roots = {
+    claude: path.join(home, '.claude'),
+    cursor: path.join(home, '.cursor'),
+    shared: home,
+  };
   const planResult = plan(profile, roots);
   assert.equal(planResult.length, 2);
-  const files = planResult.map(f => f.rel).sort();
+  const files = planResult.map((f) => f.rel).sort();
   assert.ok(files.includes('CLAUDE.md'));
   assert.ok(files.includes('real-file.txt'));
   assert.ok(!files.includes('linked-file.txt'));
