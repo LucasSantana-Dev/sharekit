@@ -1,0 +1,52 @@
+# sharekit
+
+Share your AI coding setup — CLAUDE.md, skills, cursorrules, and dotfiles — with anyone. One command to install, one to rollback.
+
+## Install
+
+```bash
+npx sharekit install <github-user>
+```
+
+Fetches a profile from `github.com/<github-user>/sharekit-profile`, previews the changes (colors + counts), asks for confirmation, backs up any files it will overwrite, and applies them. Undo with `sharekit rollback <github-user>`.
+
+```bash
+npx sharekit preview <github-user>   # see what would change, apply nothing
+npx sharekit rollback <github-user>  # restore the last backup
+```
+
+## Publish your own profile
+
+Create a GitHub repo named **`sharekit-profile`** with this structure:
+
+```
+sharekit-profile/
+├── sharekit.toml
+├── claude/           (→ ~/.claude/)
+├── cursor/           (→ ~/.cursor/)
+└── shared/           (→ ~/)
+```
+
+**sharekit.toml** example:
+
+```toml
+[profile]
+name = "My Setup"
+version = "1.0"
+description = "Claude + Cursor config with custom skills"
+```
+
+Subdirectories mirror into their corresponding roots: files in `claude/` go to `~/.claude/`, files in `cursor/` to `~/.cursor/`, and files in `shared/` to `~/`.
+
+Run `sharekit init` to scaffold a new profile (command being added soon).
+
+## Security
+
+- **Hooks are never auto-installed.** Settings containing hooks (`.claude/settings.json`) are flagged in the preview and skipped. Merge them manually after reviewing.
+- **Preview before applying.** `sharekit preview` shows the exact diff (new/changed/unchanged counts and paths) — trust gate before any write.
+- **Everything is backed up.** Before applying, sharekit saves changed files to `~/.sharekit/backups/<user>-<timestamp>/`. Rollback restores them.
+
+## Status
+
+- No registry/discovery yet — GitHub is the registry. Search `sharekit-profile` repos by topic or follow the convention.
+- File-copy only; no multi-tool merge logic. TOML, text, and binary files are copied as-is. Use `sharekit preview` to spot conflicts.
