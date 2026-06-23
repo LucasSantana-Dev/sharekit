@@ -5,14 +5,14 @@ Share your AI coding setup — CLAUDE.md, skills, cursorrules, and dotfiles — 
 ## Install
 
 ```bash
-npx sharekit install <github-user>
+npx @lucassantana/sharekit install <github-user>
 ```
 
 Fetches a profile from `github.com/<github-user>/sharekit-profile`, previews the changes (colors + counts), asks for confirmation, backs up any files it will overwrite, and applies them. Undo with `sharekit rollback <github-user>`.
 
 ```bash
-npx sharekit preview <github-user>   # see what would change, apply nothing
-npx sharekit rollback <github-user>  # restore the last backup
+npx @lucassantana/sharekit preview <github-user>   # see what would change, apply nothing
+npx @lucassantana/sharekit rollback <github-user>  # restore the last backup
 ```
 
 ## Publish your own profile
@@ -38,7 +38,7 @@ description = "Claude + Cursor config with custom skills"
 
 Subdirectories mirror into their corresponding roots: files in `claude/` go to `~/.claude/`, files in `cursor/` to `~/.cursor/`, and files in `shared/` to `~/`.
 
-Run `sharekit init` to scaffold a new profile (command being added soon).
+Run `sharekit init [skill...]` to scaffold a profile from your `~/.claude` — copies your `CLAUDE.md` and any named skills into a ready-to-push `sharekit-profile/`.
 
 ## Security
 

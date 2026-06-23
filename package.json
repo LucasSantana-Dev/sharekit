@@ -1,9 +1,10 @@
 {
-  "name": "sharekit",
+  "name": "@lucassantana/sharekit",
   "version": "0.1.0",
   "description": "Share your AI coding setup with anyone — one command to install, one to rollback.",
   "keywords": ["ai", "claude", "cursor", "copilot", "dotfiles", "cli", "config"],
   "license": "MIT",
+  "publishConfig": { "access": "public" },
   "type": "module",
   "bin": {
     "sharekit": "./dist/index.js"
