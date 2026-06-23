@@ -20,9 +20,12 @@ export interface InstallOpts {
 export async function confirm(q: string, autoYes = false): Promise<boolean> {
   if (autoYes) return true;
   const rl = readline.createInterface({ input, output });
-  const a = await rl.question(kleur.bold(`  ${q} (y/N) `));
-  rl.close();
-  return a.trim().toLowerCase() === 'y';
+  try {
+    const a = await rl.question(kleur.bold(`  ${q} (y/N) `));
+    return a.trim().toLowerCase() === 'y';
+  } finally {
+    rl.close(); // always release the interface, even if question() rejects (EOF/piped stdin)
+  }
 }
 
 // Discover published profiles: GitHub IS the registry — search for repos named "sharekit-profile".
@@ -33,6 +36,7 @@ export async function search(query?: string): Promise<void> {
   try {
     const res = await fetch(url, {
       headers: { 'User-Agent': 'sharekit-cli', Accept: 'application/vnd.github+json' },
+      signal: AbortSignal.timeout(15_000), // don't hang forever on a stalled GitHub response
     });
     if (!res.ok) throw new Error(`GitHub API ${res.status}`);
     data = (await res.json()) as typeof data;

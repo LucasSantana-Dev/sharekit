@@ -26,7 +26,7 @@ export function fetchProfile(
     // For mutable refs (branches), this pulls the latest. For immutable refs (tags/SHAs),
     // the pull harmlessly fails and we fall back to the cached copy.
     try {
-      execFileSync('git', ['-C', dir, 'pull', '--ff-only'], { stdio: 'pipe' });
+      execFileSync('git', ['-C', dir, 'pull', '--ff-only'], { stdio: 'pipe', timeout: 30_000 });
     } catch {
       // ponytail: refresh is best-effort — offline / no-remote / detached HEAD falls back to the cached copy
     }
@@ -40,13 +40,20 @@ export function fetchProfile(
     if (ref) {
       execFileSync('git', ['clone', '--depth', '1', '--branch', ref, '--', url, dir], {
         stdio: 'pipe',
+        timeout: 30_000,
       });
     } else {
-      execFileSync('git', ['clone', '--depth', '1', '--', url, dir], { stdio: 'pipe' });
+      execFileSync('git', ['clone', '--depth', '1', '--', url, dir], {
+        stdio: 'pipe',
+        timeout: 30_000,
+      });
     }
   } catch (e) {
     if ((e as { code?: string }).code === 'ENOENT') {
       throw new Error('git not found — install git to use sharekit (https://git-scm.com)');
+    }
+    if ((e as { killed?: boolean }).killed) {
+      throw new Error(`Timed out fetching ${user}'s profile (network too slow or repo too large)`);
     }
     const errOut =
       ((e as { stderr?: Buffer }).stderr?.toString() ?? '') + ((e as Error).message ?? '');
