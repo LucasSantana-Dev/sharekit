@@ -25,6 +25,7 @@ export function recordInstall(
     commit = execFileSync('git', ['-C', profileDir, 'rev-parse', 'HEAD'], {
       stdio: 'pipe',
       encoding: 'utf8',
+      timeout: 30_000,
     }).trim();
   } catch {
     // best-effort: if rev-parse fails (offline cache, odd state), record null
