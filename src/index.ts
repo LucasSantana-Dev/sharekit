@@ -1,11 +1,14 @@
 #!/usr/bin/env node
 import kleur from 'kleur';
-import { install, preview, rollback, init, search, type InstallOpts } from './sharekit.js';
+import { install, preview, rollback, init, search, scan, type InstallOpts } from './sharekit.js';
 
 const VERSION = '0.3.0';
 const USAGE = `${kleur.bold('sharekit')} v${VERSION} — share your AI coding setup
 
   ${kleur.cyan('init')}     [skill...]              scaffold a publishable profile in ./sharekit-profile
+                              --force              override high-severity secret blocking
+  ${kleur.cyan('scan')}     [dir]                   scan an existing profile for secrets
+                              --force              exit 0 even if high-severity findings detected
   ${kleur.cyan('install')}  <user>[@<ref>] [opts]  fetch, preview, apply a profile
                               --include-hooks      also install settings.json with shell hooks
   ${kleur.cyan('preview')}  <user>[@<ref>]         show changes, apply nothing
@@ -16,7 +19,7 @@ const USAGE = `${kleur.bold('sharekit')} v${VERSION} — share your AI coding se
   Pin to a branch/tag: ${kleur.cyan('sharekit install user@v1.0')} or ${kleur.cyan('sharekit install user@stable')}.
 `;
 
-type CmdFn = (arg: string, opts?: InstallOpts) => Promise<void> | void;
+type CmdFn = (arg: string, opts?: InstallOpts) => Promise<void>;
 const cmds: Record<string, CmdFn> = { install, preview, rollback };
 const argv = process.argv.slice(2);
 const [cmd, ...rest] = argv;
@@ -27,12 +30,25 @@ async function main() {
 
   if (cmd === 'init') {
     console.log();
-    init('./sharekit-profile', rest);
+    const flags = rest.filter((x) => x.startsWith('--'));
+    const skillNames = rest.filter((x) => !x.startsWith('--'));
+    const force = flags.includes('--force');
+    init('./sharekit-profile', skillNames, undefined, force);
     return;
   }
 
   if (cmd === 'search') {
     await search(rest.find((x) => !x.startsWith('--')));
+    return;
+  }
+
+  if (cmd === 'scan') {
+    console.log();
+    // Positional arg (optional directory) separated from flags by -- prefix
+    const flags = rest.filter((x) => x.startsWith('--'));
+    const dir = rest.find((x) => !x.startsWith('--'));
+    const force = flags.includes('--force');
+    await scan(dir, force);
     return;
   }
 
