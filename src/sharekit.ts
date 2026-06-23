@@ -44,6 +44,12 @@ export interface InstallOpts {
 
 const tildify = (p: string) => (p.startsWith(HOME) ? '~' + p.slice(HOME.length) : p);
 
+export function parseUserRef(user: string): { user: string; ref?: string } {
+  const ref = user.includes('@') ? user.split('@').reverse()[0] : undefined;
+  const userName = ref ? user.slice(0, user.lastIndexOf('@')) : user;
+  return { user: userName, ref };
+}
+
 function walk(dir: string): string[] {
   return fs.readdirSync(dir, { withFileTypes: true }).flatMap((e) => {
     if (e.isSymbolicLink()) return []; // skip symlinks: don't follow into arbitrary files; dir-links would EISDIR on copy
@@ -660,8 +666,7 @@ export async function update(
 
 export async function install(user: string, opts?: InstallOpts): Promise<void> {
   const includeHooks = opts?.includeHooks ?? false;
-  const userRef = user.includes('@') ? user.split('@').reverse()[0] : undefined;
-  const userName = userRef ? user.slice(0, user.lastIndexOf('@')) : user;
+  const { user: userName, ref: userRef } = parseUserRef(user);
 
   const dir = fetchProfile(userName, userRef);
   const manifest = readManifest(dir);
@@ -707,8 +712,7 @@ export async function install(user: string, opts?: InstallOpts): Promise<void> {
 }
 
 export async function preview(user: string): Promise<void> {
-  const userRef = user.includes('@') ? user.split('@').reverse()[0] : undefined;
-  const userName = userRef ? user.slice(0, user.lastIndexOf('@')) : user;
+  const { user: userName, ref: userRef } = parseUserRef(user);
 
   const dir = fetchProfile(userName, userRef);
   console.log();
