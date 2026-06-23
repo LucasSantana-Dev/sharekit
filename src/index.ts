@@ -46,10 +46,9 @@ const USAGE = `${kleur.bold('sharekit')} v${VERSION} — share your AI coding se
 
 type CmdFn = (arg: string, opts?: InstallOpts) => Promise<void>;
 const cmds: Record<string, CmdFn> = { install, preview, rollback };
-const argv = process.argv.slice(2);
-const [cmd, ...rest] = argv;
 
-async function main() {
+export async function main(argv = process.argv.slice(2)) {
+  const [cmd, ...rest] = argv;
   if (!cmd || cmd === '-h' || cmd === '--help') return void console.log(USAGE);
   if (cmd === '-V' || cmd === '--version') return void console.log(VERSION);
 
