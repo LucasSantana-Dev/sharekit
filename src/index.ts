@@ -1,5 +1,8 @@
 #!/usr/bin/env node
 import kleur from 'kleur';
+import * as fs from 'node:fs';
+import * as path from 'node:path';
+import * as os from 'node:os';
 import {
   install,
   preview,
@@ -9,8 +12,12 @@ import {
   scan,
   listBackups,
   restoreBackupToStamp,
+  confirm,
   type InstallOpts,
 } from './sharekit.js';
+
+const HOME = os.homedir();
+const STATE = path.join(HOME, '.sharekit');
 
 const VERSION = '0.3.0';
 const USAGE = `${kleur.bold('sharekit')} v${VERSION} — share your AI coding setup
@@ -121,8 +128,51 @@ async function main() {
     }
 
     if (toStamp) {
+      const backupDir = path.join(STATE, 'backups', `${user}-${toStamp}`);
+      if (!fs.existsSync(backupDir)) {
+        console.error(kleur.red(`No backup found for ${user} with stamp ${toStamp}.`));
+        process.exit(1);
+      }
+
+      // Read applied.json to show what will be restored
+      const appliedPath = path.join(backupDir, 'applied.json');
+      let applied: Array<{ dest: string; status: string }> = [];
+      try {
+        applied = JSON.parse(fs.readFileSync(appliedPath, 'utf8'));
+      } catch {
+        console.error(kleur.red(`Could not read backup metadata at ${appliedPath}`));
+        process.exit(1);
+      }
+
+      // Read version from metadata if available
+      let versionStr = '';
+      const metadataPath = path.join(backupDir, 'metadata.json');
+      if (fs.existsSync(metadataPath)) {
+        try {
+          const metadata = JSON.parse(fs.readFileSync(metadataPath, 'utf8'));
+          if (metadata.sourceVersion) versionStr = ` (v${metadata.sourceVersion})`;
+        } catch {
+          // If metadata can't be read, just continue without version info
+        }
+      }
+
+      console.log(kleur.bold(`\n  Restore ${user}${versionStr}  (${applied.length} file(s))\n`));
+      if (!(await confirm('Restore?'))) {
+        console.log(kleur.dim('\n  Aborted.\n'));
+        return;
+      }
+
       restoreBackupToStamp(user, toStamp);
-      console.log(kleur.green('\n  ✓ Restored.\n'));
+      const filesRestored = applied.filter((a) => a.status === 'changed').length;
+      const filesRemoved = applied.filter((a) => a.status === 'new').length;
+      const summary = `${filesRestored} file(s) restored${
+        filesRemoved > 0 ? `, ${filesRemoved} removed` : ''
+      }`;
+      console.log(
+        kleur.green(`\n  ✓ ${summary}`) +
+          (versionStr ? ` (reverted to v${versionStr.slice(4, -1)})` : '')
+      );
+      console.log();
       return;
     }
 

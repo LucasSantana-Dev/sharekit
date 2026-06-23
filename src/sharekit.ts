@@ -212,7 +212,7 @@ export function printPlan(files: PlanFile[], manifest: ReturnType<typeof readMan
     );
 }
 
-async function confirm(q: string): Promise<boolean> {
+export async function confirm(q: string): Promise<boolean> {
   const rl = readline.createInterface({ input, output });
   const a = await rl.question(kleur.bold(`  ${q} (y/N) `));
   rl.close();
@@ -252,6 +252,12 @@ function backup(
     fs.mkdirSync(path.dirname(t), { recursive: true });
     cp(f.dest, t);
   }
+
+  // Capture source version/commit from install state
+  const installed = readInstalled(dirs);
+  const sourceVersion = installed[user]?.version;
+  const sourceCommit = installed[user]?.commit;
+
   fs.writeFileSync(
     path.join(dir, 'applied.json'),
     JSON.stringify(
@@ -260,6 +266,15 @@ function backup(
       2
     )
   );
+
+  // Write metadata with source version/commit if available
+  const metadata: { sourceVersion?: string; sourceCommit?: string | null } = {};
+  if (sourceVersion !== undefined) metadata.sourceVersion = sourceVersion;
+  if (sourceCommit !== undefined) metadata.sourceCommit = sourceCommit;
+  if (Object.keys(metadata).length > 0) {
+    fs.writeFileSync(path.join(dir, 'metadata.json'), JSON.stringify(metadata, null, 2));
+  }
+
   return dir;
 }
 
@@ -317,22 +332,54 @@ export function listBackups(user: string, state = STATE): BackupInfo[] {
     });
 }
 
-function restoreBackupInternal(user: string, backupDir: string, dirs: Dirs = DEFAULT_DIRS): void {
+interface RestoreMetadata {
+  filesRestored: number;
+  filesRemoved: number;
+  sourceVersion?: string;
+  sourceCommit?: string | null;
+}
+
+function restoreBackupInternal(
+  user: string,
+  backupDir: string,
+  dirs: Dirs = DEFAULT_DIRS
+): RestoreMetadata {
   const applied: { dest: string; status: Status }[] = JSON.parse(
     fs.readFileSync(path.join(backupDir, 'applied.json'), 'utf8')
   );
 
+  let filesRestored = 0;
+  let filesRemoved = 0;
+
   for (const a of applied) {
-    if (a.status === 'new')
+    if (a.status === 'new') {
       fs.rmSync(a.dest, { force: true }); // ponytail: leaves empty parent dirs; harmless
-    else {
+      filesRemoved++;
+    } else {
       const src = path.join(backupDir, path.relative(dirs.home, a.dest));
       if (fs.existsSync(src)) {
         fs.mkdirSync(path.dirname(a.dest), { recursive: true }); // dest dir may have been removed since install
         cp(src, a.dest);
+        filesRestored++;
       }
     }
   }
+
+  // Load metadata (source version/commit) if available
+  const metadataPath = path.join(backupDir, 'metadata.json');
+  let sourceVersion: string | undefined;
+  let sourceCommit: string | null | undefined;
+  if (fs.existsSync(metadataPath)) {
+    try {
+      const metadata = JSON.parse(fs.readFileSync(metadataPath, 'utf8'));
+      sourceVersion = metadata.sourceVersion;
+      sourceCommit = metadata.sourceCommit;
+    } catch {
+      // If metadata can't be read, just continue without it
+    }
+  }
+
+  return { filesRestored, filesRemoved, sourceVersion, sourceCommit };
 }
 
 export function restoreBackupToStamp(user: string, stamp: string, dirs: Dirs = DEFAULT_DIRS): void {
@@ -346,7 +393,7 @@ export function restoreBackupToStamp(user: string, stamp: string, dirs: Dirs = D
   restoreBackupInternal(user, backupDir, dirs);
 }
 
-export function restoreBackup(user: string, dirs: Dirs = DEFAULT_DIRS): void {
+export function restoreBackup(user: string, dirs: Dirs = DEFAULT_DIRS): RestoreMetadata {
   const root = path.join(dirs.state, 'backups');
   const last = fs.existsSync(root)
     ? fs
@@ -358,7 +405,7 @@ export function restoreBackup(user: string, dirs: Dirs = DEFAULT_DIRS): void {
   if (!last) throw new Error(`No backup for ${user}.`);
 
   const dir = path.join(root, last);
-  restoreBackupInternal(user, dir, dirs);
+  return restoreBackupInternal(user, dir, dirs);
 }
 
 // Install state record: captures what was installed and where
@@ -500,11 +547,30 @@ export async function rollback(user: string): Promise<void> {
   const applied: { dest: string; status: Status }[] = JSON.parse(
     fs.readFileSync(path.join(dir, 'applied.json'), 'utf8')
   );
-  console.log(kleur.bold(`\n  Rollback ${user} → ${tildify(dir)}  (${applied.length} file(s))\n`));
+
+  let versionStr = '';
+  const metadataPath = path.join(dir, 'metadata.json');
+  if (fs.existsSync(metadataPath)) {
+    try {
+      const metadata = JSON.parse(fs.readFileSync(metadataPath, 'utf8'));
+      if (metadata.sourceVersion) versionStr = ` (v${metadata.sourceVersion})`;
+    } catch {
+      // If metadata can't be read, just continue without version info
+    }
+  }
+
+  console.log(kleur.bold(`\n  Rollback ${user}${versionStr}  (${applied.length} file(s))\n`));
   if (!(await confirm('Restore?'))) return void console.log(kleur.dim('\n  Aborted.\n'));
 
-  restoreBackup(user);
-  console.log(kleur.green('\n  ✓ Restored.\n'));
+  const metadata = restoreBackup(user);
+  const summary = `${metadata.filesRestored} file(s) restored${
+    metadata.filesRemoved > 0 ? `, ${metadata.filesRemoved} removed` : ''
+  }`;
+  console.log(
+    kleur.green(`\n  ✓ ${summary}`) +
+      (metadata.sourceVersion ? ` (reverted to v${metadata.sourceVersion})` : '')
+  );
+  console.log();
 }
 
 export async function scan(dir?: string, force = false): Promise<void> {
