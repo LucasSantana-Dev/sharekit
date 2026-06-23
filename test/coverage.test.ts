@@ -10,6 +10,8 @@ import {
   recordInstall,
   readInstalled,
   uninstall,
+  restoreBackup,
+  scan,
 } from '../src/sharekit.ts';
 
 // Builds a temp profile + home/state and returns the pieces used across tests.
@@ -109,4 +111,46 @@ test('uninstall restores pre-install state from backup, deletes new files', asyn
   );
   assert.ok(!fs.existsSync(path.join(home, '.claude', 'NEW.md')), 'new file removed');
   assert.equal(readInstalled(dirs)['acme'], undefined, 'install record deleted');
+});
+
+// #88 — restoreBackup surfaces sourceCommit: null (the offline-cache signal the rollback message uses)
+test('restoreBackup returns sourceCommit:null when the backup metadata has it', () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'sk-cov-null-'));
+  const home = path.join(tmp, 'home');
+  const state = path.join(tmp, 'state');
+  fs.mkdirSync(home, { recursive: true });
+  const backupDir = path.join(state, 'backups', 'acme-2026-01-01T00-00-00-000Z');
+  fs.mkdirSync(backupDir, { recursive: true });
+  fs.writeFileSync(path.join(backupDir, 'applied.json'), '[]');
+  // metadata from an offline-cache install: version known, commit unresolved
+  fs.writeFileSync(
+    path.join(backupDir, 'metadata.json'),
+    JSON.stringify({ sourceVersion: '1.0', sourceCommit: null })
+  );
+
+  const meta = restoreBackup('acme', { home, state });
+  assert.equal(meta.sourceCommit, null, 'null commit surfaced for the offline-cache message');
+  assert.equal(meta.sourceVersion, '1.0');
+});
+
+// #90 — scan error paths: missing dir and an unforced high-severity finding both reject
+test('scan rejects on a missing profile dir', async () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'sk-cov-scan-'));
+  await assert.rejects(
+    () => scan(path.join(tmp, 'does-not-exist'), false),
+    /No profile|not exist/i
+  );
+});
+
+test('scan blocks on a high-severity finding without --force', async () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'sk-cov-scanhi-'));
+  fs.mkdirSync(path.join(tmp, 'claude'), { recursive: true });
+  // a private-key block is HIGH severity → scan must throw (exit non-zero) without --force
+  fs.writeFileSync(
+    path.join(tmp, 'claude', 'CLAUDE.md'),
+    '-----BEGIN RSA PRIVATE KEY-----\nFAKE\n-----END RSA PRIVATE KEY-----\n'
+  );
+  await assert.rejects(() => scan(tmp, false));
+  // with --force it must NOT throw
+  await assert.doesNotReject(() => scan(tmp, true));
 });

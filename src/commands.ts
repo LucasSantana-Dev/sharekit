@@ -276,8 +276,7 @@ export async function preview(user: string): Promise<void> {
 }
 
 export async function inspect(user: string): Promise<void> {
-  const userRef = user.includes('@') ? user.split('@').reverse()[0] : undefined;
-  const userName = userRef ? user.slice(0, user.lastIndexOf('@')) : user;
+  const { user: userName, ref: userRef } = parseUserRef(user);
 
   const dir = fetchProfile(userName, userRef);
   const manifest = readManifest(dir);
