@@ -112,11 +112,19 @@ export async function main(argv = process.argv.slice(2)) {
     let user: string | undefined;
     let listMode = false;
     let toStamp: string | undefined;
+    let yes = false;
+    let dryRun = false;
 
     while (i < rest.length) {
       const arg = rest[i];
       if (arg === '--list') {
         listMode = true;
+        i++;
+      } else if (arg === '--yes') {
+        yes = true;
+        i++;
+      } else if (arg === '--dry-run') {
+        dryRun = true;
         i++;
       } else if (arg === '--to') {
         if (i + 1 >= rest.length) {
@@ -193,7 +201,13 @@ export async function main(argv = process.argv.slice(2)) {
       }
 
       console.log(kleur.bold(`\n  Restore ${user}${versionStr}  (${applied.length} file(s))\n`));
-      if (!(await confirm('Restore?'))) {
+      if (dryRun) {
+        console.log(
+          kleur.cyan(`  (dry-run — ${applied.length} file(s) would be restored, nothing written)\n`)
+        );
+        return;
+      }
+      if (!(await confirm('Restore?', yes))) {
         console.log(kleur.dim('\n  Aborted.\n'));
         return;
       }
