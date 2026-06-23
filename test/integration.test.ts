@@ -12,6 +12,7 @@ import {
   readInstalled,
   list,
   update,
+  updateApply,
 } from '../src/sharekit.ts';
 
 // Exercises the REAL exported helpers (not a hand-rolled copy) via injected dirs,
@@ -269,6 +270,146 @@ test('update returns "nothing to update" for pinned ref (tag)', async () => {
   const outputStr = output.join('\n');
   assert.ok(outputStr.includes('pinned to v1.0.0'), 'should show pinned message');
   assert.ok(outputStr.toLowerCase().includes('nothing to update'), 'should say nothing to update');
+
+  fs.rmSync(tmp, { recursive: true });
+});
+
+test('updateApply applies changes and updates install-state offline', () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'sk-update-apply-'));
+  const home = path.join(tmp, 'home');
+  const state = path.join(tmp, 'state');
+  const cacheRoot = path.join(state, 'profiles');
+
+  // Set up home directories
+  fs.mkdirSync(path.join(home, '.claude'), { recursive: true });
+
+  // Set up a cached profile repo (pre-seeded so no network call needed)
+  const cacheKey = 'testuser@main'; // key format from fetchProfile
+  const profileDir = path.join(cacheRoot, cacheKey);
+  fs.mkdirSync(profileDir, { recursive: true });
+
+  // Initialize profile as a git repo
+  execSync('git init', { cwd: profileDir, stdio: 'pipe' });
+  execSync('git config user.email test@example.com', { cwd: profileDir, stdio: 'pipe' });
+  execSync('git config user.name Test', { cwd: profileDir, stdio: 'pipe' });
+
+  // Create sharekit.toml (required)
+  fs.writeFileSync(
+    path.join(profileDir, 'sharekit.toml'),
+    '[profile]\nname = "testuser"\nversion = "2.0.0"\n'
+  );
+
+  // Create profile content (updated version)
+  fs.mkdirSync(path.join(profileDir, 'claude'), { recursive: true });
+  fs.writeFileSync(path.join(profileDir, 'claude', 'CLAUDE.md'), 'updated instructions v2');
+  execSync('git add sharekit.toml claude/CLAUDE.md', { cwd: profileDir, stdio: 'pipe' });
+  execSync('git commit -m "v2 update"', { cwd: profileDir, stdio: 'pipe' });
+
+  // Get the new commit SHA that will be recorded
+  const newCommit = execSync('git rev-parse HEAD', {
+    cwd: profileDir,
+    stdio: 'pipe',
+    encoding: 'utf8',
+  }).trim();
+
+  // Create an install record (initial state, v1 on main)
+  const installed = {
+    testuser: {
+      user: 'testuser',
+      ref: 'main',
+      commit: 'abc123def456abc123def456abc123def456abc1',
+      version: '1.0.0',
+      appliedAt: '2025-06-22T10:00:00.000Z',
+    },
+  };
+
+  const stateFile = path.join(state, 'installed.json');
+  fs.mkdirSync(state, { recursive: true });
+  fs.writeFileSync(stateFile, JSON.stringify(installed, null, 2));
+
+  // Pre-seed the old content in home
+  fs.writeFileSync(path.join(home, '.claude', 'CLAUDE.md'), 'old instructions v1');
+
+  // Suppress console output during test
+  const originalLog = console.log;
+  console.log = () => {};
+
+  // Call updateApply (non-interactive apply)
+  const result = updateApply('testuser', false, { home, state });
+
+  console.log = originalLog;
+
+  // Verify the updated files were applied
+  assert.equal(
+    fs.readFileSync(path.join(home, '.claude', 'CLAUDE.md'), 'utf8'),
+    'updated instructions v2',
+    'file should be updated'
+  );
+
+  // Verify install state was updated with new commit and timestamp
+  const updated = readInstalled({ home, state });
+  assert.ok(updated.testuser, 'testuser record should exist');
+  assert.equal(updated.testuser.version, '2.0.0', 'version should be updated from manifest');
+  assert.equal(updated.testuser.commit, newCommit, 'commit SHA should be updated to new value');
+  assert.ok(updated.testuser.appliedAt > installed.testuser.appliedAt, 'appliedAt should be newer');
+
+  // Verify result indicates files were written
+  assert.equal(result.filesWritten, 1, 'should have written 1 file');
+  assert.ok(result.backupDir.startsWith(state), 'backup should be under state dir');
+
+  fs.rmSync(tmp, { recursive: true });
+});
+
+test('list guards against invalid appliedAt timestamps', () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'sk-list-bad-date-'));
+  const state = path.join(tmp, 'state');
+
+  // Create install records with various timestamp issues
+  const installed = {
+    good: {
+      user: 'good',
+      ref: 'main',
+      commit: 'abc123d',
+      version: '1.0.0',
+      appliedAt: '2025-06-23T10:30:00.000Z',
+    },
+    baddate: {
+      user: 'baddate',
+      ref: 'main',
+      commit: 'def456g',
+      version: '2.0.0',
+      appliedAt: 'invalid-date',
+    },
+    nodate: {
+      user: 'nodate',
+      ref: 'main',
+      commit: 'ghi789h',
+      version: '3.0.0',
+      appliedAt: null as unknown as string,
+    },
+  };
+
+  const stateFile = path.join(state, 'installed.json');
+  fs.mkdirSync(state, { recursive: true });
+  fs.writeFileSync(stateFile, JSON.stringify(installed, null, 2));
+
+  const output: string[] = [];
+  const originalLog = console.log;
+  console.log = (...args: unknown[]) => {
+    output.push(args.join(' '));
+  };
+
+  list({ home: tmp, state });
+
+  console.log = originalLog;
+
+  const outputStr = output.join('\n');
+  assert.ok(outputStr.includes('good'), 'should list good user');
+  assert.ok(outputStr.includes('baddate'), 'should list baddate user');
+  assert.ok(outputStr.includes('nodate'), 'should list nodate user');
+  assert.ok(outputStr.includes('Jun 23'), 'should show formatted date for good record');
+  assert.ok(outputStr.includes('(unknown)'), 'should show (unknown) for invalid/null dates');
+  assert.ok(!outputStr.includes('Invalid Date'), 'should never show Invalid Date string');
 
   fs.rmSync(tmp, { recursive: true });
 });
