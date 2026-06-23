@@ -1,15 +1,25 @@
 name: Release
 
-# Publishes to npm when a git tag matching v* is pushed.
-# Requires NPM_TOKEN secret to be set in GitHub repository settings.
-# The token should be an npm automation token (https://docs.npmjs.com/creating-and-viewing-authentication-tokens/).
-# Alternatively, configure OIDC trusted publishing (https://docs.npmjs.com/using-npm/configure-npm-for-oidc-publishing)
-# in npm and GitHub to avoid storing secrets.
+# Publishes to npm via OIDC trusted publishing when a v* tag is pushed.
+# No stored token: GitHub mints a short-lived OIDC credential that npm trusts,
+# and provenance is attached automatically.
+#
+# ONE-TIME SETUP on npmjs.com (required before this can publish):
+#   Package @lucassantana/sharekit -> Settings -> Trusted Publisher ->
+#   GitHub Actions, with:
+#     Organization/user:  LucasSantana-Dev
+#     Repository:         sharekit
+#     Workflow filename:  release.yml
+#   Docs: https://docs.npmjs.com/trusted-publishers
 
 on:
   push:
     tags:
       - v*
+
+permissions:
+  id-token: write # mint the OIDC token npm exchanges for publish auth
+  contents: read
 
 jobs:
   publish:
@@ -20,8 +30,7 @@ jobs:
         with:
           node-version: "20"
           registry-url: https://registry.npmjs.org
+      - run: npm install -g npm@latest # trusted publishing needs npm >= 11.5.1
       - run: npm ci
       - run: npm run build
       - run: npm publish
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
