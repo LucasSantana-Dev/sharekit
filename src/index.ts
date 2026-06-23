@@ -1,16 +1,16 @@
 #!/usr/bin/env node
-import kleur from "kleur";
-import { install, preview, rollback, init } from "./sharekit.js";
+import kleur from 'kleur';
+import { install, preview, rollback, init } from './sharekit.js';
 
-const VERSION = "0.1.0";
-const USAGE = `${kleur.bold("sharekit")} v${VERSION} — share your AI coding setup
+const VERSION = '0.1.0';
+const USAGE = `${kleur.bold('sharekit')} v${VERSION} — share your AI coding setup
 
-  ${kleur.cyan("init")}     [skill...]  scaffold a publishable profile in ./sharekit-profile
-  ${kleur.cyan("install")}  <user>      fetch, preview, apply a profile
-  ${kleur.cyan("preview")}  <user>      show changes, apply nothing
-  ${kleur.cyan("rollback")} <user>      restore the last backup
+  ${kleur.cyan('init')}     [skill...]  scaffold a publishable profile in ./sharekit-profile
+  ${kleur.cyan('install')}  <user>      fetch, preview, apply a profile
+  ${kleur.cyan('preview')}  <user>      show changes, apply nothing
+  ${kleur.cyan('rollback')} <user>      restore the last backup
 
-  Publish yours: a GitHub repo named ${kleur.cyan("sharekit-profile")} with a ${kleur.cyan("sharekit.toml")}.
+  Publish yours: a GitHub repo named ${kleur.cyan('sharekit-profile')} with a ${kleur.cyan('sharekit.toml')}.
 `;
 
 type CmdFn = (arg: string) => Promise<void> | void;
@@ -19,12 +19,12 @@ const argv = process.argv.slice(2);
 const [cmd, ...rest] = argv;
 
 async function main() {
-  if (!cmd || cmd === "-h" || cmd === "--help") return void console.log(USAGE);
-  if (cmd === "-V" || cmd === "--version") return void console.log(VERSION);
+  if (!cmd || cmd === '-h' || cmd === '--help') return void console.log(USAGE);
+  if (cmd === '-V' || cmd === '--version') return void console.log(VERSION);
 
-  if (cmd === "init") {
+  if (cmd === 'init') {
     console.log();
-    init("./sharekit-profile", rest);
+    init('./sharekit-profile', rest);
     return;
   }
 
