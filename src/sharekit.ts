@@ -408,8 +408,15 @@ export async function scan(dir?: string, force = false): Promise<void> {
   const allFindings: Finding[] = [];
   const files = walk(profileDir);
   for (const file of files) {
-    const content = fs.readFileSync(file, 'utf8');
+    let content: string;
     const relPath = path.relative(profileDir, file);
+    try {
+      content = fs.readFileSync(file, 'utf8');
+    } catch (e) {
+      const code = (e as NodeJS.ErrnoException).code ?? 'UNKNOWN';
+      console.log(kleur.yellow(`    ~ Skipped ${relPath}: ${code}`));
+      continue;
+    }
     const findings = scanForSecrets(content, relPath);
     allFindings.push(...findings);
   }

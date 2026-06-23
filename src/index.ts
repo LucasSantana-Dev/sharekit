@@ -44,6 +44,7 @@ async function main() {
 
   if (cmd === 'scan') {
     console.log();
+    // Positional arg (optional directory) separated from flags by -- prefix
     const flags = rest.filter((x) => x.startsWith('--'));
     const dir = rest.find((x) => !x.startsWith('--'));
     const force = flags.includes('--force');

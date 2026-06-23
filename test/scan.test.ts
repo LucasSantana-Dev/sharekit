@@ -582,3 +582,65 @@ test('scan warns but exits cleanly for medium-severity findings', async () => {
   assert(output.includes('Secret patterns detected'), 'Should warn about medium-severity findings');
   fs.rmSync(tmp, { recursive: true });
 });
+
+test('scan gracefully skips unreadable files and continues scanning others', async () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'sk-scan-unreadable-'));
+  const profileDir = path.join(tmp, 'sharekit-profile');
+
+  // Create a profile with a readable file containing a secret and an unreadable file
+  fs.mkdirSync(path.join(profileDir, 'claude'), { recursive: true });
+  const readablePath = path.join(profileDir, 'claude', 'CLAUDE.md');
+  const unreadablePath = path.join(profileDir, 'claude', 'secrets.txt');
+
+  fs.writeFileSync(
+    readablePath,
+    '# instructions\n-----BEGIN PRIVATE KEY-----\nTest\n-----END PRIVATE KEY-----'
+  );
+  fs.writeFileSync(unreadablePath, 'content');
+
+  // Make the unreadable file inaccessible
+  fs.chmodSync(unreadablePath, 0o000);
+
+  fs.writeFileSync(path.join(profileDir, 'sharekit.toml'), '[profile]\nname = "test"\n');
+
+  const { scan } = await import('../src/sharekit.js');
+
+  let caughtError: Error | null = null;
+  let output = '';
+  const originalLog = console.log;
+  console.log = (...args: unknown[]) => {
+    output += args.join(' ') + '\n';
+    originalLog(...args);
+  };
+
+  try {
+    await scan(profileDir, false);
+  } catch (e) {
+    caughtError = e as Error;
+  } finally {
+    console.log = originalLog;
+    // Restore permissions for cleanup
+    try {
+      fs.chmodSync(unreadablePath, 0o644);
+    } catch {
+      // ignore
+    }
+  }
+
+  // Should throw because of high-severity finding in readable file
+  assert(caughtError !== null, 'Should throw due to high-severity finding');
+
+  // Should have skipped the unreadable file
+  assert(
+    output.includes('Skipped') && output.includes('secrets.txt'),
+    'Should warn about skipped unreadable file'
+  );
+
+  // Should still detect the secret in the readable file
+  assert(
+    output.includes('Secret patterns detected') && output.includes('PRIVATE KEY'),
+    'Should still scan readable files and report findings'
+  );
+
+  fs.rmSync(tmp, { recursive: true });
+});
