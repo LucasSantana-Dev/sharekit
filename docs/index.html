@@ -1,0 +1,258 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>sharekit — install someone's AI coding setup with one command</title>
+    <meta
+      name="description"
+      content="Browse and install Claude Code / Cursor profiles. GitHub is the registry — no server, no account."
+    />
+    <style>
+      :root {
+        --bg: #0b0e14;
+        --panel: #11151f;
+        --line: #1f2633;
+        --fg: #d7dce5;
+        --dim: #7d8799;
+        --accent: #7ee787;
+        --cyan: #6cb6ff;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--fg);
+        font:
+          15px/1.6 ui-monospace,
+          "SF Mono",
+          Menlo,
+          monospace;
+      }
+      a {
+        color: var(--cyan);
+        text-decoration: none;
+      }
+      a:hover {
+        text-decoration: underline;
+      }
+      .wrap {
+        max-width: 860px;
+        margin: 0 auto;
+        padding: 48px 20px 80px;
+      }
+      header h1 {
+        font-size: 28px;
+        margin: 0 0 6px;
+      }
+      header h1 .p {
+        color: var(--accent);
+      }
+      header p {
+        color: var(--dim);
+        margin: 0 0 24px;
+      }
+      .cmd {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        padding: 12px 14px;
+        margin: 0 0 28px;
+      }
+      .cmd code {
+        color: var(--fg);
+        flex: 1;
+        overflow-x: auto;
+        white-space: nowrap;
+      }
+      .cmd code .t {
+        color: var(--dim);
+      }
+      button.copy {
+        background: transparent;
+        border: 1px solid var(--line);
+        color: var(--dim);
+        border-radius: 6px;
+        padding: 5px 10px;
+        cursor: pointer;
+        font: inherit;
+        font-size: 12px;
+      }
+      button.copy:hover {
+        color: var(--accent);
+        border-color: var(--accent);
+      }
+      #q {
+        width: 100%;
+        background: var(--panel);
+        border: 1px solid var(--line);
+        color: var(--fg);
+        border-radius: 8px;
+        padding: 11px 14px;
+        font: inherit;
+        margin: 0 0 22px;
+      }
+      #q:focus {
+        outline: none;
+        border-color: var(--cyan);
+      }
+      .card {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        padding: 16px 18px;
+        margin: 0 0 12px;
+      }
+      .card .top {
+        display: flex;
+        justify-content: space-between;
+        align-items: baseline;
+        gap: 12px;
+      }
+      .card .owner {
+        color: var(--cyan);
+        font-size: 16px;
+        font-weight: 600;
+      }
+      .card .stars {
+        color: var(--dim);
+        font-size: 13px;
+      }
+      .card .desc {
+        color: var(--dim);
+        margin: 6px 0 12px;
+      }
+      .card .inst {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+      }
+      .card .inst code {
+        background: var(--bg);
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        padding: 6px 10px;
+        flex: 1;
+        overflow-x: auto;
+        white-space: nowrap;
+        font-size: 13px;
+      }
+      .state {
+        color: var(--dim);
+        padding: 24px 0;
+      }
+      footer {
+        color: var(--dim);
+        margin-top: 40px;
+        border-top: 1px solid var(--line);
+        padding-top: 20px;
+        font-size: 13px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <header>
+        <h1>share<span class="p">kit</span></h1>
+        <p>Install someone's entire AI coding setup with one command. GitHub is the registry.</p>
+        <div class="cmd">
+          <code><span class="t">$</span> npx @lucassantana/sharekit install &lt;github-user&gt;</code>
+          <button class="copy" data-copy="npx @lucassantana/sharekit install ">copy</button>
+        </div>
+      </header>
+
+      <input id="q" type="search" placeholder="filter profiles…" autocomplete="off" />
+      <div id="list"><div class="state">Loading published profiles…</div></div>
+
+      <footer>
+        <p>
+          A profile is any public GitHub repo named <code>sharekit-profile</code> with a
+          <code>sharekit.toml</code>. Publish yours: <code>npx @lucassantana/sharekit init</code>, push,
+          and it shows up here.
+        </p>
+        <p>
+          <a href="https://github.com/LucasSantana-Dev/sharekit">repo</a> ·
+          <a href="https://www.npmjs.com/package/@lucassantana/sharekit">npm</a> · listings come live
+          from the GitHub search API — no server, no account.
+        </p>
+      </footer>
+    </div>
+
+    <script>
+      const list = document.getElementById('list');
+      const q = document.getElementById('q');
+      let profiles = [];
+
+      function esc(s) {
+        return (s || '').replace(
+          /[&<>"]/g,
+          (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]
+        );
+      }
+
+      function render(items) {
+        if (!items.length) {
+          list.innerHTML = '<div class="state">No profiles found. Be the first — publish yours.</div>';
+          return;
+        }
+        list.innerHTML = items
+          .map((r) => {
+            const owner = esc(r.owner.login);
+            const cmd = 'npx @lucassantana/sharekit install ' + owner;
+            return `<div class="card">
+              <div class="top"><span class="owner">${owner}</span>${
+                r.stargazers_count ? `<span class="stars">★ ${r.stargazers_count}</span>` : ''
+              }</div>
+              ${r.description ? `<div class="desc">${esc(r.description)}</div>` : ''}
+              <div class="inst"><code>${cmd}</code><button class="copy" data-copy="${cmd}">copy</button></div>
+            </div>`;
+          })
+          .join('');
+      }
+
+      function filter() {
+        const t = q.value.trim().toLowerCase();
+        render(
+          !t
+            ? profiles
+            : profiles.filter(
+                (r) =>
+                  r.owner.login.toLowerCase().includes(t) ||
+                  (r.description || '').toLowerCase().includes(t)
+              )
+        );
+      }
+
+      // copy buttons (event delegation)
+      document.addEventListener('click', (e) => {
+        const b = e.target.closest('button.copy');
+        if (!b) return;
+        navigator.clipboard?.writeText(b.dataset.copy);
+        const o = b.textContent;
+        b.textContent = 'copied';
+        setTimeout(() => (b.textContent = o), 1200);
+      });
+
+      q.addEventListener('input', filter);
+
+      fetch(
+        'https://api.github.com/search/repositories?q=sharekit-profile+in:name&sort=stars&per_page=50',
+        { headers: { Accept: 'application/vnd.github+json' } }
+      )
+        .then((r) => (r.ok ? r.json() : Promise.reject(r.status)))
+        .then((d) => {
+          profiles = (d.items || []).filter((r) => r.name === 'sharekit-profile');
+          render(profiles);
+        })
+        .catch(() => {
+          list.innerHTML =
+            '<div class="state">Couldn\'t reach the GitHub API (rate limit?). Try again shortly, or use <code>sharekit search</code> from the CLI.</div>';
+        });
+    </script>
+  </body>
+</html>
