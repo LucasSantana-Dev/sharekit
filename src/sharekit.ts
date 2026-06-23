@@ -26,6 +26,13 @@ interface PlanFile {
   status: Status;
 }
 
+export interface Finding {
+  rule: string;
+  file?: string;
+  line: number;
+  preview: string;
+}
+
 // injectable so backup/restore can target a temp dir in tests (default: real ~/.sharekit + $HOME)
 type Dirs = { home: string; state: string };
 const DEFAULT_DIRS: Dirs = { home: HOME, state: STATE };
@@ -384,6 +391,92 @@ export async function rollback(user: string): Promise<void> {
   console.log(kleur.green('\n  ✓ Restored.\n'));
 }
 
+export function scanForSecrets(content: string, fileLabel?: string): Finding[] {
+  const findings: Finding[] = [];
+  const lines = content.split('\n');
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    const lineNum = i + 1;
+
+    // Rule 1: Private key blocks
+    if (/-----BEGIN [A-Z ]*PRIVATE KEY-----/.test(line)) {
+      const preview = line.substring(0, 40) + (line.length > 40 ? '…' : '');
+      findings.push({
+        rule: 'Private Key Block',
+        file: fileLabel,
+        line: lineNum,
+        preview,
+      });
+      continue;
+    }
+
+    // Rule 2: AWS access key
+    const awsMatch = /AKIA[0-9A-Z]{16}/.exec(line);
+    if (awsMatch) {
+      const idx = awsMatch.index;
+      const start = Math.max(0, idx - 5);
+      const end = Math.min(line.length, idx + 20);
+      const preview =
+        (start > 0 ? '…' : '') + line.substring(start, end) + (end < line.length ? '…' : '');
+      findings.push({
+        rule: 'AWS Access Key ID',
+        file: fileLabel,
+        line: lineNum,
+        preview,
+      });
+      continue;
+    }
+
+    // Rule 3: Generic KEY=value with sensitive key names, non-empty/non-placeholder values
+    const envMatch = /^([A-Z_]+?)=(.*)$/.exec(line);
+    if (envMatch) {
+      const keyName = envMatch[1].toUpperCase();
+      const value = envMatch[2];
+
+      // Check if key name contains sensitive keywords
+      if (/(SECRET|TOKEN|PASSWORD|API_KEY|APIKEY|ACCESS_KEY)/i.test(keyName)) {
+        // Ignore if value is empty or a placeholder
+        const placeholders = ['""', "''", 'xxx', '<', 'changeme', 'your-', 'your_'];
+        const isPlaceholder =
+          value === '' ||
+          value === '""' ||
+          value === "''" ||
+          placeholders.some((p) => value.startsWith(p));
+
+        if (!isPlaceholder) {
+          const preview = value.substring(0, 8) + (value.length > 8 ? '…' : '');
+          findings.push({
+            rule: 'Env Var: Sensitive Key',
+            file: fileLabel,
+            line: lineNum,
+            preview: `${keyName}=${preview}`,
+          });
+          continue;
+        }
+      }
+    }
+
+    // Rule 4: Bearer token
+    const bearerMatch = /Bearer [A-Za-z0-9._\-]{20,}/.exec(line);
+    if (bearerMatch) {
+      const idx = bearerMatch.index;
+      const start = Math.max(0, idx);
+      const end = Math.min(line.length, idx + 30);
+      const preview = line.substring(start, end) + (end < line.length ? '…' : '');
+      findings.push({
+        rule: 'Bearer Token',
+        file: fileLabel,
+        line: lineNum,
+        preview,
+      });
+      continue;
+    }
+  }
+
+  return findings;
+}
+
 export function init(profileDir: string, skillNames: string[] = [], sourceRoot = HOME): void {
   // Check if profileDir already exists
   if (fs.existsSync(profileDir)) {
@@ -393,6 +486,8 @@ export function init(profileDir: string, skillNames: string[] = [], sourceRoot =
   const username = os.userInfo().username;
   const profileRoot = path.join(profileDir);
   fs.mkdirSync(profileRoot, { recursive: true });
+
+  const allFindings: Finding[] = [];
 
   // 1. Create sharekit.toml
   const tomlContent = `[profile]
@@ -410,6 +505,9 @@ description = "My AI coding setup"
   if (fs.existsSync(sourceClaude)) {
     cp(sourceClaude, destClaude);
     console.log(kleur.green(`  + ${tildify(destClaude)}`));
+    const content = fs.readFileSync(destClaude, 'utf8');
+    const findings = scanForSecrets(content, tildify(destClaude));
+    allFindings.push(...findings);
   } else {
     fs.writeFileSync(destClaude, '# My AI coding instructions\n');
     console.log(kleur.green(`  + ${tildify(destClaude)} (placeholder)`));
@@ -422,6 +520,9 @@ description = "My AI coding setup"
   if (fs.existsSync(sourceCursorRules)) {
     cp(sourceCursorRules, destCursorRules);
     console.log(kleur.green(`  + ${tildify(destCursorRules)}`));
+    const content = fs.readFileSync(destCursorRules, 'utf8');
+    const findings = scanForSecrets(content, tildify(destCursorRules));
+    allFindings.push(...findings);
   } else {
     fs.writeFileSync(destCursorRules, '# Cursor IDE rules\n');
     console.log(kleur.green(`  + ${tildify(destCursorRules)} (placeholder)`));
@@ -449,6 +550,9 @@ description = "My AI coding setup"
       fs.mkdirSync(path.dirname(dest), { recursive: true });
       cp(file, dest);
       console.log(kleur.green(`  + ${tildify(dest)}`));
+      const content = fs.readFileSync(dest, 'utf8');
+      const findings = scanForSecrets(content, tildify(dest));
+      allFindings.push(...findings);
       skillCount++;
     }
   }
@@ -459,4 +563,17 @@ description = "My AI coding setup"
         ` (sharekit.toml, CLAUDE.md, cursor/, shared/${skillCount > 0 ? `, ${skillCount} skill file(s)` : ''})`
     )
   );
+
+  // Print warnings if secrets found
+  if (allFindings.length > 0) {
+    console.log(kleur.yellow(`\n  ⚠  Secret patterns detected:`));
+    for (const finding of allFindings) {
+      console.log(
+        kleur.yellow(`    ${finding.file}:${finding.line} [${finding.rule}] ${finding.preview}`)
+      );
+    }
+    console.log(
+      kleur.yellow(`\n  ⚠  Review and redact secrets before pushing to a public repository.\n`)
+    );
+  }
 }
