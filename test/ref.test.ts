@@ -4,7 +4,20 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { execSync } from 'node:child_process';
-import { fetchProfile } from '../src/sharekit.ts';
+import { fetchProfile, isImmutableRef } from '../src/sharekit.ts';
+
+test('isImmutableRef: SHAs (any case) and dotted semver are immutable; branches are not', () => {
+  // #82 — uppercase/mixed-case hex SHAs must be recognized as immutable
+  assert.equal(isImmutableRef('abc1234'), true, 'lowercase SHA');
+  assert.equal(isImmutableRef('ABC1234DEF'), true, 'uppercase SHA');
+  assert.equal(isImmutableRef('AbC1234dEf90'), true, 'mixed-case SHA');
+  assert.equal(isImmutableRef('v1.0.0'), true, 'dotted semver tag');
+  assert.equal(isImmutableRef('1.2'), true, 'numeric tag');
+  // ambiguous/branch names → mutable (safe: best-effort pull no-ops on tags)
+  assert.equal(isImmutableRef('main'), false);
+  assert.equal(isImmutableRef('v2-wip'), false, 'version-like branch');
+  assert.equal(isImmutableRef('release-2'), false, 'non-dotted tag → treated mutable');
+});
 
 // #7 — install <user>@<ref>: `git clone --depth 1 --branch <ref>` resolves a TAG and a BRANCH.
 // Build a local origin at <tmp>/acme/sharekit-profile with tag v1 + branch stable at c1, main ahead at c2.
