@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.1] - 2026-06-23
+
+### Security
+
+- Harden git invocations: `fetchProfile` now uses `execFileSync` with array args and a `--` separator instead of building shell strings, so a profile name or `@<ref>` can no longer inject shell commands or be parsed as a git option (#20).
+
+### Fixed
+
+- Flags now work in any position — `install --include-hooks <user>@<ref>` no longer captures the flag as the username (#21).
+
+### Changed
+
+- README documents `install <user>@<ref>` pinning and `--include-hooks`; ADR-0001 no longer overstates git tags as immutable (#23, #24).
+- Internal: install/rollback core (`applyProfile`/`restoreBackup`) accepts an injectable state dir; integration test now exercises the real helpers; added `pruneBackups` and `--include-hooks` tests (#22).
+
 ## [0.2.0] - 2026-06-23
 
 ### Added
