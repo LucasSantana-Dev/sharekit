@@ -1,26 +1,32 @@
-import * as fs from "node:fs";
-import * as path from "node:path";
-import * as os from "node:os";
-import * as readline from "node:readline/promises";
-import { stdin as input, stdout as output } from "node:process";
-import { execSync } from "node:child_process";
-import TOML from "@iarna/toml";
-import kleur from "kleur";
+import * as fs from 'node:fs';
+import * as path from 'node:path';
+import * as os from 'node:os';
+import * as readline from 'node:readline/promises';
+import { stdin as input, stdout as output } from 'node:process';
+import { execSync } from 'node:child_process';
+import TOML from '@iarna/toml';
+import kleur from 'kleur';
 
 const HOME = os.homedir();
-const STATE = path.join(HOME, ".sharekit");
+const STATE = path.join(HOME, '.sharekit');
 
 // profile/<tool>/** mirrors into these roots — one rule, not a filename allowlist
 const ROOTS: Record<string, string> = {
-  claude: path.join(HOME, ".claude"),
-  cursor: path.join(HOME, ".cursor"),
+  claude: path.join(HOME, '.claude'),
+  cursor: path.join(HOME, '.cursor'),
   shared: HOME,
 };
 
-type Status = "new" | "changed" | "same";
-interface PlanFile { tool: string; src: string; dest: string; rel: string; status: Status; }
+type Status = 'new' | 'changed' | 'same';
+interface PlanFile {
+  tool: string;
+  src: string;
+  dest: string;
+  rel: string;
+  status: Status;
+}
 
-const tildify = (p: string) => (p.startsWith(HOME) ? "~" + p.slice(HOME.length) : p);
+const tildify = (p: string) => (p.startsWith(HOME) ? '~' + p.slice(HOME.length) : p);
 
 function walk(dir: string): string[] {
   return fs.readdirSync(dir, { withFileTypes: true }).flatMap((e) => {
@@ -37,16 +43,21 @@ function cp(src: string, dest: string): void {
 }
 
 // ponytail: profile lives at github.com/<user>/sharekit-profile — one convention, not a search
-export function fetchProfile(user: string, ref?: string): string {
+export function fetchProfile(
+  user: string,
+  ref?: string,
+  baseUrl = 'https://github.com',
+  cacheRoot = path.join(STATE, 'profiles')
+): string {
   // Cache key: <user> for HEAD, <user>@<ref> for a pinned ref
   const cacheKey = ref ? `${user}@${ref}` : user;
-  const dir = path.join(STATE, "profiles", cacheKey);
+  const dir = path.join(cacheRoot, cacheKey);
 
   if (fs.existsSync(dir)) {
     // If a ref is specified, don't pull (it's a detached pinned checkout). Just reuse.
     if (!ref) {
       try {
-        execSync(`git -C "${dir}" pull --ff-only`, { stdio: "pipe" });
+        execSync(`git -C "${dir}" pull --ff-only`, { stdio: 'pipe' });
       } catch {
         // ponytail: refresh is best-effort — offline / no-remote falls back to the cached copy
       }
@@ -55,41 +66,50 @@ export function fetchProfile(user: string, ref?: string): string {
   }
 
   fs.mkdirSync(path.dirname(dir), { recursive: true });
-  const url = `https://github.com/${user}/sharekit-profile`;
+  const url = `${baseUrl}/${user}/sharekit-profile`;
 
   try {
     if (ref) {
-      execSync(`git clone --depth 1 --branch "${ref}" "${url}" "${dir}"`, { stdio: "pipe" });
+      execSync(`git clone --depth 1 --branch "${ref}" "${url}" "${dir}"`, { stdio: 'pipe' });
     } else {
-      execSync(`git clone --depth 1 "${url}" "${dir}"`, { stdio: "pipe" });
+      execSync(`git clone --depth 1 "${url}" "${dir}"`, { stdio: 'pipe' });
     }
   } catch (e) {
     if ((e as { status?: number }).status === 127) {
-      throw new Error("git not found — install git to use sharekit (https://git-scm.com)");
+      throw new Error('git not found — install git to use sharekit (https://git-scm.com)');
     }
-    const errMsg = (e as Error).message || "";
-    if (ref && errMsg.includes("not found in")) {
+    const errMsg = (e as Error).message || '';
+    if (ref && errMsg.includes('not found in')) {
       throw new Error(`ref '${ref}' not found in ${user}'s profile`);
     }
     throw new Error(
       `No profile at ${url}\n` +
-        `  Publish yours: a repo named "sharekit-profile" with a sharekit.toml`,
+        `  Publish yours: a repo named "sharekit-profile" with a sharekit.toml`
     );
   }
   return dir;
 }
 
-export function readManifest(profileDir: string): { name: string; version?: string; description?: string } {
-  const p = path.join(profileDir, "sharekit.toml");
-  if (!fs.existsSync(p)) throw new Error(`Not a sharekit profile (no sharekit.toml in ${profileDir})`);
+export function readManifest(profileDir: string): {
+  name: string;
+  version?: string;
+  description?: string;
+} {
+  const p = path.join(profileDir, 'sharekit.toml');
+  if (!fs.existsSync(p))
+    throw new Error(`Not a sharekit profile (no sharekit.toml in ${profileDir})`);
   let parsed: ReturnType<typeof TOML.parse>;
   try {
-    parsed = TOML.parse(fs.readFileSync(p, "utf8"));
+    parsed = TOML.parse(fs.readFileSync(p, 'utf8'));
   } catch (e) {
     throw new Error(`Invalid sharekit.toml: ${(e as Error).message}`);
   }
   const profile = (parsed.profile ?? {}) as Record<string, string>;
-  return { name: profile.name ?? "unknown", version: profile.version, description: profile.description };
+  return {
+    name: profile.name ?? 'unknown',
+    version: profile.version,
+    description: profile.description,
+  };
 }
 
 export function plan(profileDir: string, roots = ROOTS): PlanFile[] {
@@ -107,47 +127,51 @@ export function plan(profileDir: string, roots = ROOTS): PlanFile[] {
 }
 
 function classify(src: string, dest: string): Status {
-  if (!fs.existsSync(dest)) return "new";
-  return fs.readFileSync(src).equals(fs.readFileSync(dest)) ? "same" : "changed";
+  if (!fs.existsSync(dest)) return 'new';
+  return fs.readFileSync(src).equals(fs.readFileSync(dest)) ? 'same' : 'changed';
 }
 
 // ponytail: settings.json carries hooks (arbitrary shell). v1 never auto-installs it.
 //           add `--include-hooks` when someone actually asks.
 const isExecutable = (f: PlanFile, includeHooks = false) =>
-  !includeHooks && f.tool === "claude" && path.basename(f.dest) === "settings.json";
+  !includeHooks && f.tool === 'claude' && path.basename(f.dest) === 'settings.json';
 
 export function printPlan(files: PlanFile[], manifest: ReturnType<typeof readManifest>): void {
-  console.log(kleur.bold(`Profile: ${manifest.name}${manifest.version ? " v" + manifest.version : ""}`));
-  if (manifest.description) console.log(kleur.dim("  " + manifest.description));
+  console.log(
+    kleur.bold(`Profile: ${manifest.name}${manifest.version ? ' v' + manifest.version : ''}`)
+  );
+  if (manifest.description) console.log(kleur.dim('  ' + manifest.description));
   const show = (s: Status, label: string, c: (x: string) => string) => {
     const g = files.filter((f) => f.status === s);
     if (!g.length) return;
     console.log(c(`\n  ${label} (${g.length})`));
     for (const f of g) console.log(c(`    ${tildify(f.dest)}`));
   };
-  show("new", "+ new", kleur.green);
-  show("changed", "~ changed", kleur.yellow);
-  const same = files.filter((f) => f.status === "same").length;
+  show('new', '+ new', kleur.green);
+  show('changed', '~ changed', kleur.yellow);
+  const same = files.filter((f) => f.status === 'same').length;
   if (same) console.log(kleur.dim(`\n  = ${same} unchanged`));
   if (files.some((f) => isExecutable(f)))
-    console.log(kleur.yellow(`\n  ⚠  settings.json present — contains hooks; skipped. Merge manually.`));
+    console.log(
+      kleur.yellow(`\n  ⚠  settings.json present — contains hooks; skipped. Merge manually.`)
+    );
 }
 
 async function confirm(q: string): Promise<boolean> {
   const rl = readline.createInterface({ input, output });
   const a = await rl.question(kleur.bold(`  ${q} (y/N) `));
   rl.close();
-  return a.trim().toLowerCase() === "y";
+  return a.trim().toLowerCase() === 'y';
 }
 
 // Prune backups, keeping only the most recent 5
 function pruneBackups(user: string): void {
-  const root = path.join(STATE, "backups");
+  const root = path.join(STATE, 'backups');
   if (!fs.existsSync(root)) return;
 
   const dirs = fs
     .readdirSync(root)
-    .filter((e) => e.startsWith(user + "-"))
+    .filter((e) => e.startsWith(user + '-'))
     .sort();
 
   if (dirs.length > 5) {
@@ -159,18 +183,22 @@ function pruneBackups(user: string): void {
 }
 
 function backup(files: PlanFile[], user: string, includeHooks = false): string {
-  const stamp = new Date().toISOString().replace(/[:.]/g, "-");
-  const dir = path.join(STATE, "backups", `${user}-${stamp}`);
-  const applied = files.filter((f) => f.status !== "same" && !isExecutable(f, includeHooks));
+  const stamp = new Date().toISOString().replace(/[:.]/g, '-');
+  const dir = path.join(STATE, 'backups', `${user}-${stamp}`);
+  const applied = files.filter((f) => f.status !== 'same' && !isExecutable(f, includeHooks));
   fs.mkdirSync(dir, { recursive: true });
-  for (const f of applied.filter((f) => f.status === "changed")) {
+  for (const f of applied.filter((f) => f.status === 'changed')) {
     const t = path.join(dir, path.relative(HOME, f.dest));
     fs.mkdirSync(path.dirname(t), { recursive: true });
     cp(f.dest, t);
   }
   fs.writeFileSync(
-    path.join(dir, "applied.json"),
-    JSON.stringify(applied.map((f) => ({ dest: f.dest, status: f.status })), null, 2),
+    path.join(dir, 'applied.json'),
+    JSON.stringify(
+      applied.map((f) => ({ dest: f.dest, status: f.status })),
+      null,
+      2
+    )
   );
   return dir;
 }
@@ -178,7 +206,7 @@ function backup(files: PlanFile[], user: string, includeHooks = false): string {
 function write(files: PlanFile[], includeHooks = false): number {
   let n = 0;
   for (const f of files) {
-    if (f.status === "same" || isExecutable(f, includeHooks)) continue;
+    if (f.status === 'same' || isExecutable(f, includeHooks)) continue;
     fs.mkdirSync(path.dirname(f.dest), { recursive: true });
     cp(f.src, f.dest);
     n++;
@@ -190,7 +218,7 @@ function write(files: PlanFile[], includeHooks = false): number {
 export function applyProfile(
   files: PlanFile[],
   user: string,
-  includeHooks = false,
+  includeHooks = false
 ): { backupDir: string; filesWritten: number } {
   const backupDir = backup(files, user, includeHooks);
   const filesWritten = write(files, includeHooks);
@@ -199,19 +227,24 @@ export function applyProfile(
 }
 
 export function restoreBackup(user: string): void {
-  const root = path.join(STATE, "backups");
+  const root = path.join(STATE, 'backups');
   const last = fs.existsSync(root)
-    ? fs.readdirSync(root).filter((e) => e.startsWith(user + "-")).sort().pop()
+    ? fs
+        .readdirSync(root)
+        .filter((e) => e.startsWith(user + '-'))
+        .sort()
+        .pop()
     : undefined;
   if (!last) throw new Error(`No backup for ${user}.`);
 
   const dir = path.join(root, last);
   const applied: { dest: string; status: Status }[] = JSON.parse(
-    fs.readFileSync(path.join(dir, "applied.json"), "utf8"),
+    fs.readFileSync(path.join(dir, 'applied.json'), 'utf8')
   );
 
   for (const a of applied) {
-    if (a.status === "new") fs.rmSync(a.dest, { force: true }); // ponytail: leaves empty parent dirs; harmless
+    if (a.status === 'new')
+      fs.rmSync(a.dest, { force: true }); // ponytail: leaves empty parent dirs; harmless
     else {
       const src = path.join(dir, path.relative(HOME, a.dest));
       if (fs.existsSync(src)) {
@@ -224,8 +257,8 @@ export function restoreBackup(user: string): void {
 
 export async function install(user: string, opts?: { includeHooks?: boolean }): Promise<void> {
   const includeHooks = opts?.includeHooks ?? false;
-  const userRef = user.includes("@") ? user.split("@").reverse()[0] : undefined;
-  const userName = userRef ? user.slice(0, user.lastIndexOf("@")) : user;
+  const userRef = user.includes('@') ? user.split('@').reverse()[0] : undefined;
+  const userName = userRef ? user.slice(0, user.lastIndexOf('@')) : user;
 
   const dir = fetchProfile(userName, userRef);
   const manifest = readManifest(dir);
@@ -233,32 +266,42 @@ export async function install(user: string, opts?: { includeHooks?: boolean }): 
   console.log();
   printPlan(files, manifest);
 
-  const todo = files.filter((f) => f.status !== "same" && !isExecutable(f, includeHooks));
-  if (!todo.length) return void console.log(kleur.dim("\n  Already up to date.\n"));
+  const todo = files.filter((f) => f.status !== 'same' && !isExecutable(f, includeHooks));
+  if (!todo.length) return void console.log(kleur.dim('\n  Already up to date.\n'));
 
   // If hooks present and not explicitly included, warn
   const hasHooks = files.some((f) => isExecutable(f, false));
   if (hasHooks && !includeHooks) {
-    console.log(kleur.yellow(`\n  ⚠  This profile's settings.json contains hooks that run shell commands.`));
+    console.log(
+      kleur.yellow(`\n  ⚠  This profile's settings.json contains hooks that run shell commands.`)
+    );
   }
 
   // If hooks present and user wants to include them, ask for explicit confirm
   if (hasHooks && includeHooks) {
-    if (!(await confirm(`This profile's settings.json contains hooks that run shell commands. Install it?`))) {
-      return void console.log(kleur.dim("\n  Aborted.\n"));
+    if (
+      !(await confirm(
+        `This profile's settings.json contains hooks that run shell commands. Install it?`
+      ))
+    ) {
+      return void console.log(kleur.dim('\n  Aborted.\n'));
     }
   }
 
-  if (!(await confirm(`Apply ${todo.length} change(s)?`))) return void console.log(kleur.dim("\n  Aborted.\n"));
+  if (!(await confirm(`Apply ${todo.length} change(s)?`)))
+    return void console.log(kleur.dim('\n  Aborted.\n'));
 
   const { backupDir, filesWritten } = applyProfile(files, userName, includeHooks);
-  console.log(kleur.green(`\n  ✓ Applied ${filesWritten} file(s).`) + kleur.dim(`  Backup: ${tildify(backupDir)}`));
+  console.log(
+    kleur.green(`\n  ✓ Applied ${filesWritten} file(s).`) +
+      kleur.dim(`  Backup: ${tildify(backupDir)}`)
+  );
   console.log(kleur.dim(`  Undo: sharekit rollback ${userName}\n`));
 }
 
 export async function preview(user: string): Promise<void> {
-  const userRef = user.includes("@") ? user.split("@").reverse()[0] : undefined;
-  const userName = userRef ? user.slice(0, user.lastIndexOf("@")) : user;
+  const userRef = user.includes('@') ? user.split('@').reverse()[0] : undefined;
+  const userName = userRef ? user.slice(0, user.lastIndexOf('@')) : user;
 
   const dir = fetchProfile(userName, userRef);
   console.log();
@@ -267,21 +310,25 @@ export async function preview(user: string): Promise<void> {
 }
 
 export async function rollback(user: string): Promise<void> {
-  const root = path.join(STATE, "backups");
+  const root = path.join(STATE, 'backups');
   const last = fs.existsSync(root)
-    ? fs.readdirSync(root).filter((e) => e.startsWith(user + "-")).sort().pop()
+    ? fs
+        .readdirSync(root)
+        .filter((e) => e.startsWith(user + '-'))
+        .sort()
+        .pop()
     : undefined;
   if (!last) return void console.log(kleur.yellow(`No backup for ${user}.`));
 
   const dir = path.join(root, last);
   const applied: { dest: string; status: Status }[] = JSON.parse(
-    fs.readFileSync(path.join(dir, "applied.json"), "utf8"),
+    fs.readFileSync(path.join(dir, 'applied.json'), 'utf8')
   );
   console.log(kleur.bold(`\n  Rollback ${user} → ${tildify(dir)}  (${applied.length} file(s))\n`));
-  if (!(await confirm("Restore?"))) return void console.log(kleur.dim("\n  Aborted.\n"));
+  if (!(await confirm('Restore?'))) return void console.log(kleur.dim('\n  Aborted.\n'));
 
   restoreBackup(user);
-  console.log(kleur.green("\n  ✓ Restored.\n"));
+  console.log(kleur.green('\n  ✓ Restored.\n'));
 }
 
 export function init(profileDir: string, skillNames: string[] = [], sourceRoot = HOME): void {
@@ -300,48 +347,48 @@ name = "${username}"
 version = "0.1.0"
 description = "My AI coding setup"
 `;
-  fs.writeFileSync(path.join(profileRoot, "sharekit.toml"), tomlContent);
-  console.log(kleur.green(`  + ${tildify(path.join(profileRoot, "sharekit.toml"))}`));
+  fs.writeFileSync(path.join(profileRoot, 'sharekit.toml'), tomlContent);
+  console.log(kleur.green(`  + ${tildify(path.join(profileRoot, 'sharekit.toml'))}`));
 
   // 2. Copy CLAUDE.md from source root if it exists
-  const sourceClaude = path.join(sourceRoot, ".claude", "CLAUDE.md");
-  const destClaude = path.join(profileRoot, "claude", "CLAUDE.md");
+  const sourceClaude = path.join(sourceRoot, '.claude', 'CLAUDE.md');
+  const destClaude = path.join(profileRoot, 'claude', 'CLAUDE.md');
   fs.mkdirSync(path.dirname(destClaude), { recursive: true });
   if (fs.existsSync(sourceClaude)) {
     cp(sourceClaude, destClaude);
     console.log(kleur.green(`  + ${tildify(destClaude)}`));
   } else {
-    fs.writeFileSync(destClaude, "# My AI coding instructions\n");
+    fs.writeFileSync(destClaude, '# My AI coding instructions\n');
     console.log(kleur.green(`  + ${tildify(destClaude)} (placeholder)`));
   }
 
   // 3. Scaffold cursor/ directory
-  const destCursorRules = path.join(profileRoot, "cursor", ".cursorrules");
+  const destCursorRules = path.join(profileRoot, 'cursor', '.cursorrules');
   fs.mkdirSync(path.dirname(destCursorRules), { recursive: true });
-  const sourceCursorRules = path.join(sourceRoot, ".cursor", ".cursorrules");
+  const sourceCursorRules = path.join(sourceRoot, '.cursor', '.cursorrules');
   if (fs.existsSync(sourceCursorRules)) {
     cp(sourceCursorRules, destCursorRules);
     console.log(kleur.green(`  + ${tildify(destCursorRules)}`));
   } else {
-    fs.writeFileSync(destCursorRules, "# Cursor IDE rules\n");
+    fs.writeFileSync(destCursorRules, '# Cursor IDE rules\n');
     console.log(kleur.green(`  + ${tildify(destCursorRules)} (placeholder)`));
   }
 
   // 4. Scaffold shared/ directory with .gitkeep
-  const destShared = path.join(profileRoot, "shared");
+  const destShared = path.join(profileRoot, 'shared');
   fs.mkdirSync(destShared, { recursive: true });
-  fs.writeFileSync(path.join(destShared, ".gitkeep"), "");
+  fs.writeFileSync(path.join(destShared, '.gitkeep'), '');
   console.log(kleur.green(`  + ${tildify(destShared)}/`));
 
   // 5. Copy skills if specified
   let skillCount = 0;
   for (const skillName of skillNames) {
-    const sourceSkill = path.join(sourceRoot, ".claude", "skills", skillName);
+    const sourceSkill = path.join(sourceRoot, '.claude', 'skills', skillName);
     if (!fs.existsSync(sourceSkill)) {
       console.log(kleur.yellow(`  ~ skill '${skillName}' not found at ${tildify(sourceSkill)}`));
       continue;
     }
-    const destSkillBase = path.join(profileRoot, "claude", "skills", skillName);
+    const destSkillBase = path.join(profileRoot, 'claude', 'skills', skillName);
     fs.mkdirSync(destSkillBase, { recursive: true });
     for (const file of walk(sourceSkill)) {
       const rel = path.relative(sourceSkill, file);
@@ -356,7 +403,7 @@ description = "My AI coding setup"
   console.log(
     kleur.green(
       `\n  ✓ Created profile at ${tildify(profileRoot)}` +
-        ` (sharekit.toml, CLAUDE.md, cursor/, shared/${skillCount > 0 ? `, ${skillCount} skill file(s)` : ""})`,
-    ),
+        ` (sharekit.toml, CLAUDE.md, cursor/, shared/${skillCount > 0 ? `, ${skillCount} skill file(s)` : ''})`
+    )
   );
 }
