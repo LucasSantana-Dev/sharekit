@@ -37,23 +37,39 @@ function cp(src: string, dest: string): void {
 }
 
 // ponytail: profile lives at github.com/<user>/sharekit-profile — one convention, not a search
-export function fetchProfile(user: string): string {
-  const dir = path.join(STATE, "profiles", user);
+export function fetchProfile(user: string, ref?: string): string {
+  // Cache key: <user> for HEAD, <user>@<ref> for a pinned ref
+  const cacheKey = ref ? `${user}@${ref}` : user;
+  const dir = path.join(STATE, "profiles", cacheKey);
+
   if (fs.existsSync(dir)) {
-    try {
-      execSync(`git -C "${dir}" pull --ff-only`, { stdio: "pipe" });
-    } catch {
-      // ponytail: refresh is best-effort — offline / no-remote falls back to the cached copy
+    // If a ref is specified, don't pull (it's a detached pinned checkout). Just reuse.
+    if (!ref) {
+      try {
+        execSync(`git -C "${dir}" pull --ff-only`, { stdio: "pipe" });
+      } catch {
+        // ponytail: refresh is best-effort — offline / no-remote falls back to the cached copy
+      }
     }
     return dir;
   }
+
   fs.mkdirSync(path.dirname(dir), { recursive: true });
   const url = `https://github.com/${user}/sharekit-profile`;
+
   try {
-    execSync(`git clone --depth 1 "${url}" "${dir}"`, { stdio: "pipe" });
+    if (ref) {
+      execSync(`git clone --depth 1 --branch "${ref}" "${url}" "${dir}"`, { stdio: "pipe" });
+    } else {
+      execSync(`git clone --depth 1 "${url}" "${dir}"`, { stdio: "pipe" });
+    }
   } catch (e) {
     if ((e as { status?: number }).status === 127) {
       throw new Error("git not found — install git to use sharekit (https://git-scm.com)");
+    }
+    const errMsg = (e as Error).message || "";
+    if (ref && errMsg.includes("not found in")) {
+      throw new Error(`ref '${ref}' not found in ${user}'s profile`);
     }
     throw new Error(
       `No profile at ${url}\n` +
@@ -97,7 +113,8 @@ function classify(src: string, dest: string): Status {
 
 // ponytail: settings.json carries hooks (arbitrary shell). v1 never auto-installs it.
 //           add `--include-hooks` when someone actually asks.
-const isExecutable = (f: PlanFile) => f.tool === "claude" && path.basename(f.dest) === "settings.json";
+const isExecutable = (f: PlanFile, includeHooks = false) =>
+  !includeHooks && f.tool === "claude" && path.basename(f.dest) === "settings.json";
 
 export function printPlan(files: PlanFile[], manifest: ReturnType<typeof readManifest>): void {
   console.log(kleur.bold(`Profile: ${manifest.name}${manifest.version ? " v" + manifest.version : ""}`));
@@ -112,7 +129,7 @@ export function printPlan(files: PlanFile[], manifest: ReturnType<typeof readMan
   show("changed", "~ changed", kleur.yellow);
   const same = files.filter((f) => f.status === "same").length;
   if (same) console.log(kleur.dim(`\n  = ${same} unchanged`));
-  if (files.some(isExecutable))
+  if (files.some((f) => isExecutable(f)))
     console.log(kleur.yellow(`\n  ⚠  settings.json present — contains hooks; skipped. Merge manually.`));
 }
 
@@ -123,10 +140,28 @@ async function confirm(q: string): Promise<boolean> {
   return a.trim().toLowerCase() === "y";
 }
 
-function backup(files: PlanFile[], user: string): string {
+// Prune backups, keeping only the most recent 5
+function pruneBackups(user: string): void {
+  const root = path.join(STATE, "backups");
+  if (!fs.existsSync(root)) return;
+
+  const dirs = fs
+    .readdirSync(root)
+    .filter((e) => e.startsWith(user + "-"))
+    .sort();
+
+  if (dirs.length > 5) {
+    const toRemove = dirs.slice(0, dirs.length - 5);
+    for (const dir of toRemove) {
+      fs.rmSync(path.join(root, dir), { recursive: true, force: true });
+    }
+  }
+}
+
+function backup(files: PlanFile[], user: string, includeHooks = false): string {
   const stamp = new Date().toISOString().replace(/[:.]/g, "-");
   const dir = path.join(STATE, "backups", `${user}-${stamp}`);
-  const applied = files.filter((f) => f.status !== "same" && !isExecutable(f));
+  const applied = files.filter((f) => f.status !== "same" && !isExecutable(f, includeHooks));
   fs.mkdirSync(dir, { recursive: true });
   for (const f of applied.filter((f) => f.status === "changed")) {
     const t = path.join(dir, path.relative(HOME, f.dest));
@@ -140,10 +175,10 @@ function backup(files: PlanFile[], user: string): string {
   return dir;
 }
 
-function write(files: PlanFile[]): number {
+function write(files: PlanFile[], includeHooks = false): number {
   let n = 0;
   for (const f of files) {
-    if (f.status === "same" || isExecutable(f)) continue;
+    if (f.status === "same" || isExecutable(f, includeHooks)) continue;
     fs.mkdirSync(path.dirname(f.dest), { recursive: true });
     cp(f.src, f.dest);
     n++;
@@ -151,23 +186,81 @@ function write(files: PlanFile[]): number {
   return n;
 }
 
-export async function install(user: string): Promise<void> {
-  const dir = fetchProfile(user);
+// Exported pure functions for testability
+export function applyProfile(
+  files: PlanFile[],
+  user: string,
+  includeHooks = false,
+): { backupDir: string; filesWritten: number } {
+  const backupDir = backup(files, user, includeHooks);
+  const filesWritten = write(files, includeHooks);
+  pruneBackups(user);
+  return { backupDir, filesWritten };
+}
+
+export function restoreBackup(user: string): void {
+  const root = path.join(STATE, "backups");
+  const last = fs.existsSync(root)
+    ? fs.readdirSync(root).filter((e) => e.startsWith(user + "-")).sort().pop()
+    : undefined;
+  if (!last) throw new Error(`No backup for ${user}.`);
+
+  const dir = path.join(root, last);
+  const applied: { dest: string; status: Status }[] = JSON.parse(
+    fs.readFileSync(path.join(dir, "applied.json"), "utf8"),
+  );
+
+  for (const a of applied) {
+    if (a.status === "new") fs.rmSync(a.dest, { force: true }); // ponytail: leaves empty parent dirs; harmless
+    else {
+      const src = path.join(dir, path.relative(HOME, a.dest));
+      if (fs.existsSync(src)) {
+        fs.mkdirSync(path.dirname(a.dest), { recursive: true }); // dest dir may have been removed since install
+        cp(src, a.dest);
+      }
+    }
+  }
+}
+
+export async function install(user: string, opts?: { includeHooks?: boolean }): Promise<void> {
+  const includeHooks = opts?.includeHooks ?? false;
+  const userRef = user.includes("@") ? user.split("@").reverse()[0] : undefined;
+  const userName = userRef ? user.slice(0, user.lastIndexOf("@")) : user;
+
+  const dir = fetchProfile(userName, userRef);
   const manifest = readManifest(dir);
   const files = plan(dir);
   console.log();
   printPlan(files, manifest);
-  const todo = files.filter((f) => f.status !== "same" && !isExecutable(f));
+
+  const todo = files.filter((f) => f.status !== "same" && !isExecutable(f, includeHooks));
   if (!todo.length) return void console.log(kleur.dim("\n  Already up to date.\n"));
+
+  // If hooks present and not explicitly included, warn
+  const hasHooks = files.some((f) => isExecutable(f, false));
+  if (hasHooks && !includeHooks) {
+    console.log(kleur.yellow(`\n  ⚠  This profile's settings.json contains hooks that run shell commands.`));
+  }
+
+  // If hooks present and user wants to include them, ask for explicit confirm
+  if (hasHooks && includeHooks) {
+    if (!(await confirm(`This profile's settings.json contains hooks that run shell commands. Install it?`))) {
+      return void console.log(kleur.dim("\n  Aborted.\n"));
+    }
+  }
+
   if (!(await confirm(`Apply ${todo.length} change(s)?`))) return void console.log(kleur.dim("\n  Aborted.\n"));
-  const b = backup(files, user);
-  const n = write(files);
-  console.log(kleur.green(`\n  ✓ Applied ${n} file(s).`) + kleur.dim(`  Backup: ${tildify(b)}`));
-  console.log(kleur.dim(`  Undo: sharekit rollback ${user}\n`));
+
+  const { backupDir, filesWritten } = applyProfile(files, userName, includeHooks);
+  console.log(kleur.green(`\n  ✓ Applied ${filesWritten} file(s).`) + kleur.dim(`  Backup: ${tildify(backupDir)}`));
+  console.log(kleur.dim(`  Undo: sharekit rollback ${userName}\n`));
 }
 
 export async function preview(user: string): Promise<void> {
-  const dir = fetchProfile(user);
+  const userRef = user.includes("@") ? user.split("@").reverse()[0] : undefined;
+  const userName = userRef ? user.slice(0, user.lastIndexOf("@")) : user;
+
+  const dir = fetchProfile(userName, userRef);
   console.log();
   printPlan(plan(dir), readManifest(dir));
   console.log();
@@ -179,20 +272,15 @@ export async function rollback(user: string): Promise<void> {
     ? fs.readdirSync(root).filter((e) => e.startsWith(user + "-")).sort().pop()
     : undefined;
   if (!last) return void console.log(kleur.yellow(`No backup for ${user}.`));
+
   const dir = path.join(root, last);
-  const applied: { dest: string; status: Status }[] = JSON.parse(fs.readFileSync(path.join(dir, "applied.json"), "utf8"));
+  const applied: { dest: string; status: Status }[] = JSON.parse(
+    fs.readFileSync(path.join(dir, "applied.json"), "utf8"),
+  );
   console.log(kleur.bold(`\n  Rollback ${user} → ${tildify(dir)}  (${applied.length} file(s))\n`));
   if (!(await confirm("Restore?"))) return void console.log(kleur.dim("\n  Aborted.\n"));
-  for (const a of applied) {
-    if (a.status === "new") fs.rmSync(a.dest, { force: true }); // ponytail: leaves empty parent dirs; harmless
-    else {
-      const src = path.join(dir, path.relative(HOME, a.dest));
-      if (fs.existsSync(src)) {
-        fs.mkdirSync(path.dirname(a.dest), { recursive: true }); // dest dir may have been removed since install
-        cp(src, a.dest);
-      }
-    }
-  }
+
+  restoreBackup(user);
   console.log(kleur.green("\n  ✓ Restored.\n"));
 }
 
@@ -227,7 +315,25 @@ description = "My AI coding setup"
     console.log(kleur.green(`  + ${tildify(destClaude)} (placeholder)`));
   }
 
-  // 3. Copy skills if specified
+  // 3. Scaffold cursor/ directory
+  const destCursorRules = path.join(profileRoot, "cursor", ".cursorrules");
+  fs.mkdirSync(path.dirname(destCursorRules), { recursive: true });
+  const sourceCursorRules = path.join(sourceRoot, ".cursor", ".cursorrules");
+  if (fs.existsSync(sourceCursorRules)) {
+    cp(sourceCursorRules, destCursorRules);
+    console.log(kleur.green(`  + ${tildify(destCursorRules)}`));
+  } else {
+    fs.writeFileSync(destCursorRules, "# Cursor IDE rules\n");
+    console.log(kleur.green(`  + ${tildify(destCursorRules)} (placeholder)`));
+  }
+
+  // 4. Scaffold shared/ directory with .gitkeep
+  const destShared = path.join(profileRoot, "shared");
+  fs.mkdirSync(destShared, { recursive: true });
+  fs.writeFileSync(path.join(destShared, ".gitkeep"), "");
+  console.log(kleur.green(`  + ${tildify(destShared)}/`));
+
+  // 5. Copy skills if specified
   let skillCount = 0;
   for (const skillName of skillNames) {
     const sourceSkill = path.join(sourceRoot, ".claude", "skills", skillName);
@@ -250,7 +356,7 @@ description = "My AI coding setup"
   console.log(
     kleur.green(
       `\n  ✓ Created profile at ${tildify(profileRoot)}` +
-        ` (sharekit.toml, CLAUDE.md${skillCount > 0 ? `, ${skillCount} skill file(s)` : ""})`,
+        ` (sharekit.toml, CLAUDE.md, cursor/, shared/${skillCount > 0 ? `, ${skillCount} skill file(s)` : ""})`,
     ),
   );
 }
