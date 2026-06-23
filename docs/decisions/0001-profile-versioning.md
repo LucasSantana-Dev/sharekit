@@ -35,7 +35,7 @@ Backlog item #9 asked for "version pinning." Four mechanisms were evaluated.
 
 **Positive:** consumers can pin to a stable ref; authors get a release channel (`stable` branch or `vX` tags) for free; same clone cost; no new dependency; foundation matches how distribution-system peers actually work.
 
-**Negative:** authors must *opt in* by publishing a branch/tag — if they don't, `@ref` 404s with a clear error and consumers stay on HEAD. No cross-install reproducibility guarantee (that's deferred B). `@<branch>` is mutable (force-push moves it); `@<tag>` is the immutable option, documented as such.
+**Negative:** authors must *opt in* by publishing a branch/tag — if they don't, `@ref` 404s with a clear error and consumers stay on HEAD. No cross-install reproducibility guarantee (that's deferred B). `@<branch>` is mutable (force-push moves it); `@<tag>` is the *more stable* option — a tag is conventionally fixed, but git tags can still be force-moved or deleted unless the repo enforces tag protection, so it is not a hard immutability guarantee.
 
 **Neutral:** the HEAD default is unchanged; every install remains reversible via the existing preview-diff + content backup + `rollback` (verified: rollback restores the consumer's pre-install files, so a breaking update is always undoable even without SHA pinning).
 
