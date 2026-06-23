@@ -355,6 +355,35 @@ function write(files: PlanFile[], includeHooks = false): number {
   return n;
 }
 
+function writeAtomic(
+  files: PlanFile[],
+  backupDir: string,
+  user: string,
+  includeHooks = false,
+  dirs: Dirs = DEFAULT_DIRS
+): number {
+  let n = 0;
+  const applied = files.filter((f) => f.status !== 'same' && !isExecutable(f, includeHooks));
+
+  try {
+    for (const f of applied) {
+      fs.mkdirSync(path.dirname(f.dest), { recursive: true });
+      cp(f.src, f.dest);
+      n++;
+    }
+    return n;
+  } catch (e) {
+    // Write failed mid-way: restore from backup and rethrow
+    try {
+      restoreBackupInternal(user, backupDir, dirs);
+    } catch (restoreErr) {
+      // Log the restore failure but don't mask the original error
+      console.error(`Failed to restore from backup after write error: ${(restoreErr as Error).message}`);
+    }
+    throw e;
+  }
+}
+
 // Exported pure functions for testability
 export function applyProfile(
   files: PlanFile[],
@@ -363,7 +392,7 @@ export function applyProfile(
   dirs: Dirs = DEFAULT_DIRS
 ): { backupDir: string; filesWritten: number } {
   const backupDir = backup(files, user, includeHooks, dirs);
-  const filesWritten = write(files, includeHooks);
+  const filesWritten = writeAtomic(files, backupDir, user, includeHooks, dirs);
   pruneBackups(user, dirs.state);
   return { backupDir, filesWritten };
 }
