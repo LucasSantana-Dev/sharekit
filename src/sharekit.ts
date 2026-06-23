@@ -70,13 +70,13 @@ export function fetchProfile(
   const dir = path.join(cacheRoot, cacheKey);
 
   if (fs.existsSync(dir)) {
-    // If a ref is specified, don't pull (it's a detached pinned checkout). Just reuse.
-    if (!ref) {
-      try {
-        execFileSync('git', ['-C', dir, 'pull', '--ff-only'], { stdio: 'pipe' });
-      } catch {
-        // ponytail: refresh is best-effort — offline / no-remote falls back to the cached copy
-      }
+    // Attempt a best-effort pull to refresh the cached checkout.
+    // For mutable refs (branches), this pulls the latest. For immutable refs (tags/SHAs),
+    // the pull harmlessly fails and we fall back to the cached copy.
+    try {
+      execFileSync('git', ['-C', dir, 'pull', '--ff-only'], { stdio: 'pipe' });
+    } catch {
+      // ponytail: refresh is best-effort — offline / no-remote / detached HEAD falls back to the cached copy
     }
     return dir;
   }
@@ -183,7 +183,15 @@ export function plan(profileDir: string, roots = ROOTS): PlanFile[] {
 
 function classify(src: string, dest: string): Status {
   if (!fs.existsSync(dest)) return 'new';
-  return fs.readFileSync(src).equals(fs.readFileSync(dest)) ? 'same' : 'changed';
+  try {
+    const srcBuf = fs.readFileSync(src);
+    const destBuf = fs.readFileSync(dest);
+    return srcBuf.equals(destBuf) ? 'same' : 'changed';
+  } catch {
+    // If either file is unreadable (e.g., permission denied), treat as 'changed' to be conservative.
+    // This prevents a file unreadable mid-operation from crashing the plan.
+    return 'changed';
+  }
 }
 
 // ponytail: settings.json carries hooks (arbitrary shell). v1 never auto-installs it.
@@ -464,12 +472,17 @@ export function recordInstall(
 }
 
 // Read the install state file (returns a map keyed by user, or empty object if not found)
+// If the file exists but is corrupt, warn to stderr to help the user diagnose the issue.
 export function readInstalled(dirs: Dirs = DEFAULT_DIRS): Record<string, InstallRecord> {
   const stateFile = path.join(dirs.state, 'installed.json');
   if (!fs.existsSync(stateFile)) return {};
   try {
     return JSON.parse(fs.readFileSync(stateFile, 'utf8'));
-  } catch {
+  } catch (e) {
+    console.error(
+      `${kleur.yellow('⚠  install state is corrupt')} — ${stateFile}\n` +
+        `  ${kleur.dim(`Reset: rm ${stateFile}`)}  to rebuild from scratch.`
+    );
     return {};
   }
 }
@@ -509,13 +522,17 @@ export function list(dirs: Dirs = DEFAULT_DIRS): void {
   console.log();
 }
 
-// Check if a ref is an immutable ref (tag or commit hash)
+// Check if a ref is an immutable ref (tag or commit hash).
+// Heuristic: treat refs that look like tags as immutable, and branch names as mutable.
 function isImmutableRef(ref: string): boolean {
-  // Assume anything that looks like a full commit SHA (40 hex chars) or short SHA is immutable
+  // Assume anything that looks like a commit SHA (7-40 hex chars) is immutable
   if (/^[a-f0-9]{7,40}$/.test(ref)) return true;
-  // Assume refs that start with 'v' followed by numbers are version tags
+  // Version tags like v1.0.0, v2.1.3-alpha, etc. are immutable
   if (/^v\d/.test(ref)) return true;
-  // Everything else (branches like main, master, dev, HEAD) are mutable
+  // Other tag patterns like release-2, stable-1, final-3, 1.0.0, etc. are typically immutable
+  // (heuristic: refs with hyphens followed by numbers, or purely numeric versions)
+  if (/^[a-z]+-\d/.test(ref) || /^\d+(\.\d+)*/.test(ref)) return true;
+  // Everything else (main, master, develop, dev, HEAD, custom-feature, etc.) are likely mutable branches
   return false;
 }
 
