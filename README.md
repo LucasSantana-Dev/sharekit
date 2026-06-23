@@ -70,6 +70,24 @@ Subdirectories mirror into their corresponding roots: files in `claude/` go to `
 
 Run `sharekit init [skill...]` to scaffold a profile from your `~/.claude` — copies your `CLAUDE.md` and any named skills into a ready-to-push `sharekit-profile/`.
 
+### Safety
+
+Before pushing your profile to a public GitHub repo, use `sharekit scan` to check for secrets:
+
+```bash
+npx @lucassantana/sharekit scan ./sharekit-profile
+```
+
+The scanner detects private keys, AWS/GitHub/Slack/Google API tokens, bearer tokens, sensitive environment variables (`SECRET|TOKEN|PASSWORD|API_KEY|APIKEY|ACCESS_KEY`), and home-path leaks. High-severity findings (keys/tokens) **block the `init` and `scan` commands with a non-zero exit**. Medium/low findings (e.g., env-var names, paths) warn only.
+
+Override a block with `--force` if you've manually reviewed and redacted the findings:
+
+```bash
+npx @lucassantana/sharekit scan ./sharekit-profile --force
+```
+
+Always review the profile and `.gitignore` sensitive files before `git push`. The scanner is best-effort; you are responsible for ensuring no real secrets escape.
+
 ## Security
 
 - **Hooks are never auto-installed.** Settings containing hooks (`.claude/settings.json`) are flagged in the preview and skipped. Merge them manually after reviewing.
