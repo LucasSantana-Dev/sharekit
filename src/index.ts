@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import kleur from 'kleur';
-import { install, preview, rollback, init } from './sharekit.js';
+import { install, preview, rollback, init, type InstallOpts } from './sharekit.js';
 
 const VERSION = '0.2.0';
 const USAGE = `${kleur.bold('sharekit')} v${VERSION} — share your AI coding setup
@@ -15,7 +15,7 @@ const USAGE = `${kleur.bold('sharekit')} v${VERSION} — share your AI coding se
   Pin to a branch/tag: ${kleur.cyan('sharekit install user@v1.0')} or ${kleur.cyan('sharekit install user@stable')}.
 `;
 
-type CmdFn = (arg: string, opts?: any) => Promise<void> | void;
+type CmdFn = (arg: string, opts?: InstallOpts) => Promise<void> | void;
 const cmds: Record<string, CmdFn> = { install, preview, rollback };
 const argv = process.argv.slice(2);
 const [cmd, ...rest] = argv;
@@ -35,18 +35,18 @@ async function main() {
     console.error(kleur.red(`unknown command: ${cmd}`));
     return void console.log(USAGE);
   }
-  const arg = rest[0];
+  // Separate flags from positionals so flags work in any position
+  const flags = rest.filter((x) => x.startsWith('--'));
+  const arg = rest.find((x) => !x.startsWith('--'));
   if (!arg) {
-    console.error(kleur.red(`usage: sharekit ${cmd} <user>${cmd === 'install' ? '[@<ref>]' : ''}`));
+    const showRef = cmd === 'install' || cmd === 'preview';
+    console.error(kleur.red(`usage: sharekit ${cmd} <user>${showRef ? '[@<ref>]' : ''}`));
     process.exit(1);
   }
 
-  // Parse options for install command
-  const opts: any = {};
-  if (cmd === 'install') {
-    if (rest.includes('--include-hooks')) {
-      opts.includeHooks = true;
-    }
+  const opts: InstallOpts = {};
+  if (cmd === 'install' && flags.includes('--include-hooks')) {
+    opts.includeHooks = true;
   }
 
   await fn(arg, opts);

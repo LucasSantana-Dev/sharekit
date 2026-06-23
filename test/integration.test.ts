@@ -5,150 +5,60 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { plan, applyProfile, restoreBackup } from '../src/sharekit.ts';
 
-test('integration: install→backup→rollback + cursor/shared mirroring', () => {
+// Exercises the REAL exported helpers (not a hand-rolled copy) via injected dirs,
+// so it fails if applyProfile / restoreBackup / the applied.json contract regress.
+test('integration: applyProfile mirrors all roots, restoreBackup reverses it', () => {
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'sk-int-'));
-
-  // 1. Build a temp profile with claude/CLAUDE.md, cursor/.cursorrules, shared/.somefile
   const profile = path.join(tmp, 'profile');
+  const home = path.join(tmp, 'home');
+  const state = path.join(tmp, 'state');
+
+  // a profile touching all three tool roots
   fs.mkdirSync(path.join(profile, 'claude'), { recursive: true });
   fs.writeFileSync(path.join(profile, 'claude', 'CLAUDE.md'), 'profile instructions');
-
   fs.mkdirSync(path.join(profile, 'cursor'), { recursive: true });
   fs.writeFileSync(path.join(profile, 'cursor', '.cursorrules'), 'cursor rules');
-
   fs.mkdirSync(path.join(profile, 'shared'), { recursive: true });
   fs.writeFileSync(path.join(profile, 'shared', '.somefile'), 'shared content');
 
-  // 2. Set up temp HOME and STATE (for backups)
-  const home = path.join(tmp, 'home');
-  fs.mkdirSync(home);
+  // a pre-existing file that will be CHANGED (to exercise backup + restore)
+  fs.mkdirSync(path.join(home, '.claude'), { recursive: true });
+  fs.writeFileSync(path.join(home, '.claude', 'CLAUDE.md'), 'old instructions');
 
-  // Override STATE for testing by modifying the roots
   const roots = {
     claude: path.join(home, '.claude'),
     cursor: path.join(home, '.cursor'),
     shared: home,
   };
+  const dirs = { home, state };
 
-  // Pre-populate one file that will be changed
-  fs.mkdirSync(path.join(home, '.claude'), { recursive: true });
-  fs.writeFileSync(path.join(home, '.claude', 'CLAUDE.md'), 'old instructions');
-
-  // 3. Plan the profile
   const files = plan(profile, roots);
-  assert.ok(files.length > 0, 'plan should find files');
+  const { filesWritten, backupDir } = applyProfile(files, 'testuser', false, dirs);
 
-  // Verify the plan includes all three roots
-  const byTool = new Map<string, (typeof files)[0][]>();
-  for (const f of files) {
-    if (!byTool.has(f.tool)) byTool.set(f.tool, []);
-    byTool.get(f.tool)!.push(f);
-  }
-  assert.ok(byTool.has('claude'), 'plan should include claude files');
-  assert.ok(byTool.has('cursor'), 'plan should include cursor files');
-  assert.ok(byTool.has('shared'), 'plan should include shared files');
-
-  // 4. Test applyProfile with a manual backup directory set-up
-  // We need to manually create the STATE structure for testing
-  const backupRoot = path.join(tmp, 'backups');
-  const stateRoot = path.join(tmp, '.sharekit');
-  fs.mkdirSync(path.join(stateRoot, 'backups'), { recursive: true });
-
-  // Manually create applied.json backup structure
-  const backupDir = path.join(
-    stateRoot,
-    'backups',
-    `testuser-${new Date().toISOString().replace(/[:.]/g, '-')}`
-  );
-  fs.mkdirSync(backupDir, { recursive: true });
-
-  // Backup the pre-existing changed file
-  const backupClaude = path.join(backupDir, '.claude', 'CLAUDE.md');
-  fs.mkdirSync(path.dirname(backupClaude), { recursive: true });
-  fs.copyFileSync(path.join(home, '.claude', 'CLAUDE.md'), backupClaude);
-
-  // Write applied.json
-  const appliedRecords = files
-    .filter((f) => f.status !== 'same')
-    .map((f) => ({ dest: f.dest, status: f.status }));
-  fs.writeFileSync(path.join(backupDir, 'applied.json'), JSON.stringify(appliedRecords, null, 2));
-
-  // Apply the profile by manually doing the write operations
-  for (const f of files) {
-    if (f.status === 'same') continue;
-    fs.mkdirSync(path.dirname(f.dest), { recursive: true });
-    fs.copyFileSync(f.src, f.dest);
-  }
-
-  // 5. Verify all three roots received files
-  assert.ok(
-    fs.existsSync(path.join(home, '.claude', 'CLAUDE.md')),
-    'claude/CLAUDE.md should be installed to ~/.claude'
-  );
+  // mirrored into ~/.claude, ~/.cursor, ~
   assert.equal(
     fs.readFileSync(path.join(home, '.claude', 'CLAUDE.md'), 'utf8'),
-    'profile instructions',
-    'claude file should have profile content'
+    'profile instructions'
   );
+  assert.equal(fs.readFileSync(path.join(home, '.cursor', '.cursorrules'), 'utf8'), 'cursor rules');
+  assert.equal(fs.readFileSync(path.join(home, '.somefile'), 'utf8'), 'shared content');
+  assert.equal(filesWritten, 3);
 
-  assert.ok(
-    fs.existsSync(path.join(home, '.cursor', '.cursorrules')),
-    'cursor/.cursorrules should be installed to ~/.cursor'
-  );
+  // backup landed under the injected state dir and kept the original
+  assert.ok(backupDir.startsWith(state), 'backup lives under the injected state dir');
   assert.equal(
-    fs.readFileSync(path.join(home, '.cursor', '.cursorrules'), 'utf8'),
-    'cursor rules',
-    'cursor file should have profile content'
+    fs.readFileSync(path.join(backupDir, '.claude', 'CLAUDE.md'), 'utf8'),
+    'old instructions'
   );
 
-  assert.ok(
-    fs.existsSync(path.join(home, '.somefile')),
-    'shared/.somefile should be installed to ~'
-  );
-  assert.equal(
-    fs.readFileSync(path.join(home, '.somefile'), 'utf8'),
-    'shared content',
-    'shared file should have profile content'
-  );
-
-  // 6. Verify the changed file was backed up
-  assert.ok(fs.existsSync(backupClaude), 'old CLAUDE.md should be in backup');
-  assert.equal(
-    fs.readFileSync(backupClaude, 'utf8'),
-    'old instructions',
-    'backup should preserve original content'
-  );
-
-  // 7. Restore by reversing the operations (simulate restoreBackup logic manually)
-  for (const record of appliedRecords) {
-    if (record.status === 'new') {
-      fs.rmSync(record.dest, { force: true });
-    } else {
-      const backupFile = path.join(backupDir, path.relative(path.join(tmp, 'home'), record.dest));
-      if (fs.existsSync(backupFile)) {
-        fs.mkdirSync(path.dirname(record.dest), { recursive: true });
-        fs.copyFileSync(backupFile, record.dest);
-      }
-    }
-  }
-
-  // 8. Verify restore: changed file is restored, new files are removed
+  // restore: changed file reverts, new files are removed
+  restoreBackup('testuser', dirs);
   assert.equal(
     fs.readFileSync(path.join(home, '.claude', 'CLAUDE.md'), 'utf8'),
-    'old instructions',
-    'claude/CLAUDE.md should be restored to original'
+    'old instructions'
   );
+  assert.ok(!fs.existsSync(path.join(home, '.cursor', '.cursorrules')), 'new cursor file removed');
+  assert.ok(!fs.existsSync(path.join(home, '.somefile')), 'new shared file removed');
 
-  assert.ok(
-    !fs.existsSync(path.join(home, '.cursor', '.cursorrules')),
-    'cursor/.cursorrules (new file) should be removed after rollback'
-  );
-
-  assert.ok(
-    !fs.existsSync(path.join(home, '.somefile')),
-    'shared/.somefile (new file) should be removed after rollback'
-  );
-
-  // Cleanup
   fs.rmSync(tmp, { recursive: true });
 });
