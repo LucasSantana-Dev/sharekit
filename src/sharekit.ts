@@ -316,6 +316,72 @@ export function restoreBackup(user: string, dirs: Dirs = DEFAULT_DIRS): void {
   }
 }
 
+// Install state record: captures what was installed and where
+export interface InstallRecord {
+  user: string;
+  ref: string;
+  commit: string | null; // null if rev-parse fails
+  version?: string;
+  appliedAt: string; // ISO timestamp
+}
+
+// Record an installation: resolve commit SHA, write to state file (keyed by user)
+export function recordInstall(
+  user: string,
+  profileDir: string,
+  ref: string,
+  version: string | undefined,
+  dirs: Dirs = DEFAULT_DIRS
+): void {
+  let commit: string | null = null;
+  try {
+    commit = execFileSync('git', ['-C', profileDir, 'rev-parse', 'HEAD'], {
+      stdio: 'pipe',
+      encoding: 'utf8',
+    }).trim();
+  } catch {
+    // best-effort: if rev-parse fails (offline cache, odd state), record null
+  }
+
+  const record: InstallRecord = {
+    user,
+    ref,
+    commit,
+    version,
+    appliedAt: new Date().toISOString(),
+  };
+
+  // Read existing state or create empty map
+  const stateFile = path.join(dirs.state, 'installed.json');
+  let installed: Record<string, InstallRecord> = {};
+  if (fs.existsSync(stateFile)) {
+    try {
+      installed = JSON.parse(fs.readFileSync(stateFile, 'utf8'));
+    } catch {
+      // corrupt state file; overwrite with fresh state
+      installed = {};
+    }
+  }
+
+  // Update or insert this user's record
+  installed[user] = record;
+
+  // Write back
+  fs.mkdirSync(dirs.state, { recursive: true });
+  fs.writeFileSync(stateFile, JSON.stringify(installed, null, 2));
+}
+
+// Read the install state file (returns a map keyed by user, or empty object if not found)
+export function readInstalled(dirs: Dirs = DEFAULT_DIRS): Record<string, InstallRecord> {
+  const stateFile = path.join(dirs.state, 'installed.json');
+  if (!fs.existsSync(stateFile)) return {};
+  try {
+    return JSON.parse(fs.readFileSync(stateFile, 'utf8'));
+  } catch {
+    return {};
+  }
+}
+
 export async function install(user: string, opts?: InstallOpts): Promise<void> {
   const includeHooks = opts?.includeHooks ?? false;
   const userRef = user.includes('@') ? user.split('@').reverse()[0] : undefined;
@@ -353,6 +419,10 @@ export async function install(user: string, opts?: InstallOpts): Promise<void> {
     return void console.log(kleur.dim('\n  Aborted.\n'));
 
   const { backupDir, filesWritten } = applyProfile(files, userName, includeHooks);
+
+  // Record this install in the state file (user, ref, resolved commit, version, timestamp)
+  recordInstall(userName, dir, userRef ?? 'HEAD', manifest.version);
+
   console.log(
     kleur.green(`\n  ✓ Applied ${filesWritten} file(s).`) +
       kleur.dim(`  Backup: ${tildify(backupDir)}`)
