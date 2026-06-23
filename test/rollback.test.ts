@@ -88,8 +88,8 @@ test('restoreBackupToStamp: restores a specific backup by stamp', () => {
   const { backupDir: backup2 } = applyProfile(files2, 'user', false, dirs);
 
   // Extract stamps from backup dir names (e.g., "state/backups/user-2025-...")
-  const stamp1 = path.basename(backup1).replace(/^user-/, '');
-  const stamp2 = path.basename(backup2).replace(/^user-/, '');
+  const stamp1 = path.basename(backup1).slice('user'.length + 1);
+  const stamp2 = path.basename(backup2).slice('user'.length + 1);
 
   // Restore to the first backup
   restoreBackupToStamp('user', stamp1, dirs);
@@ -109,6 +109,67 @@ test('restoreBackupToStamp: throws friendly error if stamp not found', () => {
   assert.throws(() => {
     restoreBackupToStamp('user', 'nonexistent-stamp', dirs);
   }, /No backup found for user with stamp/);
+
+  fs.rmSync(tmp, { recursive: true });
+});
+
+test('listBackups & restoreBackupToStamp: works with non-"user" usernames and filters correctly', () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'sk-rollback-'));
+  const profile = path.join(tmp, 'profile');
+  const home = path.join(tmp, 'home');
+  const state = path.join(tmp, 'state');
+
+  // Set up profile and home
+  fs.mkdirSync(path.join(profile, 'claude'), { recursive: true });
+  fs.writeFileSync(path.join(profile, 'claude', 'file.txt'), 'bob version');
+  fs.mkdirSync(path.join(home, '.claude'), { recursive: true });
+  fs.writeFileSync(path.join(home, '.claude', 'file.txt'), 'original bob');
+
+  const roots = {
+    claude: path.join(home, '.claude'),
+    cursor: path.join(home, '.cursor'),
+    shared: home,
+  };
+  const dirs = { home, state };
+
+  // Create a backup for user "bob"
+  const files = plan(profile, roots);
+  const { backupDir: bobBackup } = applyProfile(files, 'bob', false, dirs);
+  const bobStamp = path.basename(bobBackup).slice('bob'.length + 1);
+
+  // Create another backup for user "bob2" to test no prefix collision
+  fs.writeFileSync(path.join(home, '.claude', 'file.txt'), 'bob2 version');
+  fs.mkdirSync(path.join(profile, 'cursor'), { recursive: true });
+  fs.writeFileSync(path.join(profile, 'cursor', 'rules.txt'), 'bob2 rules');
+  const files2 = plan(profile, roots);
+  const { backupDir: bob2Backup } = applyProfile(files2, 'bob2', false, dirs);
+  const bob2Stamp = path.basename(bob2Backup).slice('bob2'.length + 1);
+
+  // List backups for "bob" - should only contain bob's backups, with bare stamps (no "bob-" prefix)
+  const bobBackups = listBackups('bob', state);
+  assert.equal(bobBackups.length, 1);
+  assert.equal(bobBackups[0].stamp, bobStamp);
+  assert.ok(!bobBackups[0].stamp.startsWith('bob'), 'bob stamp should not contain "bob-" prefix');
+  assert.equal(bobBackups[0].fileCount, 1);
+
+  // List backups for "bob2" - should only contain bob2's backups
+  const bob2Backups = listBackups('bob2', state);
+  assert.equal(bob2Backups.length, 1);
+  assert.equal(bob2Backups[0].stamp, bob2Stamp);
+  assert.ok(
+    !bob2Backups[0].stamp.startsWith('bob2'),
+    'bob2 stamp should not contain "bob2-" prefix'
+  );
+  assert.equal(bob2Backups[0].fileCount, 2);
+
+  // Restore bob to the specific stamp should work
+  restoreBackupToStamp('bob', bobStamp, dirs);
+  const restoredBobContent = fs.readFileSync(path.join(home, '.claude', 'file.txt'), 'utf8');
+  assert.equal(restoredBobContent, 'original bob');
+
+  // Verify bob2's backup dir still exists (not touched by bob's restore)
+  const bob2BackupPath = path.join(state, 'backups', `bob2-${bob2Stamp}`);
+  assert.ok(fs.existsSync(bob2BackupPath), 'bob2 backup should not be affected by bob restore');
 
   fs.rmSync(tmp, { recursive: true });
 });

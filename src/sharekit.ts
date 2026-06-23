@@ -304,7 +304,7 @@ export function listBackups(user: string, state = STATE): BackupInfo[] {
   return dirs
     .reverse() // reverse to get newest first
     .map((dir) => {
-      const stamp = dir.replace(/^user-/, '');
+      const stamp = dir.slice(user.length + 1);
       const appliedPath = path.join(root, dir, 'applied.json');
       let fileCount = 0;
       try {
