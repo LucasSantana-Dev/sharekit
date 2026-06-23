@@ -15,6 +15,25 @@ npx @lucassantana/sharekit preview <github-user>   # see what would change, appl
 npx @lucassantana/sharekit rollback <github-user>  # restore the last backup
 ```
 
+### Pin to a version
+
+Install a specific tag or branch of a profile instead of the latest:
+
+```bash
+npx @lucassantana/sharekit install <github-user>@v1.0     # a tag
+npx @lucassantana/sharekit install <github-user>@stable   # a branch
+```
+
+Plain `install <github-user>` always tracks the profile's default branch (HEAD).
+
+### Hooks
+
+A profile's `.claude/settings.json` can define hooks that run shell commands, so it is **never installed by default** — it's flagged in the preview and skipped. To opt in after reviewing it, pass `--include-hooks` (you'll get a second explicit confirmation before it's written):
+
+```bash
+npx @lucassantana/sharekit install <github-user> --include-hooks
+```
+
 ## Publish your own profile
 
 Create a GitHub repo named **`sharekit-profile`** with this structure:
