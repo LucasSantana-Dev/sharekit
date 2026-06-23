@@ -40,12 +40,14 @@ const USAGE = `${kleur.bold('sharekit')} v${VERSION} — share your AI coding se
   ${kleur.cyan('update')}     <user> [opts]          refresh a profile to latest with diff
                                 --yes                auto-approve prompts
                                 --dry-run            show changes without writing files
+                                --include-hooks      also apply settings.json with shell hooks
   ${kleur.cyan('rollback')}   <user> [opts]          restore the last backup
                                 --yes                auto-approve prompts
                                 --dry-run            show what would be restored
                                 --list               list available backups
                                 --to <stamp>         restore a specific backup by timestamp
-  ${kleur.cyan('uninstall')}  <user>                 clean removal of an installed profile
+  ${kleur.cyan('uninstall')}  <user> [opts]          clean removal of an installed profile
+                                --yes                skip the confirmation prompt
   ${kleur.cyan('search')}     [query]                discover published profiles on GitHub
 
   Publish yours: a GitHub repo named ${kleur.cyan('sharekit-profile')} with a ${kleur.cyan('sharekit.toml')}.
@@ -101,6 +103,7 @@ export async function main(argv = process.argv.slice(2)) {
     const opts: InstallOpts = {};
     if (flags.includes('--yes')) opts.yes = true;
     if (flags.includes('--dry-run')) opts.dryRun = true;
+    if (flags.includes('--include-hooks')) opts.includeHooks = true;
     await update(user, opts);
     return;
   }
@@ -243,12 +246,13 @@ export async function main(argv = process.argv.slice(2)) {
 
   if (cmd === 'uninstall') {
     console.log();
+    const flags = rest.filter((x) => x.startsWith('--'));
     const user = rest.find((x) => !x.startsWith('--'));
     if (!user) {
       console.error(kleur.red('usage: sharekit uninstall <user>'));
       process.exit(1);
     }
-    await uninstall(user);
+    await uninstall(user, undefined, flags.includes('--yes') || flags.includes('--force'));
     return;
   }
 
