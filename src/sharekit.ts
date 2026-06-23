@@ -24,9 +24,16 @@ const tildify = (p: string) => (p.startsWith(HOME) ? "~" + p.slice(HOME.length) 
 
 function walk(dir: string): string[] {
   return fs.readdirSync(dir, { withFileTypes: true }).flatMap((e) => {
+    if (e.isSymbolicLink()) return []; // skip symlinks: don't follow into arbitrary files; dir-links would EISDIR on copy
     const p = path.join(dir, e.name);
     return e.isDirectory() ? walk(p) : [p];
   });
+}
+
+// copy a file, preserving its mode (e.g. a skill's executable toggle.sh)
+function cp(src: string, dest: string): void {
+  fs.copyFileSync(src, dest);
+  fs.chmodSync(dest, fs.statSync(src).mode);
 }
 
 // ponytail: profile lives at github.com/<user>/sharekit-profile — one convention, not a search
@@ -44,7 +51,10 @@ export function fetchProfile(user: string): string {
   const url = `https://github.com/${user}/sharekit-profile`;
   try {
     execSync(`git clone --depth 1 "${url}" "${dir}"`, { stdio: "pipe" });
-  } catch {
+  } catch (e) {
+    if ((e as { status?: number }).status === 127) {
+      throw new Error("git not found — install git to use sharekit (https://git-scm.com)");
+    }
     throw new Error(
       `No profile at ${url}\n` +
         `  Publish yours: a repo named "sharekit-profile" with a sharekit.toml`,
@@ -56,7 +66,13 @@ export function fetchProfile(user: string): string {
 export function readManifest(profileDir: string): { name: string; version?: string; description?: string } {
   const p = path.join(profileDir, "sharekit.toml");
   if (!fs.existsSync(p)) throw new Error(`Not a sharekit profile (no sharekit.toml in ${profileDir})`);
-  const profile = (TOML.parse(fs.readFileSync(p, "utf8")).profile ?? {}) as Record<string, string>;
+  let parsed: ReturnType<typeof TOML.parse>;
+  try {
+    parsed = TOML.parse(fs.readFileSync(p, "utf8"));
+  } catch (e) {
+    throw new Error(`Invalid sharekit.toml: ${(e as Error).message}`);
+  }
+  const profile = (parsed.profile ?? {}) as Record<string, string>;
   return { name: profile.name ?? "unknown", version: profile.version, description: profile.description };
 }
 
@@ -115,7 +131,7 @@ function backup(files: PlanFile[], user: string): string {
   for (const f of applied.filter((f) => f.status === "changed")) {
     const t = path.join(dir, path.relative(HOME, f.dest));
     fs.mkdirSync(path.dirname(t), { recursive: true });
-    fs.copyFileSync(f.dest, t);
+    cp(f.dest, t);
   }
   fs.writeFileSync(
     path.join(dir, "applied.json"),
@@ -129,7 +145,7 @@ function write(files: PlanFile[]): number {
   for (const f of files) {
     if (f.status === "same" || isExecutable(f)) continue;
     fs.mkdirSync(path.dirname(f.dest), { recursive: true });
-    fs.copyFileSync(f.src, f.dest);
+    cp(f.src, f.dest);
     n++;
   }
   return n;
@@ -171,7 +187,10 @@ export async function rollback(user: string): Promise<void> {
     if (a.status === "new") fs.rmSync(a.dest, { force: true }); // ponytail: leaves empty parent dirs; harmless
     else {
       const src = path.join(dir, path.relative(HOME, a.dest));
-      if (fs.existsSync(src)) fs.copyFileSync(src, a.dest);
+      if (fs.existsSync(src)) {
+        fs.mkdirSync(path.dirname(a.dest), { recursive: true }); // dest dir may have been removed since install
+        cp(src, a.dest);
+      }
     }
   }
   console.log(kleur.green("\n  ✓ Restored.\n"));
@@ -201,7 +220,7 @@ description = "My AI coding setup"
   const destClaude = path.join(profileRoot, "claude", "CLAUDE.md");
   fs.mkdirSync(path.dirname(destClaude), { recursive: true });
   if (fs.existsSync(sourceClaude)) {
-    fs.copyFileSync(sourceClaude, destClaude);
+    cp(sourceClaude, destClaude);
     console.log(kleur.green(`  + ${tildify(destClaude)}`));
   } else {
     fs.writeFileSync(destClaude, "# My AI coding instructions\n");
@@ -222,7 +241,7 @@ description = "My AI coding setup"
       const rel = path.relative(sourceSkill, file);
       const dest = path.join(destSkillBase, rel);
       fs.mkdirSync(path.dirname(dest), { recursive: true });
-      fs.copyFileSync(file, dest);
+      cp(file, dest);
       console.log(kleur.green(`  + ${tildify(dest)}`));
       skillCount++;
     }
