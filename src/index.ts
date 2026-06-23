@@ -6,6 +6,7 @@ const VERSION = '0.3.0';
 const USAGE = `${kleur.bold('sharekit')} v${VERSION} — share your AI coding setup
 
   ${kleur.cyan('init')}     [skill...]              scaffold a publishable profile in ./sharekit-profile
+                              --force              override high-severity secret blocking
   ${kleur.cyan('install')}  <user>[@<ref>] [opts]  fetch, preview, apply a profile
                               --include-hooks      also install settings.json with shell hooks
   ${kleur.cyan('preview')}  <user>[@<ref>]         show changes, apply nothing
@@ -16,7 +17,7 @@ const USAGE = `${kleur.bold('sharekit')} v${VERSION} — share your AI coding se
   Pin to a branch/tag: ${kleur.cyan('sharekit install user@v1.0')} or ${kleur.cyan('sharekit install user@stable')}.
 `;
 
-type CmdFn = (arg: string, opts?: InstallOpts) => Promise<void> | void;
+type CmdFn = (arg: string, opts?: InstallOpts) => Promise<void>;
 const cmds: Record<string, CmdFn> = { install, preview, rollback };
 const argv = process.argv.slice(2);
 const [cmd, ...rest] = argv;
@@ -27,7 +28,10 @@ async function main() {
 
   if (cmd === 'init') {
     console.log();
-    init('./sharekit-profile', rest);
+    const flags = rest.filter((x) => x.startsWith('--'));
+    const skillNames = rest.filter((x) => !x.startsWith('--'));
+    const force = flags.includes('--force');
+    init('./sharekit-profile', skillNames, undefined, force);
     return;
   }
 

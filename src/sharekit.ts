@@ -31,6 +31,7 @@ export interface Finding {
   file?: string;
   line: number;
   preview: string;
+  severity: 'high' | 'medium' | 'low';
 }
 
 // injectable so backup/restore can target a temp dir in tests (default: real ~/.sharekit + $HOME)
@@ -399,7 +400,7 @@ export function scanForSecrets(content: string, fileLabel?: string): Finding[] {
     const line = lines[i];
     const lineNum = i + 1;
 
-    // Rule 1: Private key blocks
+    // Rule 1: Private key blocks (HIGH)
     if (/-----BEGIN [A-Z ]*PRIVATE KEY-----/.test(line)) {
       const preview = line.substring(0, 40) + (line.length > 40 ? '…' : '');
       findings.push({
@@ -407,11 +408,12 @@ export function scanForSecrets(content: string, fileLabel?: string): Finding[] {
         file: fileLabel,
         line: lineNum,
         preview,
+        severity: 'high',
       });
       continue;
     }
 
-    // Rule 2: AWS access key
+    // Rule 2: AWS access key (HIGH)
     const awsMatch = /AKIA[0-9A-Z]{16}/.exec(line);
     if (awsMatch) {
       const idx = awsMatch.index;
@@ -424,12 +426,121 @@ export function scanForSecrets(content: string, fileLabel?: string): Finding[] {
         file: fileLabel,
         line: lineNum,
         preview,
+        severity: 'high',
       });
       continue;
     }
 
-    // Rule 3: Generic KEY=value with sensitive key names, non-empty/non-placeholder values
-    const envMatch = /^([A-Z_]+?)=(.*)$/.exec(line);
+    // Rule 3: GitHub PAT ghp_ format (HIGH) — at least 20 chars after ghp_
+    const githubGhpMatch = /ghp_[A-Za-z0-9_]{20,}/.exec(line);
+    if (githubGhpMatch) {
+      const idx = githubGhpMatch.index;
+      const start = Math.max(0, idx - 5);
+      const end = Math.min(line.length, idx + 40);
+      const preview =
+        (start > 0 ? '…' : '') + line.substring(start, end) + (end < line.length ? '…' : '');
+      findings.push({
+        rule: 'GitHub Personal Access Token',
+        file: fileLabel,
+        line: lineNum,
+        preview,
+        severity: 'high',
+      });
+      continue;
+    }
+
+    // Rule 4: GitHub PAT github_pat_ format (HIGH) — at least 20 chars after prefix
+    const githubPatMatch = /github_pat_[A-Za-z0-9_]{20,}/.exec(line);
+    if (githubPatMatch) {
+      const idx = githubPatMatch.index;
+      const start = Math.max(0, idx - 5);
+      const end = Math.min(line.length, idx + 40);
+      const preview =
+        (start > 0 ? '…' : '') + line.substring(start, end) + (end < line.length ? '…' : '');
+      findings.push({
+        rule: 'GitHub Personal Access Token',
+        file: fileLabel,
+        line: lineNum,
+        preview,
+        severity: 'high',
+      });
+      continue;
+    }
+
+    // Rule 5: Slack tokens (HIGH)
+    const slackMatch = /xox[baprs]-[A-Za-z0-9-]{10,}/.exec(line);
+    if (slackMatch) {
+      const idx = slackMatch.index;
+      const start = Math.max(0, idx - 5);
+      const end = Math.min(line.length, idx + 40);
+      const preview =
+        (start > 0 ? '…' : '') + line.substring(start, end) + (end < line.length ? '…' : '');
+      findings.push({
+        rule: 'Slack Token',
+        file: fileLabel,
+        line: lineNum,
+        preview,
+        severity: 'high',
+      });
+      continue;
+    }
+
+    // Rule 6: Google API keys AIza format (HIGH)
+    const googleMatch = /AIza[0-9A-Za-z\-_]{35}/.exec(line);
+    if (googleMatch) {
+      const idx = googleMatch.index;
+      const start = Math.max(0, idx - 5);
+      const end = Math.min(line.length, idx + 40);
+      const preview =
+        (start > 0 ? '…' : '') + line.substring(start, end) + (end < line.length ? '…' : '');
+      findings.push({
+        rule: 'Google API Key',
+        file: fileLabel,
+        line: lineNum,
+        preview,
+        severity: 'high',
+      });
+      continue;
+    }
+
+    // Rule 7: Bearer token (HIGH)
+    const bearerMatch = /Bearer [A-Za-z0-9._\-]{20,}/.exec(line);
+    if (bearerMatch) {
+      const idx = bearerMatch.index;
+      const start = Math.max(0, idx);
+      const end = Math.min(line.length, idx + 30);
+      const preview = line.substring(start, end) + (end < line.length ? '…' : '');
+      findings.push({
+        rule: 'Bearer Token',
+        file: fileLabel,
+        line: lineNum,
+        preview,
+        severity: 'high',
+      });
+      continue;
+    }
+
+    // Rule 8: Home directory path leak (LOW)
+    const homeDirMatch = /(\/Users\/[a-zA-Z0-9_-]+|\/home\/[a-zA-Z0-9_-]+)/.exec(line);
+    if (homeDirMatch) {
+      const idx = homeDirMatch.index;
+      const start = Math.max(0, idx - 5);
+      const end = Math.min(line.length, idx + 40);
+      const preview =
+        (start > 0 ? '…' : '') + line.substring(start, end) + (end < line.length ? '…' : '');
+      findings.push({
+        rule: 'Home Directory Path Leak',
+        file: fileLabel,
+        line: lineNum,
+        preview,
+        severity: 'low',
+      });
+      continue;
+    }
+
+    // Rule 9: Generic KEY=value with sensitive key names, including export prefix (MEDIUM)
+    // Match both "KEY=value" and "export KEY=value"
+    const envMatch = /(?:^|\s)(?:export\s+)?([A-Z_]+?)=(.*)$/.exec(line);
     if (envMatch) {
       const keyName = envMatch[1].toUpperCase();
       const value = envMatch[2];
@@ -451,33 +562,23 @@ export function scanForSecrets(content: string, fileLabel?: string): Finding[] {
             file: fileLabel,
             line: lineNum,
             preview: `${keyName}=${preview}`,
+            severity: 'medium',
           });
           continue;
         }
       }
-    }
-
-    // Rule 4: Bearer token
-    const bearerMatch = /Bearer [A-Za-z0-9._\-]{20,}/.exec(line);
-    if (bearerMatch) {
-      const idx = bearerMatch.index;
-      const start = Math.max(0, idx);
-      const end = Math.min(line.length, idx + 30);
-      const preview = line.substring(start, end) + (end < line.length ? '…' : '');
-      findings.push({
-        rule: 'Bearer Token',
-        file: fileLabel,
-        line: lineNum,
-        preview,
-      });
-      continue;
     }
   }
 
   return findings;
 }
 
-export function init(profileDir: string, skillNames: string[] = [], sourceRoot = HOME): void {
+export function init(
+  profileDir: string,
+  skillNames: string[] = [],
+  sourceRoot = HOME,
+  force = false
+): void {
   // Check if profileDir already exists
   if (fs.existsSync(profileDir)) {
     throw new Error(`Profile directory already exists: ${profileDir}`);
@@ -564,6 +665,9 @@ description = "My AI coding setup"
     )
   );
 
+  // Check for high-severity findings
+  const highSeverityFindings = allFindings.filter((f) => f.severity === 'high');
+
   // Print warnings if secrets found
   if (allFindings.length > 0) {
     console.log(kleur.yellow(`\n  ⚠  Secret patterns detected:`));
@@ -574,6 +678,14 @@ description = "My AI coding setup"
     }
     console.log(
       kleur.yellow(`\n  ⚠  Review and redact secrets before pushing to a public repository.\n`)
+    );
+  }
+
+  // Gate: block export if high-severity findings and no --force
+  if (highSeverityFindings.length > 0 && !force) {
+    throw new Error(
+      `Secrets export blocked: ${highSeverityFindings.length} high-severity finding(s) detected. ` +
+        `Review and remove secrets, or re-run with --force to override.`
     );
   }
 }

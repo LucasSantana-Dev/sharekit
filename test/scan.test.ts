@@ -126,7 +126,7 @@ SOME_PATH=/usr/local/bin`;
 });
 
 test('scanForSecrets detects APIKEY (single word)', () => {
-  const content = 'GITHUB_APIKEY=fakevalue000099';
+  const content = 'GITHUB_APIKEY=fakevalue000001';
   const findings = scanForSecrets(content);
   assert(findings.some((f) => f.rule.includes('Env')));
 });
@@ -211,4 +211,214 @@ test('init does not surface warnings when scaffolding clean files', () => {
     console.log = originalLog;
     fs.rmSync(tmp, { recursive: true });
   }
+});
+
+// New tests for severity classification and expanded patterns
+test('scanForSecrets detects GitHub PAT (ghp_ format)', () => {
+  const content = 'token = ghp_' + 'a'.repeat(36);
+  const findings = scanForSecrets(content);
+  assert(findings.length > 0);
+  assert.equal(findings[0].rule, 'GitHub Personal Access Token');
+  assert.equal(findings[0].severity, 'high');
+});
+
+test('scanForSecrets detects GitHub PAT (github_pat_ format)', () => {
+  const content = 'token = github_pat_' + 'a'.repeat(22);
+  const findings = scanForSecrets(content);
+  assert(findings.length > 0);
+  assert.equal(findings[0].rule, 'GitHub Personal Access Token');
+  assert.equal(findings[0].severity, 'high');
+});
+
+test('scanForSecrets detects Slack tokens', () => {
+  const content = 'slack = xoxb-EXAMPLE-NOT-A-REAL-token';
+  const findings = scanForSecrets(content);
+  assert(findings.length > 0);
+  assert.equal(findings[0].rule, 'Slack Token');
+  assert.equal(findings[0].severity, 'high');
+});
+
+test('scanForSecrets detects Google API keys (AIza format)', () => {
+  const content = 'google_key = AIza' + 'a'.repeat(35);
+  const findings = scanForSecrets(content);
+  assert(findings.length > 0);
+  assert.equal(findings[0].rule, 'Google API Key');
+  assert.equal(findings[0].severity, 'high');
+});
+
+test('scanForSecrets detects home directory path leak', () => {
+  const content = 'backup_dir = /Users/alice/.ssh/id_rsa';
+  const findings = scanForSecrets(content);
+  assert(findings.length > 0);
+  assert.equal(findings[0].rule, 'Home Directory Path Leak');
+  assert.equal(findings[0].severity, 'low');
+});
+
+test('scanForSecrets detects Linux home directory path leak', () => {
+  const content = 'backup_dir = /home/bob/.ssh/id_rsa';
+  const findings = scanForSecrets(content);
+  assert(findings.length > 0);
+  assert.equal(findings[0].rule, 'Home Directory Path Leak');
+  assert.equal(findings[0].severity, 'low');
+});
+
+test('scanForSecrets detects export PREFIX for env vars (missing old gap)', () => {
+  const content = 'export API_KEY=fakevalue000001';
+  const findings = scanForSecrets(content);
+  assert(findings.length > 0);
+  assert.equal(findings[0].rule, 'Env Var: Sensitive Key');
+  assert.equal(findings[0].severity, 'medium');
+});
+
+test('scanForSecrets assigns high severity to private key', () => {
+  const content =
+    '-----BEGIN RSA PRIVATE KEY-----\nFAKEKEYBODY\n-----END RSA PRIVATE KEY-----';
+  const findings = scanForSecrets(content);
+  assert(findings.length > 0);
+  assert.equal(findings[0].severity, 'high');
+});
+
+test('scanForSecrets assigns high severity to AWS access key', () => {
+  const content = 'aws_key = AKIAEXAMPLEKEY000000';
+  const findings = scanForSecrets(content);
+  assert(findings.length > 0);
+  assert.equal(findings[0].severity, 'high');
+});
+
+test('scanForSecrets assigns high severity to bearer token', () => {
+  const content = 'Authorization: Bearer ' + 'a'.repeat(35);
+  const findings = scanForSecrets(content);
+  assert(findings.length > 0);
+  assert.equal(findings[0].severity, 'high');
+});
+
+test('scanForSecrets assigns medium severity to env vars', () => {
+  const content = 'API_TOKEN=' + 'a'.repeat(25);
+  const findings = scanForSecrets(content);
+  assert(findings.length > 0);
+  assert.equal(findings[0].severity, 'medium');
+});
+
+test('init with high-severity finding blocks without --force', () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'sk-block-'));
+  const sourceRoot = path.join(tmp, 'source');
+  const profileDir = path.join(tmp, 'sharekit-profile');
+
+  // Set up source with a private key (high severity)
+  fs.mkdirSync(path.join(sourceRoot, '.claude'), { recursive: true });
+  fs.writeFileSync(
+    path.join(sourceRoot, '.claude', 'CLAUDE.md'),
+    '# My instructions\n-----BEGIN PRIVATE KEY-----\nTest\n-----END PRIVATE KEY-----'
+  );
+
+  // Capture console output and errors
+  let output = '';
+  const originalLog = console.log;
+  const originalErr = console.error;
+  console.log = (...args: unknown[]) => {
+    output += args.join(' ') + '\n';
+  };
+  console.error = (...args: unknown[]) => {
+    output += args.join(' ') + '\n';
+  };
+
+  let caughtError: Error | null = null;
+  try {
+    init(profileDir, [], sourceRoot, false);
+  } catch (e) {
+    caughtError = e as Error;
+  } finally {
+    console.log = originalLog;
+    console.error = originalErr;
+  }
+
+  assert(caughtError !== null, 'Should throw when high-severity finding and no --force');
+  assert(
+    caughtError.message.includes('export blocked') || caughtError.message.includes('Secrets'),
+    'Error message should mention blocking'
+  );
+  fs.rmSync(tmp, { recursive: true });
+});
+
+test('init with high-severity finding succeeds with --force', () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'sk-force-'));
+  const sourceRoot = path.join(tmp, 'source');
+  const profileDir = path.join(tmp, 'sharekit-profile');
+
+  // Set up source with a private key (high severity)
+  fs.mkdirSync(path.join(sourceRoot, '.claude'), { recursive: true });
+  fs.writeFileSync(
+    path.join(sourceRoot, '.claude', 'CLAUDE.md'),
+    '# My instructions\n-----BEGIN PRIVATE KEY-----\nTest\n-----END PRIVATE KEY-----'
+  );
+
+  // Capture console output
+  let output = '';
+  const originalLog = console.log;
+  console.log = (...args: unknown[]) => {
+    output += args.join(' ') + '\n';
+    originalLog(...args);
+  };
+
+  let caughtError: Error | null = null;
+  try {
+    init(profileDir, [], sourceRoot, true); // --force = true
+  } catch (e) {
+    caughtError = e as Error;
+  } finally {
+    console.log = originalLog;
+  }
+
+  assert.equal(
+    caughtError,
+    null,
+    'Should not throw when high-severity finding but --force is true'
+  );
+  assert(
+    fs.existsSync(path.join(profileDir, 'sharekit.toml')),
+    'Should still scaffold with --force'
+  );
+  assert(
+    output.includes('Secret patterns detected') || output.includes('review before pushing'),
+    'Should still warn even with --force'
+  );
+  fs.rmSync(tmp, { recursive: true });
+});
+
+test('init with medium-severity finding warns but exits 0 without --force', () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'sk-medium-'));
+  const sourceRoot = path.join(tmp, 'source');
+  const profileDir = path.join(tmp, 'sharekit-profile');
+
+  // Set up source with only medium-severity env var
+  fs.mkdirSync(path.join(sourceRoot, '.claude'), { recursive: true });
+  fs.writeFileSync(
+    path.join(sourceRoot, '.claude', 'CLAUDE.md'),
+    '# My instructions\nAPI_TOKEN=faketoken000001'
+  );
+
+  // Capture console output
+  let output = '';
+  const originalLog = console.log;
+  console.log = (...args: unknown[]) => {
+    output += args.join(' ') + '\n';
+    originalLog(...args);
+  };
+
+  let caughtError: Error | null = null;
+  try {
+    init(profileDir, [], sourceRoot, false);
+  } catch (e) {
+    caughtError = e as Error;
+  } finally {
+    console.log = originalLog;
+  }
+
+  assert.equal(caughtError, null, 'Should not throw for medium-severity findings');
+  assert(fs.existsSync(path.join(profileDir, 'sharekit.toml')), 'Should scaffold profile');
+  assert(
+    output.includes('Secret patterns detected'),
+    'Should still warn about medium-severity findings'
+  );
+  fs.rmSync(tmp, { recursive: true });
 });
