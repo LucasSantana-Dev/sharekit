@@ -2,7 +2,7 @@
 import kleur from 'kleur';
 import { install, preview, rollback, init } from './sharekit.js';
 
-const VERSION = '0.1.0';
+const VERSION = '0.2.0';
 const USAGE = `${kleur.bold('sharekit')} v${VERSION} — share your AI coding setup
 
   ${kleur.cyan('init')}     [skill...]              scaffold a publishable profile in ./sharekit-profile
