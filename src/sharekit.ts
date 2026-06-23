@@ -392,6 +392,22 @@ export async function rollback(user: string): Promise<void> {
   console.log(kleur.green('\n  ✓ Restored.\n'));
 }
 
+// Construct a preview string from a line, given match index and window params.
+// Adds leading/trailing ellipsis when substring is clipped.
+function truncatePreview(
+  line: string,
+  idx: number,
+  contextBefore = 5,
+  maxLen = 40,
+  addLeadingEllipsis = true
+): string {
+  const start = Math.max(0, idx - contextBefore);
+  const end = Math.min(line.length, idx + maxLen);
+  const leading = addLeadingEllipsis && start > 0 ? '…' : '';
+  const trailing = end < line.length ? '…' : '';
+  return leading + line.substring(start, end) + trailing;
+}
+
 export function scanForSecrets(content: string, fileLabel?: string): Finding[] {
   const findings: Finding[] = [];
   const lines = content.split('\n');
@@ -416,11 +432,7 @@ export function scanForSecrets(content: string, fileLabel?: string): Finding[] {
     // Rule 2: AWS access key (HIGH)
     const awsMatch = /AKIA[0-9A-Z]{16}/.exec(line);
     if (awsMatch) {
-      const idx = awsMatch.index;
-      const start = Math.max(0, idx - 5);
-      const end = Math.min(line.length, idx + 20);
-      const preview =
-        (start > 0 ? '…' : '') + line.substring(start, end) + (end < line.length ? '…' : '');
+      const preview = truncatePreview(line, awsMatch.index, 5, 20);
       findings.push({
         rule: 'AWS Access Key ID',
         file: fileLabel,
@@ -434,11 +446,7 @@ export function scanForSecrets(content: string, fileLabel?: string): Finding[] {
     // Rule 3: GitHub PAT ghp_ format (HIGH) — at least 20 chars after ghp_
     const githubGhpMatch = /ghp_[A-Za-z0-9_]{20,}/.exec(line);
     if (githubGhpMatch) {
-      const idx = githubGhpMatch.index;
-      const start = Math.max(0, idx - 5);
-      const end = Math.min(line.length, idx + 40);
-      const preview =
-        (start > 0 ? '…' : '') + line.substring(start, end) + (end < line.length ? '…' : '');
+      const preview = truncatePreview(line, githubGhpMatch.index, 5, 40);
       findings.push({
         rule: 'GitHub Personal Access Token',
         file: fileLabel,
@@ -452,11 +460,7 @@ export function scanForSecrets(content: string, fileLabel?: string): Finding[] {
     // Rule 4: GitHub PAT github_pat_ format (HIGH) — at least 20 chars after prefix
     const githubPatMatch = /github_pat_[A-Za-z0-9_]{20,}/.exec(line);
     if (githubPatMatch) {
-      const idx = githubPatMatch.index;
-      const start = Math.max(0, idx - 5);
-      const end = Math.min(line.length, idx + 40);
-      const preview =
-        (start > 0 ? '…' : '') + line.substring(start, end) + (end < line.length ? '…' : '');
+      const preview = truncatePreview(line, githubPatMatch.index, 5, 40);
       findings.push({
         rule: 'GitHub Personal Access Token',
         file: fileLabel,
@@ -470,11 +474,7 @@ export function scanForSecrets(content: string, fileLabel?: string): Finding[] {
     // Rule 5: Slack tokens (HIGH)
     const slackMatch = /xox[baprs]-[A-Za-z0-9-]{10,}/.exec(line);
     if (slackMatch) {
-      const idx = slackMatch.index;
-      const start = Math.max(0, idx - 5);
-      const end = Math.min(line.length, idx + 40);
-      const preview =
-        (start > 0 ? '…' : '') + line.substring(start, end) + (end < line.length ? '…' : '');
+      const preview = truncatePreview(line, slackMatch.index, 5, 40);
       findings.push({
         rule: 'Slack Token',
         file: fileLabel,
@@ -488,11 +488,7 @@ export function scanForSecrets(content: string, fileLabel?: string): Finding[] {
     // Rule 6: Google API keys AIza format (HIGH)
     const googleMatch = /AIza[0-9A-Za-z\-_]{35}/.exec(line);
     if (googleMatch) {
-      const idx = googleMatch.index;
-      const start = Math.max(0, idx - 5);
-      const end = Math.min(line.length, idx + 40);
-      const preview =
-        (start > 0 ? '…' : '') + line.substring(start, end) + (end < line.length ? '…' : '');
+      const preview = truncatePreview(line, googleMatch.index, 5, 40);
       findings.push({
         rule: 'Google API Key',
         file: fileLabel,
@@ -506,10 +502,7 @@ export function scanForSecrets(content: string, fileLabel?: string): Finding[] {
     // Rule 7: Bearer token (HIGH)
     const bearerMatch = /Bearer [A-Za-z0-9._\-]{20,}/.exec(line);
     if (bearerMatch) {
-      const idx = bearerMatch.index;
-      const start = Math.max(0, idx);
-      const end = Math.min(line.length, idx + 30);
-      const preview = line.substring(start, end) + (end < line.length ? '…' : '');
+      const preview = truncatePreview(line, bearerMatch.index, 0, 30, false);
       findings.push({
         rule: 'Bearer Token',
         file: fileLabel,
@@ -523,11 +516,7 @@ export function scanForSecrets(content: string, fileLabel?: string): Finding[] {
     // Rule 8: Home directory path leak (LOW)
     const homeDirMatch = /(\/Users\/[a-zA-Z0-9_-]+|\/home\/[a-zA-Z0-9_-]+)/.exec(line);
     if (homeDirMatch) {
-      const idx = homeDirMatch.index;
-      const start = Math.max(0, idx - 5);
-      const end = Math.min(line.length, idx + 40);
-      const preview =
-        (start > 0 ? '…' : '') + line.substring(start, end) + (end < line.length ? '…' : '');
+      const preview = truncatePreview(line, homeDirMatch.index, 5, 40);
       findings.push({
         rule: 'Home Directory Path Leak',
         file: fileLabel,
