@@ -32,11 +32,17 @@ const USAGE = `${kleur.bold('sharekit')} v${VERSION} — share your AI coding se
                                 --force              exit 0 even if high-severity findings detected
   ${kleur.cyan('install')}    <user>[@<ref>] [opts]  fetch, preview, apply a profile
                                 --include-hooks      also install settings.json with shell hooks
+                                --yes                auto-approve prompts
+                                --dry-run            show changes without writing files
   ${kleur.cyan('preview')}    <user>[@<ref>]         show changes, apply nothing
   ${kleur.cyan('inspect')}    <user>[@<ref>]         view profile contents before installing
   ${kleur.cyan('list')}                              show installed profiles & versions
-  ${kleur.cyan('update')}     <user>                 refresh a profile to latest with diff
+  ${kleur.cyan('update')}     <user> [opts]          refresh a profile to latest with diff
+                                --yes                auto-approve prompts
+                                --dry-run            show changes without writing files
   ${kleur.cyan('rollback')}   <user> [opts]          restore the last backup
+                                --yes                auto-approve prompts
+                                --dry-run            show what would be restored
                                 --list               list available backups
                                 --to <stamp>         restore a specific backup by timestamp
   ${kleur.cyan('uninstall')}  <user>                 clean removal of an installed profile
@@ -86,12 +92,16 @@ export async function main(argv = process.argv.slice(2)) {
 
   if (cmd === 'update') {
     console.log();
+    const flags = rest.filter((x) => x.startsWith('--'));
     const user = rest.find((x) => !x.startsWith('--'));
     if (!user) {
       console.error(kleur.red('usage: sharekit update <user>'));
       process.exit(1);
     }
-    await update(user);
+    const opts: InstallOpts = {};
+    if (flags.includes('--yes')) opts.yes = true;
+    if (flags.includes('--dry-run')) opts.dryRun = true;
+    await update(user, opts);
     return;
   }
 
@@ -201,7 +211,11 @@ export async function main(argv = process.argv.slice(2)) {
     }
 
     // Default: restore latest
-    await rollback(user);
+    const flags = rest.filter((x) => x.startsWith('--'));
+    const opts: InstallOpts = {};
+    if (flags.includes('--yes')) opts.yes = true;
+    if (flags.includes('--dry-run')) opts.dryRun = true;
+    await rollback(user, opts);
     return;
   }
 
@@ -231,6 +245,15 @@ export async function main(argv = process.argv.slice(2)) {
   }
 
   const opts: InstallOpts = {};
+  if ((cmd === 'install' || cmd === 'update' || cmd === 'rollback') && flags.includes('--yes')) {
+    opts.yes = true;
+  }
+  if (
+    (cmd === 'install' || cmd === 'update' || cmd === 'rollback') &&
+    flags.includes('--dry-run')
+  ) {
+    opts.dryRun = true;
+  }
   if (cmd === 'install' && flags.includes('--include-hooks')) {
     opts.includeHooks = true;
   }

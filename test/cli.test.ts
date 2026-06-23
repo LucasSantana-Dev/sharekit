@@ -191,8 +191,7 @@ test('main: list command dispatches', async () => {
 test('main: search command with query dispatches', async () => {
   const originalFetch = globalThis.fetch;
   globalThis.fetch = (async () =>
-    new Response(JSON.stringify({ items: [] }), { status: 200 })
-  ) as typeof fetch;
+    new Response(JSON.stringify({ items: [] }), { status: 200 })) as typeof fetch;
 
   try {
     const { run } = captureCLI(async () => {

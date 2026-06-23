@@ -50,6 +50,8 @@ const DEFAULT_DIRS: Dirs = { home: HOME, state: STATE };
 
 export interface InstallOpts {
   includeHooks?: boolean;
+  yes?: boolean;
+  dryRun?: boolean;
 }
 
 const tildify = (p: string) => {
@@ -278,7 +280,8 @@ export function printPlan(files: PlanFile[], manifest: ReturnType<typeof readMan
     );
 }
 
-export async function confirm(q: string): Promise<boolean> {
+export async function confirm(q: string, autoYes = false): Promise<boolean> {
+  if (autoYes) return true;
   const rl = readline.createInterface({ input, output });
   const a = await rl.question(kleur.bold(`  ${q} (y/N) `));
   rl.close();
@@ -378,7 +381,9 @@ function writeAtomic(
       restoreBackupInternal(user, backupDir, dirs);
     } catch (restoreErr) {
       // Log the restore failure but don't mask the original error
-      console.error(`Failed to restore from backup after write error: ${(restoreErr as Error).message}`);
+      console.error(
+        `Failed to restore from backup after write error: ${(restoreErr as Error).message}`
+      );
     }
     throw e;
   }
@@ -389,8 +394,16 @@ export function applyProfile(
   files: PlanFile[],
   user: string,
   includeHooks = false,
-  dirs: Dirs = DEFAULT_DIRS
+  dirs: Dirs = DEFAULT_DIRS,
+  dryRun = false
 ): { backupDir: string; filesWritten: number } {
+  if (dryRun) {
+    // In dry-run, just count files without writing anything
+    const filesWritten = files.filter(
+      (f) => f.status !== 'same' && !isExecutable(f, includeHooks)
+    ).length;
+    return { backupDir: '', filesWritten };
+  }
   const backupDir = backup(files, user, includeHooks, dirs);
   const filesWritten = writeAtomic(files, backupDir, user, includeHooks, dirs);
   pruneBackups(user, dirs.state);
@@ -677,9 +690,13 @@ export function updateApply(
 // Update an installed profile to the latest version (with interactive prompts)
 export async function update(
   user: string,
-  includeHooks = false,
+  opts?: InstallOpts,
   dirs: Dirs = DEFAULT_DIRS
 ): Promise<void> {
+  const includeHooks = opts?.includeHooks ?? false;
+  const yes = opts?.yes ?? false;
+  const dryRun = opts?.dryRun ?? false;
+
   // Get the install record for this user
   const installed = readInstalled(dirs);
   const record = installed[user];
@@ -699,8 +716,8 @@ export async function update(
   // Ref is mutable (branch or HEAD), so fetch the latest
   // Use injected cache root for offline testability
   const cacheRoot = path.join(dirs.state, 'profiles');
-  const dir = fetchProfile(user, ref, 'https://github.com', cacheRoot);
-  const manifest = readManifest(dir);
+  const fetchDir = fetchProfile(user, ref, 'https://github.com', cacheRoot);
+  const manifest = readManifest(fetchDir);
 
   // Compute roots relative to injected home for testability
   const roots: Record<string, string> = {
@@ -708,7 +725,7 @@ export async function update(
     cursor: path.join(dirs.home, '.cursor'),
     shared: dirs.home,
   };
-  const files = plan(dir, roots);
+  const files = plan(fetchDir, roots);
   printPlan(files, manifest);
 
   const todo = files.filter((f) => f.status !== 'same' && !isExecutable(f, includeHooks));
@@ -726,15 +743,25 @@ export async function update(
   if (hasHooks && includeHooks) {
     if (
       !(await confirm(
-        `This profile's settings.json contains hooks that run shell commands. Update with it?`
+        `This profile's settings.json contains hooks that run shell commands. Update with it?`,
+        yes
       ))
     ) {
       return void console.log(kleur.dim('\n  Aborted.\n'));
     }
   }
 
-  if (!(await confirm(`Apply ${todo.length} change(s)?`)))
+  if (!(await confirm(`Apply ${todo.length} change(s)?`, yes)))
     return void console.log(kleur.dim('\n  Aborted.\n'));
+
+  if (dryRun) {
+    // For dry-run, just count files
+    const filesWritten = todo.length;
+    console.log(kleur.cyan(`\n  (dry-run — no files written)`));
+    console.log(kleur.green(`\n  ✓ Would update ${filesWritten} file(s).`));
+    console.log();
+    return;
+  }
 
   const { backupDir, filesWritten } = updateApply(user, includeHooks, dirs);
 
@@ -748,6 +775,8 @@ export async function update(
 export async function install(user: string, opts?: InstallOpts): Promise<void> {
   const includeHooks = opts?.includeHooks ?? false;
   const { user: userName, ref: userRef } = parseUserRef(user);
+  const yes = opts?.yes ?? false;
+  const dryRun = opts?.dryRun ?? false;
 
   const dir = fetchProfile(userName, userRef);
   const manifest = readManifest(dir);
@@ -770,26 +799,42 @@ export async function install(user: string, opts?: InstallOpts): Promise<void> {
   if (hasHooks && includeHooks) {
     if (
       !(await confirm(
-        `This profile's settings.json contains hooks that run shell commands. Install it?`
+        `This profile's settings.json contains hooks that run shell commands. Install it?`,
+        yes
       ))
     ) {
       return void console.log(kleur.dim('\n  Aborted.\n'));
     }
   }
 
-  if (!(await confirm(`Apply ${todo.length} change(s)?`)))
+  if (!(await confirm(`Apply ${todo.length} change(s)?`, yes)))
     return void console.log(kleur.dim('\n  Aborted.\n'));
 
-  const { backupDir, filesWritten } = applyProfile(files, userName, includeHooks);
+  const { backupDir, filesWritten } = applyProfile(
+    files,
+    userName,
+    includeHooks,
+    DEFAULT_DIRS,
+    dryRun
+  );
 
-  // Record this install in the state file (user, ref, resolved commit, version, timestamp)
-  recordInstall(userName, dir, userRef ?? 'HEAD', manifest.version);
+  // Only record install if not a dry-run
+  if (!dryRun) {
+    recordInstall(userName, dir, userRef ?? 'HEAD', manifest.version);
+  }
+
+  if (dryRun) {
+    console.log(kleur.cyan(`\n  (dry-run — no files written)`));
+  }
 
   console.log(
     kleur.green(`\n  ✓ Applied ${filesWritten} file(s).`) +
-      kleur.dim(`  Backup: ${tildify(backupDir)}`)
+      (dryRun ? '' : kleur.dim(`  Backup: ${tildify(backupDir)}`))
   );
-  console.log(kleur.dim(`  Undo: sharekit rollback ${userName}\n`));
+  if (!dryRun) {
+    console.log(kleur.dim(`  Undo: sharekit rollback ${userName}`));
+  }
+  console.log();
 }
 
 export async function preview(user: string): Promise<void> {
@@ -837,7 +882,10 @@ export async function inspect(user: string): Promise<void> {
   console.log();
 }
 
-export async function rollback(user: string): Promise<void> {
+export async function rollback(user: string, opts?: InstallOpts): Promise<void> {
+  const yes = opts?.yes ?? false;
+  const dryRun = opts?.dryRun ?? false;
+
   const root = path.join(STATE, 'backups');
   const last = fs.existsSync(root)
     ? fs
@@ -865,7 +913,14 @@ export async function rollback(user: string): Promise<void> {
   }
 
   console.log(kleur.bold(`\n  Rollback ${user}${versionStr}  (${applied.length} file(s))\n`));
-  if (!(await confirm('Restore?'))) return void console.log(kleur.dim('\n  Aborted.\n'));
+  if (!(await confirm('Restore?', yes))) return void console.log(kleur.dim('\n  Aborted.\n'));
+
+  if (dryRun) {
+    console.log(kleur.cyan(`\n  (dry-run — no files restored)`));
+    console.log(kleur.green(`\n  ✓ Would restore ${applied.length} file(s).`));
+    console.log();
+    return;
+  }
 
   const metadata = restoreBackup(user);
   const summary = `${metadata.filesRestored} file(s) restored${
