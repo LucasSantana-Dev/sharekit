@@ -287,6 +287,65 @@ export function applyProfile(
   return { backupDir, filesWritten };
 }
 
+export interface BackupInfo {
+  stamp: string;
+  fileCount: number;
+}
+
+export function listBackups(user: string, state = STATE): BackupInfo[] {
+  const root = path.join(state, 'backups');
+  if (!fs.existsSync(root)) return [];
+
+  const dirs = fs
+    .readdirSync(root)
+    .filter((e) => e.startsWith(user + '-'))
+    .sort();
+
+  return dirs
+    .reverse() // reverse to get newest first
+    .map((dir) => {
+      const stamp = dir.replace(/^user-/, '');
+      const appliedPath = path.join(root, dir, 'applied.json');
+      let fileCount = 0;
+      try {
+        const applied = JSON.parse(fs.readFileSync(appliedPath, 'utf8'));
+        fileCount = (applied as Array<unknown>).length;
+      } catch {
+        // If we can't read applied.json, default to 0
+      }
+      return { stamp, fileCount };
+    });
+}
+
+function restoreBackupInternal(user: string, backupDir: string, dirs: Dirs = DEFAULT_DIRS): void {
+  const applied: { dest: string; status: Status }[] = JSON.parse(
+    fs.readFileSync(path.join(backupDir, 'applied.json'), 'utf8')
+  );
+
+  for (const a of applied) {
+    if (a.status === 'new')
+      fs.rmSync(a.dest, { force: true }); // ponytail: leaves empty parent dirs; harmless
+    else {
+      const src = path.join(backupDir, path.relative(dirs.home, a.dest));
+      if (fs.existsSync(src)) {
+        fs.mkdirSync(path.dirname(a.dest), { recursive: true }); // dest dir may have been removed since install
+        cp(src, a.dest);
+      }
+    }
+  }
+}
+
+export function restoreBackupToStamp(user: string, stamp: string, dirs: Dirs = DEFAULT_DIRS): void {
+  const root = path.join(dirs.state, 'backups');
+  const backupDir = path.join(root, `${user}-${stamp}`);
+
+  if (!fs.existsSync(backupDir)) {
+    throw new Error(`No backup found for ${user} with stamp ${stamp}.`);
+  }
+
+  restoreBackupInternal(user, backupDir, dirs);
+}
+
 export function restoreBackup(user: string, dirs: Dirs = DEFAULT_DIRS): void {
   const root = path.join(dirs.state, 'backups');
   const last = fs.existsSync(root)
@@ -299,21 +358,7 @@ export function restoreBackup(user: string, dirs: Dirs = DEFAULT_DIRS): void {
   if (!last) throw new Error(`No backup for ${user}.`);
 
   const dir = path.join(root, last);
-  const applied: { dest: string; status: Status }[] = JSON.parse(
-    fs.readFileSync(path.join(dir, 'applied.json'), 'utf8')
-  );
-
-  for (const a of applied) {
-    if (a.status === 'new')
-      fs.rmSync(a.dest, { force: true }); // ponytail: leaves empty parent dirs; harmless
-    else {
-      const src = path.join(dir, path.relative(dirs.home, a.dest));
-      if (fs.existsSync(src)) {
-        fs.mkdirSync(path.dirname(a.dest), { recursive: true }); // dest dir may have been removed since install
-        cp(src, a.dest);
-      }
-    }
-  }
+  restoreBackupInternal(user, dir, dirs);
 }
 
 export async function install(user: string, opts?: InstallOpts): Promise<void> {
