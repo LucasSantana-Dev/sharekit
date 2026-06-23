@@ -1,0 +1,38 @@
+{
+  "name": "sharekit",
+  "version": "0.1.0",
+  "description": "Share your AI coding setup with anyone — one command to install, one to rollback.",
+  "keywords": ["ai", "claude", "cursor", "copilot", "dotfiles", "cli", "config"],
+  "license": "MIT",
+  "type": "module",
+  "bin": {
+    "sharekit": "./dist/index.js"
+  },
+  "files": [
+    "dist/",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json && chmod +x dist/index.js",
+    "dev": "tsx src/index.ts",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "prepublishOnly": "pnpm run build"
+  },
+  "dependencies": {
+    "@iarna/toml": "^2.2.5",
+    "kleur": "^4.1.5"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.7.0"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/LucasSantana-Dev/sharekit.git"
+  }
+}
