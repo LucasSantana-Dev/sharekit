@@ -15,6 +15,7 @@ import {
   confirm,
   list,
   update,
+  uninstall,
   type InstallOpts,
 } from './sharekit.js';
 
@@ -24,19 +25,20 @@ const STATE = path.join(HOME, '.sharekit');
 const VERSION = '0.3.0';
 const USAGE = `${kleur.bold('sharekit')} v${VERSION} — share your AI coding setup
 
-  ${kleur.cyan('init')}     [skill...]              scaffold a publishable profile in ./sharekit-profile
-                              --force              override high-severity secret blocking
-  ${kleur.cyan('scan')}     [dir]                   scan an existing profile for secrets
-                              --force              exit 0 even if high-severity findings detected
-  ${kleur.cyan('install')}  <user>[@<ref>] [opts]  fetch, preview, apply a profile
-                              --include-hooks      also install settings.json with shell hooks
-  ${kleur.cyan('preview')}  <user>[@<ref>]         show changes, apply nothing
-  ${kleur.cyan('list')}                            show installed profiles & versions
-  ${kleur.cyan('update')}   <user>                 refresh a profile to latest with diff
-  ${kleur.cyan('rollback')} <user> [opts]          restore the last backup
-                              --list               list available backups
-                              --to <stamp>         restore a specific backup by timestamp
-  ${kleur.cyan('search')}   [query]                discover published profiles on GitHub
+  ${kleur.cyan('init')}       [skill...]              scaffold a publishable profile in ./sharekit-profile
+                                --force              override high-severity secret blocking
+  ${kleur.cyan('scan')}       [dir]                   scan an existing profile for secrets
+                                --force              exit 0 even if high-severity findings detected
+  ${kleur.cyan('install')}    <user>[@<ref>] [opts]  fetch, preview, apply a profile
+                                --include-hooks      also install settings.json with shell hooks
+  ${kleur.cyan('preview')}    <user>[@<ref>]         show changes, apply nothing
+  ${kleur.cyan('list')}                              show installed profiles & versions
+  ${kleur.cyan('update')}     <user>                 refresh a profile to latest with diff
+  ${kleur.cyan('rollback')}   <user> [opts]          restore the last backup
+                                --list               list available backups
+                                --to <stamp>         restore a specific backup by timestamp
+  ${kleur.cyan('uninstall')}  <user>                 clean removal of an installed profile
+  ${kleur.cyan('search')}     [query]                discover published profiles on GitHub
 
   Publish yours: a GitHub repo named ${kleur.cyan('sharekit-profile')} with a ${kleur.cyan('sharekit.toml')}.
   Pin to a branch/tag: ${kleur.cyan('sharekit install user@v1.0')} or ${kleur.cyan('sharekit install user@stable')}.
@@ -199,6 +201,17 @@ async function main() {
 
     // Default: restore latest
     await rollback(user);
+    return;
+  }
+
+  if (cmd === 'uninstall') {
+    console.log();
+    const user = rest.find((x) => !x.startsWith('--'));
+    if (!user) {
+      console.error(kleur.red('usage: sharekit uninstall <user>'));
+      process.exit(1);
+    }
+    await uninstall(user);
     return;
   }
 
