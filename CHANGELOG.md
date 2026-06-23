@@ -7,21 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-06-23
+
 ### Added
 
-- Ref pinning support for locked profile versions
-- Init cursor mode and shared mode for faster profile setup
-- `--include-hooks` flag to optionally include hook configurations during install
-- Backup pruning to clean old profile backups
+- Profile version pinning: `sharekit install <user>@<ref>` resolves a git tag or branch (ADR-0001)
+- `init` now scaffolds `cursor/` and `shared/` alongside `claude/`
+- `--include-hooks` flag to opt into installing `settings.json` (gated behind an extra confirmation)
+- Automatic backup pruning — keeps the 5 most recent backups per profile
 
 ### Fixed
 
-- Symlink files are now skipped during copy to avoid dangling references
-- Executable bit (chmod +x) is preserved on shell scripts and binaries
-- More friendly error messages for git and TOML parsing failures
-- Rollback now creates intermediate directories if needed
+- Skip symlinks when copying a profile (no following into arbitrary files; dir-links no longer `EISDIR`)
+- Preserve the executable bit when copying files (e.g. a skill's `toggle.sh`)
+- Friendlier errors for missing `git` and malformed `sharekit.toml`
+- Rollback recreates parent directories removed since install
 
-## [0.1.0] - 2024-XX-XX
+### Changed
+
+- CI runs a Node 20/22 matrix with a Prettier format gate; tag-triggered npm release workflow
+
+## [0.1.0] - 2026-06-23
 
 ### Added
 
