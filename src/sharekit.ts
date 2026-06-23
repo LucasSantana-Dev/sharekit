@@ -10,6 +10,10 @@ import kleur from 'kleur';
 const HOME = os.homedir();
 const STATE = path.join(HOME, '.sharekit');
 
+// Defence-in-depth: size cap for sharekit.toml to prevent DoS on pathological input.
+// Typical manifests are a few KB; 512 KB is a generous cap that catches obvious abuses.
+const MAX_MANIFEST_BYTES = 512 * 1024; // 512 KB
+
 // profile/<tool>/** mirrors into these roots — one rule, not a filename allowlist
 const ROOTS: Record<string, string> = {
   claude: path.join(HOME, '.claude'),
@@ -117,6 +121,14 @@ export function readManifest(profileDir: string): {
   const p = path.join(profileDir, 'sharekit.toml');
   if (!fs.existsSync(p))
     throw new Error(`Not a sharekit profile (no sharekit.toml in ${profileDir})`);
+
+  // Defence-in-depth: reject oversized manifests before parsing to prevent DoS
+  const stat = fs.statSync(p);
+  if (stat.size > MAX_MANIFEST_BYTES) {
+    throw new Error(
+      `Invalid sharekit.toml: manifest too large (${(stat.size / 1024).toFixed(1)} KB, max ${(MAX_MANIFEST_BYTES / 1024).toFixed(0)} KB)`
+    );
+  }
   let parsed: Record<string, unknown>;
   try {
     parsed = parseToml(fs.readFileSync(p, 'utf8')) as Record<string, unknown>;

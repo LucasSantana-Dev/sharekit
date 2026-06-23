@@ -48,3 +48,11 @@ test('readManifest throws a clear error on malformed sharekit.toml', () => {
   fs.writeFileSync(path.join(tmp, 'sharekit.toml'), 'this is = = not valid toml ][');
   assert.throws(() => readManifest(tmp), /Invalid sharekit\.toml/);
 });
+
+// #4 — readManifest rejects oversized manifests before parsing (defence-in-depth DoS guard)
+test('readManifest rejects manifest over size cap', () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'sk-size-'));
+  const oversized = 'x'.repeat(600 * 1024);
+  fs.writeFileSync(path.join(tmp, 'sharekit.toml'), oversized);
+  assert.throws(() => readManifest(tmp), /Invalid sharekit\.toml.*too large/);
+});
