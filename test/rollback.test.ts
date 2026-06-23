@@ -261,3 +261,92 @@ test('backup gracefully handles missing install state (no version recorded)', ()
 
   fs.rmSync(tmp, { recursive: true });
 });
+
+
+
+test('multi-user isolation: alice and bob backups/restores are independent', () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'sk-multiuser-'));
+  const profile = path.join(tmp, 'profile');
+  const homeAlice = path.join(tmp, 'home-alice');
+  const homeBob = path.join(tmp, 'home-bob');
+  const state = path.join(tmp, 'state');
+
+  // Setup shared profile
+  fs.mkdirSync(path.join(profile, 'claude'), { recursive: true });
+  fs.writeFileSync(path.join(profile, 'claude', 'config.txt'), 'shared profile config');
+
+  // === ALICE: Initial setup ===
+  fs.mkdirSync(path.join(homeAlice, '.claude'), { recursive: true });
+  fs.writeFileSync(path.join(homeAlice, '.claude', 'config.txt'), 'alice v1');
+
+  const rootsAlice = { claude: path.join(homeAlice, '.claude'), shared: homeAlice };
+  const dirsAlice = { home: homeAlice, state };
+
+  const filesAlice1 = plan(profile, rootsAlice);
+  const { backupDir: aliceBackup1 } = applyProfile(filesAlice1, 'alice', false, dirsAlice);
+  const aliceStamp1 = path.basename(aliceBackup1).slice('alice'.length + 1);
+
+  // === BOB: Initial setup (shares state but separate home) ===
+  fs.mkdirSync(path.join(homeBob, '.claude'), { recursive: true });
+  fs.writeFileSync(path.join(homeBob, '.claude', 'config.txt'), 'bob v1');
+
+  const rootsBob = { claude: path.join(homeBob, '.claude'), shared: homeBob };
+  const dirsBob = { home: homeBob, state };
+
+  const filesBob1 = plan(profile, rootsBob);
+  const { backupDir: bobBackup1 } = applyProfile(filesBob1, 'bob', false, dirsBob);
+  const bobStamp1 = path.basename(bobBackup1).slice('bob'.length + 1);
+
+  // === Verify listBackups isolation ===
+  const aliceBackups = listBackups('alice', state);
+  const bobBackups = listBackups('bob', state);
+  assert.equal(aliceBackups.length, 1, 'alice has 1 backup');
+  assert.equal(bobBackups.length, 1, 'bob has 1 backup');
+
+  // === Modify both users' files ===
+  fs.writeFileSync(path.join(homeAlice, '.claude', 'config.txt'), 'alice v2');
+  fs.writeFileSync(path.join(homeBob, '.claude', 'config.txt'), 'bob v2');
+
+  // === Alice restores to her backup ===
+  restoreBackupToStamp('alice', aliceStamp1, dirsAlice);
+  assert.equal(
+    fs.readFileSync(path.join(homeAlice, '.claude', 'config.txt'), 'utf8'),
+    'alice v1',
+    'alice restored to v1'
+  );
+
+  // === CRITICAL TEST: Bob's files must not be affected ===
+  assert.equal(
+    fs.readFileSync(path.join(homeBob, '.claude', 'config.txt'), 'utf8'),
+    'bob v2',
+    'bob file unchanged by alice restore (separate home)'
+  );
+
+  // === Bob restores to his backup ===
+  restoreBackupToStamp('bob', bobStamp1, dirsBob);
+  assert.equal(
+    fs.readFileSync(path.join(homeBob, '.claude', 'config.txt'), 'utf8'),
+    'bob v1',
+    'bob restored to v1'
+  );
+
+  // === Verify Alice still unaffected ===
+  assert.equal(
+    fs.readFileSync(path.join(homeAlice, '.claude', 'config.txt'), 'utf8'),
+    'alice v1',
+    'alice unchanged by bob restore'
+  );
+
+  // === Verify backup dirs are separate ===
+  const backupsRoot = path.join(state, 'backups');
+  const all = fs.readdirSync(backupsRoot).sort();
+  const aliceDirs = all.filter((d) => d.startsWith('alice-'));
+  const bobDirs = all.filter((d) => d.startsWith('bob-'));
+  assert.equal(aliceDirs.length, 1, 'alice has 1 backup dir');
+  assert.equal(bobDirs.length, 1, 'bob has 1 backup dir');
+
+  // === Verify charlie (non-existent) has no backups ===
+  assert.equal(listBackups('charlie', state).length, 0, 'non-existent user has no backups');
+
+  fs.rmSync(tmp, { recursive: true });
+});

@@ -245,6 +245,34 @@ export function pruneBackups(user: string, state = STATE): void {
   }
 }
 
+// Helper: read metadata.json from backup directory
+// Returns {sourceVersion?, sourceCommit?} or {} if missing/unparseable
+function readMetadata(backupDir: string): { sourceVersion?: string; sourceCommit?: string | null } {
+  const metadataPath = path.join(backupDir, 'metadata.json');
+  if (!fs.existsSync(metadataPath)) {
+    return {};
+  }
+  try {
+    const metadata = JSON.parse(fs.readFileSync(metadataPath, 'utf8'));
+    return {
+      sourceVersion: metadata.sourceVersion,
+      sourceCommit: metadata.sourceCommit,
+    };
+  } catch {
+    // If metadata can't be read, return empty object
+    return {};
+  }
+}
+
+// Helper: write metadata.json to backup directory
+// Only writes if metadata has keys
+function writeMetadata(backupDir: string, metadata: { sourceVersion?: string; sourceCommit?: string | null }): void {
+  if (Object.keys(metadata).length === 0) {
+    return;
+  }
+  fs.writeFileSync(path.join(backupDir, 'metadata.json'), JSON.stringify(metadata, null, 2));
+}
+
 function backup(
   files: PlanFile[],
   user: string,
@@ -279,9 +307,7 @@ function backup(
   const metadata: { sourceVersion?: string; sourceCommit?: string | null } = {};
   if (sourceVersion !== undefined) metadata.sourceVersion = sourceVersion;
   if (sourceCommit !== undefined) metadata.sourceCommit = sourceCommit;
-  if (Object.keys(metadata).length > 0) {
-    fs.writeFileSync(path.join(dir, 'metadata.json'), JSON.stringify(metadata, null, 2));
-  }
+  writeMetadata(dir, metadata);
 
   return dir;
 }
@@ -374,18 +400,9 @@ function restoreBackupInternal(
   }
 
   // Load metadata (source version/commit) if available
-  const metadataPath = path.join(backupDir, 'metadata.json');
-  let sourceVersion: string | undefined;
-  let sourceCommit: string | null | undefined;
-  if (fs.existsSync(metadataPath)) {
-    try {
-      const metadata = JSON.parse(fs.readFileSync(metadataPath, 'utf8'));
-      sourceVersion = metadata.sourceVersion;
-      sourceCommit = metadata.sourceCommit;
-    } catch {
-      // If metadata can't be read, just continue without it
-    }
-  }
+  const metadata = readMetadata(backupDir);
+  const sourceVersion = metadata.sourceVersion;
+  const sourceCommit = metadata.sourceCommit;
 
   return { filesRestored, filesRemoved, sourceVersion, sourceCommit };
 }
@@ -733,15 +750,8 @@ export async function rollback(user: string): Promise<void> {
   );
 
   let versionStr = '';
-  const metadataPath = path.join(dir, 'metadata.json');
-  if (fs.existsSync(metadataPath)) {
-    try {
-      const metadata = JSON.parse(fs.readFileSync(metadataPath, 'utf8'));
-      if (metadata.sourceVersion) versionStr = ` (v${metadata.sourceVersion})`;
-    } catch {
-      // If metadata can't be read, just continue without version info
-    }
-  }
+  const metadata = readMetadata(dir);
+  if (metadata.sourceVersion) versionStr = ` (v${metadata.sourceVersion})`;
 
   console.log(kleur.bold(`\n  Rollback ${user}${versionStr}  (${applied.length} file(s))\n`));
   if (!(await confirm('Restore?'))) return void console.log(kleur.dim('\n  Aborted.\n'));
