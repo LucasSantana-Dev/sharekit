@@ -4,7 +4,14 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { execSync } from 'node:child_process';
-import { plan, readInstalled, list, fetchProfile, updateApply } from '../src/sharekit.ts';
+import {
+  plan,
+  readInstalled,
+  list,
+  fetchProfile,
+  updateApply,
+  isImmutableRef,
+} from '../src/sharekit.ts';
 
 // FIX 1: Guard classify() against unreadable files (#46)
 test('plan does not crash when dest file is unreadable', () => {
@@ -32,8 +39,8 @@ test('plan does not crash when dest file is unreadable', () => {
     assert.ok(files.length > 0, 'plan should return files');
     const testFile = files.find((f) => f.rel === 'test.txt');
     assert.ok(testFile, 'should have classified the file');
-    // When dest is unreadable, it should be treated as 'new' or classified safely
-    assert.ok(['new', 'changed', 'same'].includes(testFile.status));
+    // When dest is unreadable (catch block), classify() degrades to 'changed' (conservative)
+    assert.equal(testFile.status, 'changed', 'unreadable dest should degrade to changed status');
   } finally {
     // Cleanup: restore permissions before rm
     fs.chmodSync(destFile, 0o644);
@@ -46,26 +53,27 @@ test('readInstalled distinguishes missing from corrupt state file', () => {
   const stateDir = path.join(tmp, 'state');
   fs.mkdirSync(stateDir, { recursive: true });
 
-  // Case 1: missing file → return {}
+  // Case 1: missing file → return {} silently
   const result1 = readInstalled({ home: tmp, state: stateDir });
   assert.deepEqual(result1, {}, 'missing file returns empty object');
 
-  // Case 2: file exists but is corrupt JSON
+  // Case 2: file exists but is corrupt JSON → warn + return {}
   const stateFile = path.join(stateDir, 'installed.json');
   fs.writeFileSync(stateFile, 'not valid json {{{');
 
-  // Should NOT silently swallow; should error or warn
-  const stderrSpy = [];
+  const stderrSpy: string[] = [];
   const originalStderr = console.error;
-  console.error = (...args) => stderrSpy.push(args.join(' '));
+  console.error = (...args: unknown[]) => stderrSpy.push(args.join(' '));
 
   try {
     const result2 = readInstalled({ home: tmp, state: stateDir });
-    // After fix, corrupt file should either:
-    // - throw an error, OR
-    // - return {} BUT with a warning logged
-    // For now, document the expectation; the implementation may throw
-    assert.ok(true, 'readInstalled handles corrupt state gracefully');
+    // Verify warning was emitted
+    assert.ok(stderrSpy.length > 0, 'console.error should have been called');
+    const warning = stderrSpy.join('');
+    assert.match(warning, /corrupt/, 'warning should mention "corrupt"');
+    assert.match(warning, /installed\.json/, 'warning should mention the file path');
+    // Corrupt file still returns {} to allow graceful fallback
+    assert.deepEqual(result2, {}, 'corrupt file returns empty object (graceful fallback)');
   } finally {
     console.error = originalStderr;
   }
@@ -131,33 +139,37 @@ test('cached mutable branch (e.g. @stable) gets refreshed on update', async () =
   assert.equal(v2, 'v2-stable\n', 'second fetch refreshes the cached branch');
 });
 
-test('isImmutableRef treats pinned tags (e.g. release-2) as immutable', () => {
-  // Import the internal function for testing (may need to export it or test indirectly)
-  // For now, test via updateApply behavior:
-  // A ref like 'release-2' should be treated as immutable (no update)
-  // This test is more of an integration test showing the behavior
+test('isImmutableRef: HIGH-CONFIDENCE immutable cases (anchored semver + hex SHA)', () => {
+  // HIGH-CONFIDENCE immutable: anchored dotted semver tags
+  assert.equal(isImmutableRef('v1.0.0'), true, 'v1.0.0 is immutable');
+  assert.equal(isImmutableRef('1.2'), true, '1.2 is immutable');
+  assert.equal(isImmutableRef('v2.0'), true, 'v2.0 is immutable');
+  assert.equal(isImmutableRef('2.1.3'), true, '2.1.3 is immutable');
 
-  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'sk-tag-immutable-'));
-  const stateDir = path.join(tmp, '.sharekit');
-  fs.mkdirSync(stateDir, { recursive: true });
-
-  // Install record with a tag-like ref (not v-prefixed)
-  const stateFile = path.join(stateDir, 'installed.json');
-  fs.writeFileSync(
-    stateFile,
-    JSON.stringify({
-      acme: {
-        user: 'acme',
-        ref: 'release-2',
-        commit: 'abc123def456',
-        version: '2.0',
-        appliedAt: new Date().toISOString(),
-      },
-    })
+  // HIGH-CONFIDENCE immutable: hex commit SHA
+  assert.equal(
+    isImmutableRef('a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1'),
+    true,
+    '40-char hex SHA is immutable'
   );
+  assert.equal(isImmutableRef('abc1234'), true, '7-char hex SHA is immutable');
+});
 
-  // Try to update; should treat it as immutable (no-op)
-  // This is an indirect test; the real test is in ref behavior during updateApply
-  const installed = readInstalled({ home: tmp, state: stateDir });
-  assert.equal(installed.acme.ref, 'release-2');
+test('isImmutableRef: AMBIGUOUS cases bias toward MUTABLE (safe because #52a pull is best-effort)', () => {
+  // Ambiguous branch-like names: treated as MUTABLE to avoid wrongly skipping real branches
+  assert.equal(isImmutableRef('v2-wip'), false, 'v2-wip (branch) is mutable');
+  assert.equal(isImmutableRef('v3-feature'), false, 'v3-feature (branch) is mutable');
+  assert.equal(
+    isImmutableRef('release-2'),
+    false,
+    'release-2 (loose tag, could be branch) is mutable'
+  );
+  assert.equal(isImmutableRef('stable-1'), false, 'stable-1 (loose tag) is mutable');
+  assert.equal(isImmutableRef('v2'), false, 'v2 (bare version, could be branch) is mutable');
+
+  // Known mutable branch names
+  assert.equal(isImmutableRef('main'), false, 'main branch is mutable');
+  assert.equal(isImmutableRef('develop'), false, 'develop branch is mutable');
+  assert.equal(isImmutableRef('HEAD'), false, 'HEAD is mutable');
+  assert.equal(isImmutableRef('stable'), false, 'stable branch is mutable');
 });

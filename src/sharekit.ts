@@ -523,16 +523,16 @@ export function list(dirs: Dirs = DEFAULT_DIRS): void {
 }
 
 // Check if a ref is an immutable ref (tag or commit hash).
-// Heuristic: treat refs that look like tags as immutable, and branch names as mutable.
-function isImmutableRef(ref: string): boolean {
-  // Assume anything that looks like a commit SHA (7-40 hex chars) is immutable
+// Only return true for HIGH-CONFIDENCE immutable cases. Bias toward mutable for ambiguous names
+// because the best-effort git pull (from #52a) harmlessly no-ops on detached checkouts.
+// Wrongly skipping an update to a real branch (the current risk) is worse than attempting
+// a redundant pull on a tag (which fails harmlessly).
+export function isImmutableRef(ref: string): boolean {
+  // Hex commit SHA (7-40 hex chars) is definitely immutable
   if (/^[a-f0-9]{7,40}$/.test(ref)) return true;
-  // Version tags like v1.0.0, v2.1.3-alpha, etc. are immutable
-  if (/^v\d/.test(ref)) return true;
-  // Other tag patterns like release-2, stable-1, final-3, 1.0.0, etc. are typically immutable
-  // (heuristic: refs with hyphens followed by numbers, or purely numeric versions)
-  if (/^[a-z]+-\d/.test(ref) || /^\d+(\.\d+)*/.test(ref)) return true;
-  // Everything else (main, master, develop, dev, HEAD, custom-feature, etc.) are likely mutable branches
+  // Anchored dotted semver: v1.0.0, 1.2, v2.0, etc. Excludes v2-wip, v3-feature, release-2
+  if (/^v?\d+\.\d+(\.\d+)*$/.test(ref)) return true;
+  // Everything else (branches, loose tags, ambiguous names) → mutable. Pull is safe; no-ops on detached.
   return false;
 }
 
