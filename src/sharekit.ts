@@ -176,3 +176,62 @@ export async function rollback(user: string): Promise<void> {
   }
   console.log(kleur.green("\n  ✓ Restored.\n"));
 }
+
+export function init(profileDir: string, skillNames: string[] = [], sourceRoot = HOME): void {
+  // Check if profileDir already exists
+  if (fs.existsSync(profileDir)) {
+    throw new Error(`Profile directory already exists: ${profileDir}`);
+  }
+
+  const username = os.userInfo().username;
+  const profileRoot = path.join(profileDir);
+  fs.mkdirSync(profileRoot, { recursive: true });
+
+  // 1. Create sharekit.toml
+  const tomlContent = `[profile]
+name = "${username}"
+version = "0.1.0"
+description = "My AI coding setup"
+`;
+  fs.writeFileSync(path.join(profileRoot, "sharekit.toml"), tomlContent);
+  console.log(kleur.green(`  + ${tildify(path.join(profileRoot, "sharekit.toml"))}`));
+
+  // 2. Copy CLAUDE.md from source root if it exists
+  const sourceClaude = path.join(sourceRoot, ".claude", "CLAUDE.md");
+  const destClaude = path.join(profileRoot, "claude", "CLAUDE.md");
+  fs.mkdirSync(path.dirname(destClaude), { recursive: true });
+  if (fs.existsSync(sourceClaude)) {
+    fs.copyFileSync(sourceClaude, destClaude);
+    console.log(kleur.green(`  + ${tildify(destClaude)}`));
+  } else {
+    fs.writeFileSync(destClaude, "# My AI coding instructions\n");
+    console.log(kleur.green(`  + ${tildify(destClaude)} (placeholder)`));
+  }
+
+  // 3. Copy skills if specified
+  let skillCount = 0;
+  for (const skillName of skillNames) {
+    const sourceSkill = path.join(sourceRoot, ".claude", "skills", skillName);
+    if (!fs.existsSync(sourceSkill)) {
+      console.log(kleur.yellow(`  ~ skill '${skillName}' not found at ${tildify(sourceSkill)}`));
+      continue;
+    }
+    const destSkillBase = path.join(profileRoot, "claude", "skills", skillName);
+    fs.mkdirSync(destSkillBase, { recursive: true });
+    for (const file of walk(sourceSkill)) {
+      const rel = path.relative(sourceSkill, file);
+      const dest = path.join(destSkillBase, rel);
+      fs.mkdirSync(path.dirname(dest), { recursive: true });
+      fs.copyFileSync(file, dest);
+      console.log(kleur.green(`  + ${tildify(dest)}`));
+      skillCount++;
+    }
+  }
+
+  console.log(
+    kleur.green(
+      `\n  ✓ Created profile at ${tildify(profileRoot)}` +
+        ` (sharekit.toml, CLAUDE.md${skillCount > 0 ? `, ${skillCount} skill file(s)` : ""})`,
+    ),
+  );
+}
