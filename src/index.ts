@@ -3,8 +3,6 @@ import kleur from 'kleur';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import * as os from 'node:os';
-import * as readline from 'node:readline/promises';
-import { stdin as input, stdout as output } from 'node:process';
 import {
   install,
   preview,
@@ -14,18 +12,12 @@ import {
   scan,
   listBackups,
   restoreBackupToStamp,
+  confirm,
   type InstallOpts,
 } from './sharekit.js';
 
 const HOME = os.homedir();
 const STATE = path.join(HOME, '.sharekit');
-
-async function confirm(q: string): Promise<boolean> {
-  const rl = readline.createInterface({ input, output });
-  const a = await rl.question(kleur.bold(`  ${q} (y/N) `));
-  rl.close();
-  return a.trim().toLowerCase() === 'y';
-}
 
 const VERSION = '0.3.0';
 const USAGE = `${kleur.bold('sharekit')} v${VERSION} — share your AI coding setup

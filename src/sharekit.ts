@@ -212,7 +212,7 @@ export function printPlan(files: PlanFile[], manifest: ReturnType<typeof readMan
     );
 }
 
-async function confirm(q: string): Promise<boolean> {
+export async function confirm(q: string): Promise<boolean> {
   const rl = readline.createInterface({ input, output });
   const a = await rl.question(kleur.bold(`  ${q} (y/N) `));
   rl.close();
