@@ -123,6 +123,42 @@ export function readManifest(profileDir: string): {
   };
 }
 
+// Discover published profiles: GitHub IS the registry — search for repos named "sharekit-profile".
+export async function search(query?: string): Promise<void> {
+  const q = encodeURIComponent(`sharekit-profile in:name${query ? ` ${query}` : ''}`);
+  const url = `https://api.github.com/search/repositories?q=${q}&sort=stars&per_page=30`;
+  let data: { items?: Array<Record<string, unknown>> };
+  try {
+    const res = await fetch(url, {
+      headers: { 'User-Agent': 'sharekit-cli', Accept: 'application/vnd.github+json' },
+    });
+    if (!res.ok) throw new Error(`GitHub API ${res.status}`);
+    data = (await res.json()) as typeof data;
+  } catch (e) {
+    throw new Error(`search failed: ${(e as Error).message}`);
+  }
+  const profiles = (data.items ?? []).filter((r) => r.name === 'sharekit-profile');
+  if (!profiles.length) {
+    console.log(
+      kleur.dim(
+        `\n  No profiles found${query ? ` for "${query}"` : ''}. Publish yours: a repo named "sharekit-profile".\n`
+      )
+    );
+    return;
+  }
+  console.log(
+    kleur.bold(`\n  ${profiles.length} profile(s)${query ? ` matching "${query}"` : ''}:\n`)
+  );
+  for (const r of profiles) {
+    const owner = (r.owner as { login?: string } | undefined)?.login ?? '?';
+    const stars = (r.stargazers_count as number) || 0;
+    console.log(`  ${kleur.cyan(owner)}${stars ? kleur.dim(`  ★${stars}`) : ''}`);
+    if (r.description) console.log(kleur.dim(`    ${r.description as string}`));
+    console.log(kleur.dim(`    → sharekit install ${owner}`));
+  }
+  console.log();
+}
+
 export function plan(profileDir: string, roots = ROOTS): PlanFile[] {
   const files: PlanFile[] = [];
   for (const [tool, root] of Object.entries(roots)) {

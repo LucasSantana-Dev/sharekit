@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-06-23
+
+### Added
+
+- `sharekit search [query]` — discover published profiles (queries GitHub for repos named `sharekit-profile`; GitHub is the registry, no server). Each result shows its install one-liner.
+
 ## [0.2.1] - 2026-06-23
 
 ### Security
