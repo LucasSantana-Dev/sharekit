@@ -3,7 +3,7 @@ import * as path from 'node:path';
 import * as os from 'node:os';
 import * as readline from 'node:readline/promises';
 import { stdin as input, stdout as output } from 'node:process';
-import { execSync } from 'node:child_process';
+import { execFileSync } from 'node:child_process';
 import TOML from '@iarna/toml';
 import kleur from 'kleur';
 
@@ -24,6 +24,14 @@ interface PlanFile {
   dest: string;
   rel: string;
   status: Status;
+}
+
+// injectable so backup/restore can target a temp dir in tests (default: real ~/.sharekit + $HOME)
+type Dirs = { home: string; state: string };
+const DEFAULT_DIRS: Dirs = { home: HOME, state: STATE };
+
+export interface InstallOpts {
+  includeHooks?: boolean;
 }
 
 const tildify = (p: string) => (p.startsWith(HOME) ? '~' + p.slice(HOME.length) : p);
@@ -57,7 +65,7 @@ export function fetchProfile(
     // If a ref is specified, don't pull (it's a detached pinned checkout). Just reuse.
     if (!ref) {
       try {
-        execSync(`git -C "${dir}" pull --ff-only`, { stdio: 'pipe' });
+        execFileSync('git', ['-C', dir, 'pull', '--ff-only'], { stdio: 'pipe' });
       } catch {
         // ponytail: refresh is best-effort — offline / no-remote falls back to the cached copy
       }
@@ -70,16 +78,19 @@ export function fetchProfile(
 
   try {
     if (ref) {
-      execSync(`git clone --depth 1 --branch "${ref}" "${url}" "${dir}"`, { stdio: 'pipe' });
+      execFileSync('git', ['clone', '--depth', '1', '--branch', ref, '--', url, dir], {
+        stdio: 'pipe',
+      });
     } else {
-      execSync(`git clone --depth 1 "${url}" "${dir}"`, { stdio: 'pipe' });
+      execFileSync('git', ['clone', '--depth', '1', '--', url, dir], { stdio: 'pipe' });
     }
   } catch (e) {
-    if ((e as { status?: number }).status === 127) {
+    if ((e as { code?: string }).code === 'ENOENT') {
       throw new Error('git not found — install git to use sharekit (https://git-scm.com)');
     }
-    const errMsg = (e as Error).message || '';
-    if (ref && errMsg.includes('not found in')) {
+    const errOut =
+      ((e as { stderr?: Buffer }).stderr?.toString() ?? '') + ((e as Error).message ?? '');
+    if (ref && errOut.includes('not found')) {
       throw new Error(`ref '${ref}' not found in ${user}'s profile`);
     }
     throw new Error(
@@ -165,8 +176,8 @@ async function confirm(q: string): Promise<boolean> {
 }
 
 // Prune backups, keeping only the most recent 5
-function pruneBackups(user: string): void {
-  const root = path.join(STATE, 'backups');
+export function pruneBackups(user: string, state = STATE): void {
+  const root = path.join(state, 'backups');
   if (!fs.existsSync(root)) return;
 
   const dirs = fs
@@ -182,13 +193,18 @@ function pruneBackups(user: string): void {
   }
 }
 
-function backup(files: PlanFile[], user: string, includeHooks = false): string {
+function backup(
+  files: PlanFile[],
+  user: string,
+  includeHooks = false,
+  dirs: Dirs = DEFAULT_DIRS
+): string {
   const stamp = new Date().toISOString().replace(/[:.]/g, '-');
-  const dir = path.join(STATE, 'backups', `${user}-${stamp}`);
+  const dir = path.join(dirs.state, 'backups', `${user}-${stamp}`);
   const applied = files.filter((f) => f.status !== 'same' && !isExecutable(f, includeHooks));
   fs.mkdirSync(dir, { recursive: true });
   for (const f of applied.filter((f) => f.status === 'changed')) {
-    const t = path.join(dir, path.relative(HOME, f.dest));
+    const t = path.join(dir, path.relative(dirs.home, f.dest));
     fs.mkdirSync(path.dirname(t), { recursive: true });
     cp(f.dest, t);
   }
@@ -218,16 +234,17 @@ function write(files: PlanFile[], includeHooks = false): number {
 export function applyProfile(
   files: PlanFile[],
   user: string,
-  includeHooks = false
+  includeHooks = false,
+  dirs: Dirs = DEFAULT_DIRS
 ): { backupDir: string; filesWritten: number } {
-  const backupDir = backup(files, user, includeHooks);
+  const backupDir = backup(files, user, includeHooks, dirs);
   const filesWritten = write(files, includeHooks);
-  pruneBackups(user);
+  pruneBackups(user, dirs.state);
   return { backupDir, filesWritten };
 }
 
-export function restoreBackup(user: string): void {
-  const root = path.join(STATE, 'backups');
+export function restoreBackup(user: string, dirs: Dirs = DEFAULT_DIRS): void {
+  const root = path.join(dirs.state, 'backups');
   const last = fs.existsSync(root)
     ? fs
         .readdirSync(root)
@@ -246,7 +263,7 @@ export function restoreBackup(user: string): void {
     if (a.status === 'new')
       fs.rmSync(a.dest, { force: true }); // ponytail: leaves empty parent dirs; harmless
     else {
-      const src = path.join(dir, path.relative(HOME, a.dest));
+      const src = path.join(dir, path.relative(dirs.home, a.dest));
       if (fs.existsSync(src)) {
         fs.mkdirSync(path.dirname(a.dest), { recursive: true }); // dest dir may have been removed since install
         cp(src, a.dest);
@@ -255,7 +272,7 @@ export function restoreBackup(user: string): void {
   }
 }
 
-export async function install(user: string, opts?: { includeHooks?: boolean }): Promise<void> {
+export async function install(user: string, opts?: InstallOpts): Promise<void> {
   const includeHooks = opts?.includeHooks ?? false;
   const userRef = user.includes('@') ? user.split('@').reverse()[0] : undefined;
   const userName = userRef ? user.slice(0, user.lastIndexOf('@')) : user;
