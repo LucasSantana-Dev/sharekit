@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 import kleur from 'kleur';
-import { install, preview, rollback, init, type InstallOpts } from './sharekit.js';
+import { install, preview, rollback, init, search, type InstallOpts } from './sharekit.js';
 
-const VERSION = '0.2.1';
+const VERSION = '0.3.0';
 const USAGE = `${kleur.bold('sharekit')} v${VERSION} — share your AI coding setup
 
   ${kleur.cyan('init')}     [skill...]              scaffold a publishable profile in ./sharekit-profile
@@ -10,6 +10,7 @@ const USAGE = `${kleur.bold('sharekit')} v${VERSION} — share your AI coding se
                               --include-hooks      also install settings.json with shell hooks
   ${kleur.cyan('preview')}  <user>[@<ref>]         show changes, apply nothing
   ${kleur.cyan('rollback')} <user>                 restore the last backup
+  ${kleur.cyan('search')}   [query]                discover published profiles on GitHub
 
   Publish yours: a GitHub repo named ${kleur.cyan('sharekit-profile')} with a ${kleur.cyan('sharekit.toml')}.
   Pin to a branch/tag: ${kleur.cyan('sharekit install user@v1.0')} or ${kleur.cyan('sharekit install user@stable')}.
@@ -27,6 +28,11 @@ async function main() {
   if (cmd === 'init') {
     console.log();
     init('./sharekit-profile', rest);
+    return;
+  }
+
+  if (cmd === 'search') {
+    await search(rest.find((x) => !x.startsWith('--')));
     return;
   }
 

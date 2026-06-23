@@ -15,6 +15,17 @@ npx @lucassantana/sharekit preview <github-user>   # see what would change, appl
 npx @lucassantana/sharekit rollback <github-user>  # restore the last backup
 ```
 
+## Discover profiles
+
+GitHub is the registry — find published profiles (any repo named `sharekit-profile`):
+
+```bash
+npx @lucassantana/sharekit search           # list all published profiles
+npx @lucassantana/sharekit search react     # filter by keyword
+```
+
+Each result shows the one-liner to install it.
+
 ### Pin to a version
 
 Install a specific tag or branch of a profile instead of the latest:
