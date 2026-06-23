@@ -88,7 +88,7 @@ export function parseUserRef(user: string): { user: string; ref?: string } {
   return { user: userName, ref };
 }
 
-function walk(dir: string): string[] {
+export function walk(dir: string): string[] {
   return walkWithSymlinks(dir).files;
 }
 
