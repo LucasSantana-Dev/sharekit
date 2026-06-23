@@ -4,7 +4,7 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { init } from '../src/sharekit.ts';
-import TOML from '@iarna/toml';
+import { parse as parseToml } from 'smol-toml';
 
 test('init scaffolds a publishable profile from source root', () => {
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'sk-init-'));
@@ -29,7 +29,9 @@ test('init scaffolds a publishable profile from source root', () => {
 
   // Verify sharekit.toml was created
   assert(fs.existsSync(path.join(profileDir, 'sharekit.toml')));
-  const toml = TOML.parse(fs.readFileSync(path.join(profileDir, 'sharekit.toml'), 'utf8'));
+  const toml = parseToml(fs.readFileSync(path.join(profileDir, 'sharekit.toml'), 'utf8')) as {
+    profile: { name: string; version: string };
+  };
   assert.equal(toml.profile.name, os.userInfo().username);
   assert.equal(toml.profile.version, '0.1.0');
 

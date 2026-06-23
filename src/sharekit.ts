@@ -4,7 +4,7 @@ import * as os from 'node:os';
 import * as readline from 'node:readline/promises';
 import { stdin as input, stdout as output } from 'node:process';
 import { execFileSync } from 'node:child_process';
-import TOML from '@iarna/toml';
+import { parse as parseToml } from 'smol-toml';
 import kleur from 'kleur';
 
 const HOME = os.homedir();
@@ -117,9 +117,9 @@ export function readManifest(profileDir: string): {
   const p = path.join(profileDir, 'sharekit.toml');
   if (!fs.existsSync(p))
     throw new Error(`Not a sharekit profile (no sharekit.toml in ${profileDir})`);
-  let parsed: ReturnType<typeof TOML.parse>;
+  let parsed: Record<string, unknown>;
   try {
-    parsed = TOML.parse(fs.readFileSync(p, 'utf8'));
+    parsed = parseToml(fs.readFileSync(p, 'utf8')) as Record<string, unknown>;
   } catch (e) {
     throw new Error(`Invalid sharekit.toml: ${(e as Error).message}`);
   }
