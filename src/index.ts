@@ -13,6 +13,8 @@ import {
   listBackups,
   restoreBackupToStamp,
   confirm,
+  list,
+  update,
   type InstallOpts,
 } from './sharekit.js';
 
@@ -29,6 +31,8 @@ const USAGE = `${kleur.bold('sharekit')} v${VERSION} — share your AI coding se
   ${kleur.cyan('install')}  <user>[@<ref>] [opts]  fetch, preview, apply a profile
                               --include-hooks      also install settings.json with shell hooks
   ${kleur.cyan('preview')}  <user>[@<ref>]         show changes, apply nothing
+  ${kleur.cyan('list')}                            show installed profiles & versions
+  ${kleur.cyan('update')}   <user>                 refresh a profile to latest with diff
   ${kleur.cyan('rollback')} <user> [opts]          restore the last backup
                               --list               list available backups
                               --to <stamp>         restore a specific backup by timestamp
@@ -68,6 +72,23 @@ async function main() {
     const dir = rest.find((x) => !x.startsWith('--'));
     const force = flags.includes('--force');
     await scan(dir, force);
+    return;
+  }
+
+  if (cmd === 'list') {
+    console.log();
+    list();
+    return;
+  }
+
+  if (cmd === 'update') {
+    console.log();
+    const user = rest.find((x) => !x.startsWith('--'));
+    if (!user) {
+      console.error(kleur.red('usage: sharekit update <user>'));
+      process.exit(1);
+    }
+    await update(user);
     return;
   }
 
