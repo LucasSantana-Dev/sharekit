@@ -26,6 +26,12 @@ interface PlanFile {
   status: Status;
 }
 
+// Track skipped symlinks during walk
+interface WalkResult {
+  files: string[];
+  skippedSymlinks: string[];
+}
+
 export interface Finding {
   rule: string;
   file?: string;
@@ -42,14 +48,38 @@ export interface InstallOpts {
   includeHooks?: boolean;
 }
 
-const tildify = (p: string) => (p.startsWith(HOME) ? '~' + p.slice(HOME.length) : p);
+const tildify = (p: string) => {
+  if (!p.startsWith(HOME)) return p;
+  // Normalize separators to forward slashes for cross-platform display
+  return '~' + p.slice(HOME.length).split(path.sep).join('/');
+};
+
+// Track skipped symlinks for the current plan
+let currentPlanSkippedSymlinks: string[] = [];
+
+export function walkWithSymlinks(dir: string): WalkResult {
+  const files: string[] = [];
+  const skippedSymlinks: string[] = [];
+
+  const traverse = (currentDir: string) => {
+    for (const e of fs.readdirSync(currentDir, { withFileTypes: true })) {
+      const p = path.join(currentDir, e.name);
+      if (e.isSymbolicLink()) {
+        skippedSymlinks.push(p);
+      } else if (e.isDirectory()) {
+        traverse(p);
+      } else {
+        files.push(p);
+      }
+    }
+  };
+
+  traverse(dir);
+  return { files, skippedSymlinks };
+}
 
 function walk(dir: string): string[] {
-  return fs.readdirSync(dir, { withFileTypes: true }).flatMap((e) => {
-    if (e.isSymbolicLink()) return []; // skip symlinks: don't follow into arbitrary files; dir-links would EISDIR on copy
-    const p = path.join(dir, e.name);
-    return e.isDirectory() ? walk(p) : [p];
-  });
+  return walkWithSymlinks(dir).files;
 }
 
 // copy a file, preserving its mode (e.g. a skill's executable toggle.sh)
@@ -169,13 +199,23 @@ export async function search(query?: string): Promise<void> {
 
 export function plan(profileDir: string, roots = ROOTS): PlanFile[] {
   const files: PlanFile[] = [];
+  currentPlanSkippedSymlinks = []; // Reset for this plan
+  
   for (const [tool, root] of Object.entries(roots)) {
     const base = path.join(profileDir, tool);
     if (!fs.existsSync(base)) continue;
-    for (const src of walk(base)) {
+    
+    const walkResult = walkWithSymlinks(base);
+    for (const src of walkResult.files) {
       const rel = path.relative(base, src);
       const dest = path.join(root, rel);
       files.push({ tool, src, dest, rel, status: classify(src, dest) });
+    }
+    
+    // Collect skipped symlinks for this tool
+    for (const symlink of walkResult.skippedSymlinks) {
+      const rel = path.relative(base, symlink);
+      currentPlanSkippedSymlinks.push(path.join(root, rel));
     }
   }
   return files;
