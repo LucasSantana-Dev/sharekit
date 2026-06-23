@@ -42,7 +42,11 @@ export interface InstallOpts {
   includeHooks?: boolean;
 }
 
-const tildify = (p: string) => (p.startsWith(HOME) ? '~' + p.slice(HOME.length) : p);
+const tildify = (p: string) => {
+  if (!p.startsWith(HOME)) return p;
+  // Normalize separators to forward slashes for cross-platform display
+  return '~' + p.slice(HOME.length).split(path.sep).join('/');
+};
 
 function walk(dir: string): string[] {
   return fs.readdirSync(dir, { withFileTypes: true }).flatMap((e) => {
