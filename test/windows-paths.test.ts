@@ -13,7 +13,11 @@ test('tildify: handles Windows path separators correctly', () => {
   const windowsPath = 'C:\\Users\\alice\\.claude\\skills\\brainstorm';
   const homeWin = 'C:\\Users\\alice';
   const winResult = testTildify(windowsPath, homeWin, '\\');
-  assert.equal(winResult, '~/.claude/skills/brainstorm', 'Windows paths should be normalized to forward slashes');
+  assert.equal(
+    winResult,
+    '~/.claude/skills/brainstorm',
+    'Windows paths should be normalized to forward slashes'
+  );
   const external = '/mnt/external/data';
   const noHomeResult = testTildify(external, HOME, '/');
   assert.equal(noHomeResult, external, 'Paths not under home should be unchanged');

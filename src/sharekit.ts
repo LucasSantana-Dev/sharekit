@@ -218,18 +218,18 @@ export async function search(query?: string): Promise<void> {
 export function plan(profileDir: string, roots = ROOTS): PlanFile[] {
   const files: PlanFile[] = [];
   currentPlanSkippedSymlinks = []; // Reset for this plan
-  
+
   for (const [tool, root] of Object.entries(roots)) {
     const base = path.join(profileDir, tool);
     if (!fs.existsSync(base)) continue;
-    
+
     const walkResult = walkWithSymlinks(base);
     for (const src of walkResult.files) {
       const rel = path.relative(base, src);
       const dest = path.join(root, rel);
       files.push({ tool, src, dest, rel, status: classify(src, dest) });
     }
-    
+
     // Collect skipped symlinks for this tool
     for (const symlink of walkResult.skippedSymlinks) {
       const rel = path.relative(base, symlink);
@@ -801,6 +801,42 @@ export async function preview(user: string): Promise<void> {
   console.log();
 }
 
+export async function inspect(user: string): Promise<void> {
+  const userRef = user.includes('@') ? user.split('@').reverse()[0] : undefined;
+  const userName = userRef ? user.slice(0, user.lastIndexOf('@')) : user;
+
+  const dir = fetchProfile(userName, userRef);
+  const manifest = readManifest(dir);
+  const files = plan(dir);
+
+  console.log();
+  console.log(
+    kleur.bold(`Profile: ${manifest.name}${manifest.version ? ' v' + manifest.version : ''}`)
+  );
+  if (manifest.description) console.log(kleur.dim('  ' + manifest.description));
+
+  if (files.length === 0) {
+    console.log(kleur.dim('\n  (empty profile)\n'));
+    return;
+  }
+
+  // Group files by tool
+  const byTool: Record<string, string[]> = {};
+  for (const f of files) {
+    if (!byTool[f.tool]) byTool[f.tool] = [];
+    byTool[f.tool].push(f.rel);
+  }
+
+  // Print file tree grouped by tool
+  for (const tool of Object.keys(byTool).sort()) {
+    console.log(kleur.cyan(`\n  ${tool}/`));
+    for (const rel of byTool[tool].sort()) {
+      console.log(`    ${rel}`);
+    }
+  }
+  console.log();
+}
+
 export async function rollback(user: string): Promise<void> {
   const root = path.join(STATE, 'backups');
   const last = fs.existsSync(root)
@@ -842,7 +878,11 @@ export async function rollback(user: string): Promise<void> {
   console.log();
 }
 
-export async function uninstall(user: string, dirs: Dirs = DEFAULT_DIRS, force = false): Promise<void> {
+export async function uninstall(
+  user: string,
+  dirs: Dirs = DEFAULT_DIRS,
+  force = false
+): Promise<void> {
   const installed = readInstalled(dirs);
   const record = installed[user];
 

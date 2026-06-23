@@ -6,6 +6,7 @@ import * as os from 'node:os';
 import {
   install,
   preview,
+  inspect,
   rollback,
   init,
   search,
@@ -32,6 +33,7 @@ const USAGE = `${kleur.bold('sharekit')} v${VERSION} — share your AI coding se
   ${kleur.cyan('install')}    <user>[@<ref>] [opts]  fetch, preview, apply a profile
                                 --include-hooks      also install settings.json with shell hooks
   ${kleur.cyan('preview')}    <user>[@<ref>]         show changes, apply nothing
+  ${kleur.cyan('inspect')}    <user>[@<ref>]         view profile contents before installing
   ${kleur.cyan('list')}                              show installed profiles & versions
   ${kleur.cyan('update')}     <user>                 refresh a profile to latest with diff
   ${kleur.cyan('rollback')}   <user> [opts]          restore the last backup
@@ -45,7 +47,7 @@ const USAGE = `${kleur.bold('sharekit')} v${VERSION} — share your AI coding se
 `;
 
 type CmdFn = (arg: string, opts?: InstallOpts) => Promise<void>;
-const cmds: Record<string, CmdFn> = { install, preview, rollback };
+const cmds: Record<string, CmdFn> = { install, preview, inspect, rollback };
 
 export async function main(argv = process.argv.slice(2)) {
   const [cmd, ...rest] = argv;
@@ -223,7 +225,7 @@ export async function main(argv = process.argv.slice(2)) {
   const flags = rest.filter((x) => x.startsWith('--'));
   const arg = rest.find((x) => !x.startsWith('--'));
   if (!arg) {
-    const showRef = cmd === 'install' || cmd === 'preview';
+    const showRef = cmd === 'install' || cmd === 'preview' || cmd === 'inspect';
     console.error(kleur.red(`usage: sharekit ${cmd} <user>${showRef ? '[@<ref>]' : ''}`));
     process.exit(1);
   }
