@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { plan, applyProfile, pruneBackups } from '../src/sharekit.ts';
+import { plan, applyProfile, pruneBackups, parseUserRef } from '../src/sharekit.ts';
 
 test('pruneBackups keeps only the 5 most recent for the user', () => {
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'sk-prune-'));
@@ -63,4 +63,18 @@ test('applyProfile installs settings.json only when includeHooks is set', () => 
     'settings.json installed with --include-hooks'
   );
   fs.rmSync(tmp, { recursive: true });
+});
+
+test('parseUserRef splits user and ref', () => {
+  const { user: u1, ref: r1 } = parseUserRef('alice');
+  assert.equal(u1, 'alice', 'user only: no ref');
+  assert.equal(r1, undefined, 'user only: ref is undefined');
+
+  const { user: u2, ref: r2 } = parseUserRef('alice@v1.0');
+  assert.equal(u2, 'alice', 'user@ref: user part');
+  assert.equal(r2, 'v1.0', 'user@ref: ref part');
+
+  const { user: u3, ref: r3 } = parseUserRef('alice@a@b');
+  assert.equal(u3, 'alice@a', 'user@a@b: user part (takes last @)');
+  assert.equal(r3, 'b', 'user@a@b: ref is last segment');
 });

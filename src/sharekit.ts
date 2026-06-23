@@ -78,6 +78,12 @@ export function walkWithSymlinks(dir: string): WalkResult {
   return { files, skippedSymlinks };
 }
 
+export function parseUserRef(user: string): { user: string; ref?: string } {
+  const ref = user.includes('@') ? user.split('@').reverse()[0] : undefined;
+  const userName = ref ? user.slice(0, user.lastIndexOf('@')) : user;
+  return { user: userName, ref };
+}
+
 function walk(dir: string): string[] {
   return walkWithSymlinks(dir).files;
 }
@@ -700,8 +706,7 @@ export async function update(
 
 export async function install(user: string, opts?: InstallOpts): Promise<void> {
   const includeHooks = opts?.includeHooks ?? false;
-  const userRef = user.includes('@') ? user.split('@').reverse()[0] : undefined;
-  const userName = userRef ? user.slice(0, user.lastIndexOf('@')) : user;
+  const { user: userName, ref: userRef } = parseUserRef(user);
 
   const dir = fetchProfile(userName, userRef);
   const manifest = readManifest(dir);
@@ -747,8 +752,7 @@ export async function install(user: string, opts?: InstallOpts): Promise<void> {
 }
 
 export async function preview(user: string): Promise<void> {
-  const userRef = user.includes('@') ? user.split('@').reverse()[0] : undefined;
-  const userName = userRef ? user.slice(0, user.lastIndexOf('@')) : user;
+  const { user: userName, ref: userRef } = parseUserRef(user);
 
   const dir = fetchProfile(userName, userRef);
   console.log();
