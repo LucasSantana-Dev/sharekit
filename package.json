@@ -2,12 +2,22 @@
   "name": "@lucassantana/sharekit",
   "version": "0.1.0",
   "description": "Share your AI coding setup with anyone — one command to install, one to rollback.",
-  "keywords": ["ai", "claude", "cursor", "copilot", "dotfiles", "cli", "config"],
+  "keywords": [
+    "ai",
+    "claude",
+    "cursor",
+    "copilot",
+    "dotfiles",
+    "cli",
+    "config"
+  ],
   "license": "MIT",
-  "publishConfig": { "access": "public" },
+  "publishConfig": {
+    "access": "public"
+  },
   "type": "module",
   "bin": {
-    "sharekit": "./dist/index.js"
+    "sharekit": "dist/index.js"
   },
   "files": [
     "dist/",
@@ -35,6 +45,6 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/LucasSantana-Dev/sharekit.git"
+    "url": "git+https://github.com/LucasSantana-Dev/sharekit.git"
   }
 }
