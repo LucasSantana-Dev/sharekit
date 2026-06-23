@@ -13,6 +13,7 @@ import {
   list,
   update,
   updateApply,
+  uninstall,
 } from '../src/sharekit.ts';
 
 // Exercises the REAL exported helpers (not a hand-rolled copy) via injected dirs,
@@ -410,6 +411,87 @@ test('list guards against invalid appliedAt timestamps', () => {
   assert.ok(outputStr.includes('Jun 23'), 'should show formatted date for good record');
   assert.ok(outputStr.includes('(unknown)'), 'should show (unknown) for invalid/null dates');
   assert.ok(!outputStr.includes('Invalid Date'), 'should never show Invalid Date string');
+
+  fs.rmSync(tmp, { recursive: true });
+});
+
+test('uninstall reverses install → restores changed files, removes new ones, deletes record', async () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'sk-uninstall-'));
+  const profile = path.join(tmp, 'profile');
+  const home = path.join(tmp, 'home');
+  const state = path.join(tmp, 'state');
+
+  // Set up home with a pre-existing file
+  fs.mkdirSync(path.join(home, '.claude'), { recursive: true });
+  fs.writeFileSync(path.join(home, '.claude', 'CLAUDE.md'), 'original content');
+
+  // Set up a profile that will change the existing file and add a new one
+  fs.mkdirSync(path.join(profile, 'claude'), { recursive: true });
+  fs.writeFileSync(path.join(profile, 'claude', 'CLAUDE.md'), 'new profile content');
+  fs.mkdirSync(path.join(profile, 'shared'), { recursive: true });
+  fs.writeFileSync(path.join(profile, 'shared', '.newfile'), 'new shared file');
+
+  const roots = {
+    claude: path.join(home, '.claude'),
+    cursor: path.join(home, '.cursor'),
+    shared: home,
+  };
+  const dirs = { home, state };
+
+  // Install the profile
+  const files = plan(profile, roots);
+  const { backupDir } = applyProfile(files, 'testuser', false, dirs);
+
+  // Record the install
+  recordInstall('testuser', profile, 'main', '1.0.0', dirs);
+
+  // Verify files were applied
+  assert.equal(
+    fs.readFileSync(path.join(home, '.claude', 'CLAUDE.md'), 'utf8'),
+    'new profile content'
+  );
+  assert.equal(fs.readFileSync(path.join(home, '.newfile'), 'utf8'), 'new shared file');
+
+  // Verify install record exists
+  let installed = readInstalled(dirs);
+  assert.ok(installed['testuser'], 'testuser should be recorded as installed');
+
+  // Suppress console output during uninstall
+  const originalLog = console.log;
+  console.log = () => {};
+
+  // Uninstall (force=true to skip confirmation)
+  await uninstall('testuser', dirs, true);
+
+  console.log = originalLog;
+
+  // Verify files were restored/removed
+  assert.equal(
+    fs.readFileSync(path.join(home, '.claude', 'CLAUDE.md'), 'utf8'),
+    'original content',
+    'changed file should be restored'
+  );
+  assert.ok(!fs.existsSync(path.join(home, '.newfile')), 'new file should be removed');
+
+  // Verify install record was deleted
+  installed = readInstalled(dirs);
+  assert.ok(!installed['testuser'], 'testuser record should be deleted');
+
+  fs.rmSync(tmp, { recursive: true });
+});
+
+test('uninstall throws friendly error if user not installed', async () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'sk-uninstall-err-'));
+  const state = path.join(tmp, 'state');
+  const dirs = { home: tmp, state };
+
+  // No install record for this user
+  assert.rejects(
+    async () => {
+      await uninstall('unknown-user', dirs, true);
+    },
+    { message: /not installed/ }
+  );
 
   fs.rmSync(tmp, { recursive: true });
 });

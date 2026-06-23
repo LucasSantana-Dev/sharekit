@@ -813,6 +813,86 @@ export async function rollback(user: string): Promise<void> {
   console.log();
 }
 
+export async function uninstall(user: string, dirs: Dirs = DEFAULT_DIRS, force = false): Promise<void> {
+  const installed = readInstalled(dirs);
+  const record = installed[user];
+
+  if (!record) {
+    throw new Error(`${user} is not installed.`);
+  }
+
+  // Find the latest backup for this user
+  const root = path.join(dirs.state, 'backups');
+  const last = fs.existsSync(root)
+    ? fs
+        .readdirSync(root)
+        .filter((e) => e.startsWith(user + '-'))
+        .sort()
+        .pop()
+    : undefined;
+
+  if (!last) {
+    throw new Error(`No backup found for ${user}. Cannot uninstall without restore information.`);
+  }
+
+  const backupDir = path.join(root, last);
+  const applied: { dest: string; status: Status }[] = JSON.parse(
+    fs.readFileSync(path.join(backupDir, 'applied.json'), 'utf8')
+  );
+
+  // Print what will be removed/restored
+  const toRemove = applied.filter((a) => a.status === 'new');
+  const toRestore = applied.filter((a) => a.status === 'changed');
+
+  console.log();
+  console.log(kleur.bold(`  Uninstall ${user}${record.version ? ` (v${record.version})` : ''}\n`));
+
+  if (toRemove.length > 0) {
+    console.log(kleur.red(`  - remove (${toRemove.length})`));
+    for (const a of toRemove) {
+      console.log(kleur.red(`    ${tildify(a.dest)}`));
+    }
+  }
+
+  if (toRestore.length > 0) {
+    console.log(kleur.yellow(`\n  ~ restore (${toRestore.length})`));
+    for (const a of toRestore) {
+      console.log(kleur.yellow(`    ${tildify(a.dest)}`));
+    }
+  }
+
+  console.log();
+  if (!force && !(await confirm(`Remove ${user}?`))) {
+    return void console.log(kleur.dim('\n  Aborted.\n'));
+  }
+
+  // Execute the uninstall: reverse all changes
+  for (const a of applied) {
+    if (a.status === 'new') {
+      // File was added by the profile — remove it
+      fs.rmSync(a.dest, { force: true });
+    } else if (a.status === 'changed') {
+      // File was changed — restore from backup
+      const src = path.join(backupDir, path.relative(dirs.home, a.dest));
+      if (fs.existsSync(src)) {
+        fs.mkdirSync(path.dirname(a.dest), { recursive: true });
+        cp(src, a.dest);
+      }
+    }
+  }
+
+  // Remove user from installed.json
+  delete installed[user];
+  const stateFile = path.join(dirs.state, 'installed.json');
+  fs.writeFileSync(stateFile, JSON.stringify(installed, null, 2));
+
+  const summary = `${toRemove.length} file(s) removed${
+    toRestore.length > 0 ? `, ${toRestore.length} restored` : ''
+  }`;
+  console.log(kleur.green(`\n  ✓ Uninstalled ${user}. ${summary}`));
+  console.log();
+}
+
 export async function scan(dir?: string, force = false): Promise<void> {
   const profileDir = dir ?? './sharekit-profile';
 
