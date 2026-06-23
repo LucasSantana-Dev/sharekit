@@ -528,18 +528,21 @@ test('scan throws friendly error when profile directory does not exist', async (
 });
 
 test('scan defaults to ./sharekit-profile when no dir specified', async () => {
-  const tmp = process.cwd();
-  const profileDir = path.join(tmp, 'sharekit-profile');
-
-  // Create a temporary clean profile in the working directory (if needed in the test)
-  // For this test, we verify the function accepts undefined and throws appropriately
+  // Run in an isolated empty cwd so the default ./sharekit-profile is absent
+  // (the repo root ships an example sharekit-profile/, which would otherwise be scanned).
+  const cwd = process.cwd();
+  const isolated = fs.mkdtempSync(path.join(os.tmpdir(), 'sk-scan-default-'));
   const { scan } = await import('../src/sharekit.js');
 
   let caughtError: Error | null = null;
   try {
-    await scan(undefined, false); // Should use default ./sharekit-profile
+    process.chdir(isolated);
+    await scan(undefined, false); // Should use default ./sharekit-profile (absent here)
   } catch (e) {
     caughtError = e as Error;
+  } finally {
+    process.chdir(cwd);
+    fs.rmSync(isolated, { recursive: true, force: true });
   }
 
   assert(
