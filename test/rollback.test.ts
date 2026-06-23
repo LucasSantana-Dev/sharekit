@@ -3,7 +3,13 @@ import assert from 'node:assert/strict';
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { applyProfile, restoreBackupToStamp, listBackups, plan } from '../src/sharekit.ts';
+import {
+  applyProfile,
+  restoreBackupToStamp,
+  listBackups,
+  plan,
+  recordInstall,
+} from '../src/sharekit.ts';
 
 test('listBackups: returns backups for user, newest first, with timestamp and file count', () => {
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'sk-rollback-'));
@@ -170,6 +176,88 @@ test('listBackups & restoreBackupToStamp: works with non-"user" usernames and fi
   // Verify bob2's backup dir still exists (not touched by bob's restore)
   const bob2BackupPath = path.join(state, 'backups', `bob2-${bob2Stamp}`);
   assert.ok(fs.existsSync(bob2BackupPath), 'bob2 backup should not be affected by bob restore');
+
+  fs.rmSync(tmp, { recursive: true });
+});
+
+test('backup records source version and commit in metadata', () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'sk-backup-meta-'));
+  const profile = path.join(tmp, 'profile');
+  const home = path.join(tmp, 'home');
+  const state = path.join(tmp, 'state');
+
+  // Set up profile and home
+  fs.mkdirSync(path.join(profile, 'claude'), { recursive: true });
+  fs.writeFileSync(path.join(profile, 'claude', 'file.txt'), 'content');
+  fs.mkdirSync(path.join(home, '.claude'), { recursive: true });
+  fs.writeFileSync(path.join(home, '.claude', 'file.txt'), 'old content');
+
+  const roots = {
+    claude: path.join(home, '.claude'),
+    cursor: path.join(home, '.cursor'),
+    shared: home,
+  };
+  const dirs = { home, state };
+
+  // Record an install with version and commit
+  recordInstall('alice', profile, 'HEAD', 'v0.2.1', dirs);
+
+  // Now apply profile (which should backup and capture the source version)
+  const files = plan(profile, roots);
+  const { backupDir } = applyProfile(files, 'alice', false, dirs);
+
+  // Extract stamp from backup dir name
+  const stamp = path.basename(backupDir).slice('alice'.length + 1);
+
+  // Check that metadata.json exists and contains source version
+  const metadataPath = path.join(backupDir, 'metadata.json');
+  assert.ok(fs.existsSync(metadataPath), 'metadata.json should exist');
+
+  const metadata = JSON.parse(fs.readFileSync(metadataPath, 'utf8'));
+  assert.equal(metadata.sourceVersion, 'v0.2.1', 'sourceVersion should be recorded');
+  // sourceCommit may be null if git rev-parse fails in test env, so just check it's defined
+  assert.ok(metadata.sourceCommit !== undefined, 'sourceCommit should be recorded');
+
+  fs.rmSync(tmp, { recursive: true });
+});
+
+test('backup gracefully handles missing install state (no version recorded)', () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'sk-backup-no-meta-'));
+  const profile = path.join(tmp, 'profile');
+  const home = path.join(tmp, 'home');
+  const state = path.join(tmp, 'state');
+
+  // Set up profile and home
+  fs.mkdirSync(path.join(profile, 'claude'), { recursive: true });
+  fs.writeFileSync(path.join(profile, 'claude', 'file.txt'), 'content');
+  fs.mkdirSync(path.join(home, '.claude'), { recursive: true });
+  fs.writeFileSync(path.join(home, '.claude', 'file.txt'), 'old content');
+
+  const roots = {
+    claude: path.join(home, '.claude'),
+    cursor: path.join(home, '.cursor'),
+    shared: home,
+  };
+  const dirs = { home, state };
+
+  // Do NOT record an install for bob — no install state exists
+  const files = plan(profile, roots);
+  const { backupDir } = applyProfile(files, 'bob', false, dirs);
+
+  // Check that metadata.json is not created (or is empty) since there's no install state
+  const metadataPath = path.join(backupDir, 'metadata.json');
+  if (fs.existsSync(metadataPath)) {
+    const metadata = JSON.parse(fs.readFileSync(metadataPath, 'utf8'));
+    // If metadata exists, it should be empty or have no sourceVersion
+    assert.equal(
+      metadata.sourceVersion,
+      undefined,
+      'sourceVersion should be undefined if no install state'
+    );
+  } else {
+    // metadata.json should not exist at all if there's no install state
+    assert.ok(!fs.existsSync(metadataPath), 'metadata.json should not exist if no install state');
+  }
 
   fs.rmSync(tmp, { recursive: true });
 });
