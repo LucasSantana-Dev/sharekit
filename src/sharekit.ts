@@ -392,6 +392,32 @@ export async function rollback(user: string): Promise<void> {
   console.log(kleur.green('\n  ✓ Restored.\n'));
 }
 
+export async function scan(dir?: string, force = false): Promise<void> {
+  const profileDir = dir ?? './sharekit-profile';
+
+  // Check if profile directory exists
+  if (!fs.existsSync(profileDir)) {
+    throw new Error(
+      `No profile at ${profileDir} — run 'sharekit init' first to create a profile directory.`
+    );
+  }
+
+  console.log();
+
+  // Walk the directory and scan all files for secrets
+  const allFindings: Finding[] = [];
+  const files = walk(profileDir);
+  for (const file of files) {
+    const content = fs.readFileSync(file, 'utf8');
+    const relPath = path.relative(profileDir, file);
+    const findings = scanForSecrets(content, relPath);
+    allFindings.push(...findings);
+  }
+
+  // Print findings and apply gate logic (shared with init)
+  printAndGateFindings(allFindings, force);
+}
+
 // Construct a preview string from a line, given match index and window params.
 // Adds leading/trailing ellipsis when substring is clipped.
 function truncatePreview(
@@ -406,6 +432,34 @@ function truncatePreview(
   const leading = addLeadingEllipsis && start > 0 ? '…' : '';
   const trailing = end < line.length ? '…' : '';
   return leading + line.substring(start, end) + trailing;
+}
+
+// Shared helper: print findings and apply gate logic (high-severity blocks unless force=true)
+function printAndGateFindings(findings: Finding[], force = false): void {
+  if (findings.length === 0) {
+    console.log(kleur.green('  ✓ No secrets detected.\n'));
+    return;
+  }
+
+  // Print warnings if secrets found
+  console.log(kleur.yellow(`\n  ⚠  Secret patterns detected:`));
+  for (const finding of findings) {
+    console.log(
+      kleur.yellow(`    ${finding.file}:${finding.line} [${finding.rule}] ${finding.preview}`)
+    );
+  }
+  console.log(
+    kleur.yellow(`\n  ⚠  Review and redact secrets before pushing to a public repository.\n`)
+  );
+
+  // Gate: block export if high-severity findings and no --force
+  const highSeverityFindings = findings.filter((f) => f.severity === 'high');
+  if (highSeverityFindings.length > 0 && !force) {
+    throw new Error(
+      `Secrets export blocked: ${highSeverityFindings.length} high-severity finding(s) detected. ` +
+        `Review and remove secrets, or re-run with --force to override.`
+    );
+  }
 }
 
 export function scanForSecrets(content: string, fileLabel?: string): Finding[] {
@@ -654,27 +708,6 @@ description = "My AI coding setup"
     )
   );
 
-  // Check for high-severity findings
-  const highSeverityFindings = allFindings.filter((f) => f.severity === 'high');
-
-  // Print warnings if secrets found
-  if (allFindings.length > 0) {
-    console.log(kleur.yellow(`\n  ⚠  Secret patterns detected:`));
-    for (const finding of allFindings) {
-      console.log(
-        kleur.yellow(`    ${finding.file}:${finding.line} [${finding.rule}] ${finding.preview}`)
-      );
-    }
-    console.log(
-      kleur.yellow(`\n  ⚠  Review and redact secrets before pushing to a public repository.\n`)
-    );
-  }
-
-  // Gate: block export if high-severity findings and no --force
-  if (highSeverityFindings.length > 0 && !force) {
-    throw new Error(
-      `Secrets export blocked: ${highSeverityFindings.length} high-severity finding(s) detected. ` +
-        `Review and remove secrets, or re-run with --force to override.`
-    );
-  }
+  // Print findings and apply gate logic (shared with scan)
+  printAndGateFindings(allFindings, force);
 }

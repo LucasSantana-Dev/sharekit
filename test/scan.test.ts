@@ -422,3 +422,163 @@ test('init with medium-severity finding warns but exits 0 without --force', () =
   );
   fs.rmSync(tmp, { recursive: true });
 });
+
+// Tests for scan() command
+test('scan detects high-severity secrets in existing profile and blocks without --force', async () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'sk-scan-high-'));
+  const profileDir = path.join(tmp, 'sharekit-profile');
+
+  // Create a profile with a high-severity secret
+  fs.mkdirSync(path.join(profileDir, 'claude'), { recursive: true });
+  fs.writeFileSync(
+    path.join(profileDir, 'claude', 'CLAUDE.md'),
+    '# instructions\n-----BEGIN PRIVATE KEY-----\nTest\n-----END PRIVATE KEY-----'
+  );
+  fs.writeFileSync(path.join(profileDir, 'sharekit.toml'), '[profile]\nname = "test"\n');
+
+  const { scan } = await import('../src/sharekit.js');
+
+  let caughtError: Error | null = null;
+  try {
+    await scan(profileDir, false);
+  } catch (e) {
+    caughtError = e as Error;
+  }
+
+  assert(caughtError !== null, 'Should throw when high-severity finding detected and force=false');
+  assert(
+    caughtError.message.includes('blocked') || caughtError.message.includes('high-severity'),
+    'Error should mention blocking or high-severity'
+  );
+  fs.rmSync(tmp, { recursive: true });
+});
+
+test('scan allows high-severity secrets in existing profile with --force', async () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'sk-scan-force-'));
+  const profileDir = path.join(tmp, 'sharekit-profile');
+
+  // Create a profile with a high-severity secret
+  fs.mkdirSync(path.join(profileDir, 'claude'), { recursive: true });
+  fs.writeFileSync(
+    path.join(profileDir, 'claude', 'CLAUDE.md'),
+    '# instructions\n-----BEGIN PRIVATE KEY-----\nTest\n-----END PRIVATE KEY-----'
+  );
+  fs.writeFileSync(path.join(profileDir, 'sharekit.toml'), '[profile]\nname = "test"\n');
+
+  const { scan } = await import('../src/sharekit.js');
+
+  let caughtError: Error | null = null;
+  try {
+    await scan(profileDir, true); // force=true
+  } catch (e) {
+    caughtError = e as Error;
+  }
+
+  assert.equal(caughtError, null, 'Should not throw when high-severity finding but force=true');
+  fs.rmSync(tmp, { recursive: true });
+});
+
+test('scan exits cleanly for profile with no secrets', async () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'sk-scan-clean-'));
+  const profileDir = path.join(tmp, 'sharekit-profile');
+
+  // Create a clean profile
+  fs.mkdirSync(path.join(profileDir, 'claude'), { recursive: true });
+  fs.writeFileSync(path.join(profileDir, 'claude', 'CLAUDE.md'), '# clean instructions\n');
+  fs.writeFileSync(path.join(profileDir, 'sharekit.toml'), '[profile]\nname = "test"\n');
+
+  const { scan } = await import('../src/sharekit.js');
+
+  let caughtError: Error | null = null;
+  let output = '';
+  const originalLog = console.log;
+  console.log = (...args: unknown[]) => {
+    output += args.join(' ') + '\n';
+    originalLog(...args);
+  };
+
+  try {
+    await scan(profileDir, false);
+  } catch (e) {
+    caughtError = e as Error;
+  } finally {
+    console.log = originalLog;
+  }
+
+  assert.equal(caughtError, null, 'Should not throw for clean profile');
+  assert(output.includes('No secrets detected'), 'Should report clean profile');
+  fs.rmSync(tmp, { recursive: true });
+});
+
+test('scan throws friendly error when profile directory does not exist', async () => {
+  const { scan } = await import('../src/sharekit.js');
+
+  let caughtError: Error | null = null;
+  try {
+    await scan('/nonexistent/profile', false);
+  } catch (e) {
+    caughtError = e as Error;
+  }
+
+  assert(caughtError !== null, 'Should throw when profile directory does not exist');
+  assert(
+    caughtError.message.includes('No profile'),
+    'Error message should mention missing profile'
+  );
+});
+
+test('scan defaults to ./sharekit-profile when no dir specified', async () => {
+  const tmp = process.cwd();
+  const profileDir = path.join(tmp, 'sharekit-profile');
+
+  // Create a temporary clean profile in the working directory (if needed in the test)
+  // For this test, we verify the function accepts undefined and throws appropriately
+  const { scan } = await import('../src/sharekit.js');
+
+  let caughtError: Error | null = null;
+  try {
+    await scan(undefined, false); // Should use default ./sharekit-profile
+  } catch (e) {
+    caughtError = e as Error;
+  }
+
+  assert(
+    caughtError !== null,
+    'Should throw when ./sharekit-profile does not exist (default case)'
+  );
+});
+
+test('scan warns but exits cleanly for medium-severity findings', async () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'sk-scan-medium-'));
+  const profileDir = path.join(tmp, 'sharekit-profile');
+
+  // Create a profile with only medium-severity secret
+  fs.mkdirSync(path.join(profileDir, 'claude'), { recursive: true });
+  fs.writeFileSync(
+    path.join(profileDir, 'claude', 'CLAUDE.md'),
+    '# instructions\nAPI_TOKEN=faketoken000001'
+  );
+  fs.writeFileSync(path.join(profileDir, 'sharekit.toml'), '[profile]\nname = "test"\n');
+
+  const { scan } = await import('../src/sharekit.js');
+
+  let caughtError: Error | null = null;
+  let output = '';
+  const originalLog = console.log;
+  console.log = (...args: unknown[]) => {
+    output += args.join(' ') + '\n';
+    originalLog(...args);
+  };
+
+  try {
+    await scan(profileDir, false);
+  } catch (e) {
+    caughtError = e as Error;
+  } finally {
+    console.log = originalLog;
+  }
+
+  assert.equal(caughtError, null, 'Should not throw for medium-severity findings');
+  assert(output.includes('Secret patterns detected'), 'Should warn about medium-severity findings');
+  fs.rmSync(tmp, { recursive: true });
+});
