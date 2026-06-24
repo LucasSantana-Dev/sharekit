@@ -1,9 +1,44 @@
-# .snyk
+# .snyk — Snyk policy file
+# https://snyk.io/docs/snyk-cli/test-for-vulnerabilities/the-.snyk-file/
 version: v1.25.0
 ignore:
+  # ─── Test fixtures ───────────────────────────────────────────────────────────
+  # scan.test.ts deliberately contains fake AWS key and PEM patterns to verify
+  # that scanForSecrets() detects them. These are not real credentials.
   HardcodedNonCryptoSecret:
     - 'test/scan.test.ts':
         reason: >
-          Intentional test fixture for the secret scanner — these patterns are used to
-          verify that scanForSecrets() detects AWS key and private key patterns. Not real credentials.
+          Intentional test fixtures for the scanForSecrets() function — used to
+          verify detection of AWS key and PEM patterns. Not real credentials.
+        expires: '2028-01-01T00:00:00.000Z'
+
+  # ─── sharekit-profile CLI tools (false positives) ────────────────────────────
+  # sharekit-profile/ distributes the operator's Claude profile: 100+ developer
+  # CLI scripts that intentionally accept file paths and shell commands as
+  # arguments. They run exclusively on the developer's own machine, never as
+  # web services. Path traversal / command injection findings are not applicable.
+  PathTraversal:
+    - 'sharekit-profile':
+        reason: >
+          Internal CLI developer tools. These scripts accept arbitrary paths as
+          command-line arguments by design and run on the developer's own machine,
+          not as web services. Path traversal is not applicable.
+        expires: '2028-01-01T00:00:00.000Z'
+  CommandInjection:
+    - 'sharekit-profile':
+        reason: >
+          Internal CLI scripts that intentionally shell out to developer tools
+          (servers, linters, compilers). Runs on developer's machine only.
+        expires: '2028-01-01T00:00:00.000Z'
+  ImproperTypeValidation:
+    - 'sharekit-profile':
+        reason: >
+          Eval fixture files (evals/fixtures/) used for testing, not production
+          endpoints. No untrusted user input reaches these files.
+        expires: '2028-01-01T00:00:00.000Z'
+  XSS:
+    - 'sharekit-profile':
+        reason: >
+          Bundled third-party UI helper scripts (live-browser.js is a build
+          artifact). Not exposed as web endpoints.
         expires: '2028-01-01T00:00:00.000Z'
