@@ -61,6 +61,7 @@ COMMON_EXCLUDES=(
   --exclude='*-workspace/'
   --exclude='worktrees/'
   --exclude='backlog/'
+  --exclude='__pycache__/'
 )
 
 rsync -a --delete "${COMMON_EXCLUDES[@]}" "$SOURCE_DIR/skills/"    "$PROFILE_DIR/skills/"
@@ -80,6 +81,19 @@ echo "Agents: $(ls "$PROFILE_DIR/agents/" | wc -l) files"
 
 **Agent vs. Skill distinction:** Agents and skills publish to separate namespaces — `~/.claude/skills/` → `sharekit-profile/skills/` and `~/.claude/agents/` → `sharekit-profile/agents/`. Always explicitly surface this in the count summary (e.g. "42 agents synced from ~/.claude/agents/, not skills/") so the caller knows where each type lives.
 
+### Phase 2a — Agent namespace clarity
+
+Before proceeding to sanitization, explicitly state which agents and skills were identified:
+
+**Important:** Agent files and skill files are **not interchangeable**.
+- **Skills** (e.g., `loop`, `mutation-test`, `parallel-phases`) live in `~/.claude/skills/` and sync to `sharekit-profile/skills/`
+- **Agents** (e.g., `loop-engineer`, `tdd-practitioner`, `mutation-tester`, `parallel-implementer`) live in `~/.claude/agents/` and sync to `sharekit-profile/agents/`
+
+Each agent is a **separate, independent definition** in the `agents/` namespace — not a subdirectory within `skills/`. When reporting counts in the output, explicitly note:
+```
+Agents: 42 files synced from ~/.claude/agents/ (published as agents/, not skills/)
+```
+
 ---
 
 ## Phase 3 — Sanitize personal references
@@ -87,12 +101,14 @@ echo "Agents: $(ls "$PROFILE_DIR/agents/" | wc -l) files"
 Replace machine-specific and identity references with generic placeholders. Apply to all copied files:
 
 ```bash
-find "$PROFILE_DIR" -type f \( -name "*.md" -o -name "*.sh" -o -name "*.py" -o -name "*.json" -o -name "*.toml" \) | while read f; do
+# Use /usr/bin/find explicitly — RTK's find wrapper silently drops compound -o predicates
+/usr/bin/find "$PROFILE_DIR" -type f \( -name "*.md" -o -name "*.sh" -o -name "*.py" -o -name "*.json" -o -name "*.toml" -o -name "*-gate" -o -name "*-reminder" \) | while read f; do
   # Personal paths
   sed -i '' 's|${DEV_ROOT}|${DEV_ROOT}|g' "$f"
   sed -i '' 's|~|~|g' "$f"
   
-  # GitHub identity
+  # GitHub identity (with and without -Dev suffix)
+  sed -i '' 's|<github-user>|<github-user>|g' "$f"
   sed -i '' 's|<github-user>|<github-user>|g' "$f"
   sed -i '' 's|<github-user>|<github-user>|g' "$f"
   
@@ -100,7 +116,7 @@ find "$PROFILE_DIR" -type f \( -name "*.md" -o -name "*.sh" -o -name "*.py" -o -
   sed -i '' 's|<your-name>@gmail\.com|<your-email>|g' "$f"
   
   # Homelab paths
-  sed -i '' 's|${HOMELAB_ROOT}|${HOMELAB_ROOT}|g' "$f"
+  sed -i '' 's|/home/luk-server/homelab|${HOMELAB_ROOT}|g' "$f"
 done
 ```
 
@@ -112,7 +128,7 @@ After sanitization, grep for any remaining personal references. Show actual resu
 
 ```bash
 PERSONAL_REFS=$(grep -rl \
-  "<github-user>\|<github-user>\|<your-name>\|~\|<homelab-server>" \
+  "<github-user>\|<github-user>\|<your-name>\|~\|luk-server" \
   "$PROFILE_DIR" --include="*.md" --include="*.sh" --include="*.py" 2>/dev/null)
 
 echo "Phase 4 scan: $(echo "$PERSONAL_REFS" | grep -c . || echo 0) files with residual personal refs"
@@ -198,7 +214,7 @@ SYNC-SHAREKIT-PROFILE
   Source:       ~/.claude/ (skills: N dirs, hooks: N files, standards: N files, agents: N files)
   Profile repo: <last-commit-sha> (<date>) → <new-sha | pending | unchanged>
   Excluded:     <each item with reason — "none" if clean>
-                  skills/foo/ — personal-ref (<homelab-server> path)
+                  skills/foo/ — personal-ref (luk-server path)
                   agents/bar.md — personal-ref (email)
   Scan:         CLEAN (HIGH: 0, MED: 0, LOW: N)
   Diff:         N files changed, N added, N removed
