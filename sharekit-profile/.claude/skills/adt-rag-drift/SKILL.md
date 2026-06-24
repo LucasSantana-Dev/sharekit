@@ -12,7 +12,7 @@ triggers:
 
 **Drift** occurs when the index contains chunks from files that have been deleted or modified since indexing. The retrieval system silently returns outdated or orphaned content without error. Detect and fix drift before it degrades quality.
 
-> **Preflight — mount guard** (`standards/knowledge-brain.md` §1): the RAG embedder cache + the brain vault live on the external drive. If `${EXTERNAL_HD}` is unmounted, `query.py`/`build.py` fail and the symlinked memory files read as missing — which looks exactly like "drift". **Do not delete chunks on an unmounted drive**: an absent file during an unmount means *unknown*, not *deleted* (this caused a wrong chunk-deletion 2026-06-18). Check: `mount | grep "${EXTERNAL_HD}"`.
+> **Preflight — mount guard** (`standards/knowledge-brain.md` §1): the RAG embedder cache + the brain vault live on the External HD. If `/Volumes/External HD` is unmounted, `query.py`/`build.py` fail and the symlinked memory files read as missing — which looks exactly like "drift". **Do not delete chunks on an unmounted drive**: an absent file during an unmount means *unknown*, not *deleted* (this caused a wrong chunk-deletion 2026-06-18). Check: `mount | grep "/Volumes/External HD"`.
 
 ## What is drift?
 
@@ -48,7 +48,7 @@ Stale chunks by type:
   
 - Modified (sha mismatch): 12 chunks
   ~/.claude/standards/old-auth.md (last indexed 2024-12-10, modified 2024-12-18)
-  ${DEV_ROOT}/forgekit/src/utils.ts (last indexed 2024-12-15, modified 2024-12-16)
+  /Volumes/External\ HD/Desenvolvimento/forgekit/src/utils.ts (last indexed 2024-12-15, modified 2024-12-16)
 ```
 
 **Drift thresholds:**

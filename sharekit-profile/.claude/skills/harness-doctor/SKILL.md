@@ -41,12 +41,12 @@ Probe active MCP server connections.
 
 **Output**: Display connected servers, status health, and any error patterns.
 
-#### 1.2 external drive Mount
+#### 1.2 External HD Mount
 
-Verify external drive is mounted and accessible.
+Verify External HD is mounted and accessible.
 
 **Check For**:
-- Mount point exists: `${EXTERNAL_HD}`
+- Mount point exists: `/Volumes/External HD`
 - Readable/writable: Can list files and test write
 - Storage quota: Report available space vs. used
 
@@ -141,7 +141,7 @@ HARNESS HEALTH REPORT
 Subsystem                  Status   Message
 ───────────────────────────────────────────────────────────
 MCP Servers                OK       5 servers active, no errors
-external drive Mount          OK       ${EXTERNAL_HD} (127GB, 95GB free)
+External HD Mount          OK       /Volumes/External HD (127GB, 95GB free)
 Claude Env Git Sync        WARN     3 unpushed commits, branch tracking ok
 Graph Freshness            OK       Index updated 2 days ago, queries <1s
 Hooks & Automation         OK       Pre-commit enabled, 4 automations configured
@@ -230,7 +230,7 @@ This skill is complete when:
 - User explicitly cancels the probe
 
 **Avoid Assuming**:
-- Do not assume external drive always exists or is mounted
+- Do not assume External HD always exists or is mounted
 - Do not assume ~/.claude-env is a git repo (check first)
 - Do not assume MCP servers are critical if some are offline
 - Do not assume git is configured or user has push access
@@ -265,7 +265,7 @@ Claude: Runs harness-doctor, generates table, lists suggested fixes.
 HARNESS HEALTH REPORT
 Subsystem                  Status   Message
 MCP Servers                OK       5 servers active
-external drive Mount          OK       127GB mounted
+External HD Mount          OK       127GB mounted
 Claude Env Git Sync        WARN     3 unpushed commits
 Graph Freshness            OK       2 days old
 Hooks & Automation         OK       4 automations active
@@ -323,4 +323,4 @@ MEDIUM: Graph index 15 days old, may slow searches
 **Optimization**:
 - Run probes in parallel where possible
 - Cache MCP list result (refreshes each call)
-- Skip external drive probe if not available (known optional)
+- Skip External HD probe if not available (known optional)

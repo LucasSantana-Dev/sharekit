@@ -199,7 +199,7 @@ no parallel file writes").
 webhook, launchd, CI hook — include the specific event, not just the tool)
 
 **Worktrees**: only when ≥2 agents write code in parallel. Path:
-`${WORKTREES_ROOT}/<loop-name>-<n>/`
+`${DEV_ROOT}/.worktrees/<loop-name>-<n>/`
 
 **Skills**: which SKILL.md files or context files (VISION.md, ARCHITECTURE.md)
 does the agent read at start?

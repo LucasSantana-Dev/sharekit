@@ -40,7 +40,7 @@ Within each wave, identify tasks whose `scope_files_in ∪ scope_files_out` over
 - Re-check for new overlaps; iterate until no overlaps remain
 
 **With `--worktrees` flag:**
-- Allocate one worktree per task: `${WORKTREES_ROOT}/<task-id>-<N>/`
+- Allocate one worktree per task: `${DEV_ROOT}/.worktrees/<task-id>-<N>/`
 - No demotion; tasks work in isolation
 - Orchestrator merges worktrees post-wave (watch for rebase conflicts)
 

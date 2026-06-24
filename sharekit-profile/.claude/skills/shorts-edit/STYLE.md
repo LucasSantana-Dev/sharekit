@@ -42,13 +42,13 @@ Teal-leaning shadows, warm mids, strong saturation, subtle vignette. For already
 
 **Keyword card (Cellbit-style — word appears when spoken, stays 2–3s):**
 ```bash
--vf "drawtext=textfile=keyword.txt:fontfile='<HOME>/Library/Fonts/Anton-Regular.ttf':fontsize=120:fontcolor=white:borderw=6:bordercolor=black:x=(w-text_w)/2:y=700:enable='between(t,8.2,11)'"
+-vf "drawtext=textfile=keyword.txt:fontfile='~/Library/Fonts/Anton-Regular.ttf':fontsize=120:fontcolor=white:borderw=6:bordercolor=black:x=(w-text_w)/2:y=700:enable='between(t,8.2,11)'"
 ```
 
 **Full-screen info card (Patagonia-style — generate a 2s card, concat with hard cut):**
 ```bash
 ffmpeg -y -f lavfi -i color=c=0x101010:s=1080x1920:d=2 \
-  -vf "drawtext=textfile=card.txt:fontfile='<HOME>/Library/Fonts/Anton-Regular.ttf':fontsize=110:fontcolor=white:line_spacing=20:x=(w-text_w)/2:y=(h-text_h)/2" \
+  -vf "drawtext=textfile=card.txt:fontfile='~/Library/Fonts/Anton-Regular.ttf':fontsize=110:fontcolor=white:line_spacing=20:x=(w-text_w)/2:y=(h-text_h)/2" \
   -r 30 -pix_fmt yuv420p card.mp4
 # then concat demuxer with the footage segments — same cadence as the other cuts
 ```

@@ -106,7 +106,7 @@ Halt and surface the blocker if any of these occur:
 - **Non-interactive context** (CI, `/loop`, autonomous agent run) — user cannot respond in real time. Surface: "This skill requires interactive user input (AskUserQuestion); not available in this context."
 - **User declines to answer** (picks "Other", gives vague input, or refuses all options repeatedly) — divergence, not convergence. Surface: "Your responses suggest bounded options aren't framing this correctly. Want to restart with open-ended exploration instead?"
 - **No clear forks exist** (the plan has no real trade-offs, or codebase already answers the decisions) — this skill is the wrong tool. Surface: "This doesn't appear to have decision forks; suggest [grep/ADR review/code read] instead."
-- **external drive unmounted** (if skill later links to RAG/vault) — knowledge lookup fails silently. Check: `mount | grep -q "${EXTERNAL_HD}"` before any rag_query/search_knowledge. Surface: "external drive unmounted — knowledge lookup blocked; cannot proceed."
+- **External HD unmounted** (if skill later links to RAG/vault) — knowledge lookup fails silently. Check: `mount | grep -q "/Volumes/External HD"` before any rag_query/search_knowledge. Surface: "External HD unmounted — knowledge lookup blocked; cannot proceed."
 
 Do not silently fall back; halt and tell the user which condition blocks progress.
 

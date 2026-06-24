@@ -10,6 +10,7 @@ argument-hint: '[secrets|deps|code|config|all]'
 metadata:
   owner: global-agents
   tier: contextual
+  canonical_source: ~/.agents/skills/security-scan
 ---
 
 

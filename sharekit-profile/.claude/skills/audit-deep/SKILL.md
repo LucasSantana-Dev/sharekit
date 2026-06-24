@@ -6,6 +6,7 @@ auto-invoke: 'weekly-per-repo + pre-release + tech-debt-review'
 metadata:
   owner: global-agents
   tier: contextual
+  canonical_source: ~/.claude/skills/audit-deep
 mcp_servers: [rag-index]
 ---
 
@@ -85,11 +86,11 @@ Audits do not know history. Memory does. Before drafting fixes, cross-check all
 HIGH/MEDIUM findings against prior decisions. See `/recall` for full sources; this
 phase uses the verified patterns from `standards/skill-quality-spec.md`.
 
-**Mount guard** (cite `standards/knowledge-brain.md` §1): check external drive is mounted
+**Mount guard** (cite `standards/knowledge-brain.md` §1): check External HD is mounted
 before any recall/RAG:
 ```bash
-mount | grep -q "${EXTERNAL_HD}" || \
-  { echo "BLOCKED: external drive unmounted — recall/RAG unreachable"; exit 0; }
+mount | grep -q "/Volumes/External HD" || \
+  { echo "BLOCKED: External HD unmounted — recall/RAG unreachable"; exit 0; }
 ```
 
 **Per finding, run in parallel:**
@@ -125,7 +126,7 @@ so the user can reconcile manually.
 **Done when:** Ranked plan includes all `AUTO_FIX` CRITICAL/HIGH findings; each finding has a linked composite skill, effort estimate (hours), and impact metric (e.g., "affects 40% of test suite"); NEEDS_REVIEW section lists conflicting memory citations; plan is sortable by impact-per-hour.
 
 ### Phase 4 — Memory + handoff
-Write the report to `$HOME/.claude/projects/-<dev-root>/memory/audit_deep_<repo>_<date>.md`
+Write the report to `$HOME/.claude/projects/-Volumes-External-HD-Desenvolvimento/memory/audit_deep_<repo>_<date>.md`
 (symlinked to knowledge-brain; see `standards/knowledge-brain.md` §2 for write path).
 Update MEMORY.md index so trends are visible across audits.
 
@@ -192,7 +193,7 @@ Snapshot: <path to audit_deep_<repo>_<date>.md>
 ## Stop/Failure Conditions
 
 **Mount guard (Phase 2.5 — cite `standards/knowledge-brain.md` §1):**
-If external drive is unmounted before Phase 2.5, surface the blocker loudly, then skip the
+If External HD is unmounted before Phase 2.5, surface the blocker loudly, then skip the
 memory cross-check and downgrade EVERY finding to NEEDS_REVIEW. The audit report still
 completes; what halts is auto-remediation — never emit an AUTO_FIX tag without the memory
 check (applying a fix that was previously triaged won't-fix is the risk this guards).

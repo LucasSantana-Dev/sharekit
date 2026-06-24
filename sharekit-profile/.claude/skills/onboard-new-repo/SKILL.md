@@ -6,6 +6,7 @@ auto-invoke: first-touch-on-unknown-repo + post-repo-clone
 metadata:
   owner: global-agents
   tier: contextual
+  canonical_source: ~/.claude/skills/onboard-new-repo
 ---
 
 # Onboard New Repo

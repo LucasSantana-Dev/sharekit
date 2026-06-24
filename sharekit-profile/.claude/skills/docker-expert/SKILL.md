@@ -10,6 +10,7 @@ date_added: '2026-02-27'
 metadata:
   owner: global-agents
   tier: ephemeral
+  canonical_source: ~/.agents/skills/docker-expert
 ---
 
 # Docker Expert

@@ -6,6 +6,7 @@ auto-invoke: end-of-task + recall-questions + checkpoint-requests
 metadata:
   owner: global-agents
   tier: contextual
+  canonical_source: ~/.claude/skills/knowledge-loop
 mcp_servers: [claude-mem, rag-index, serena]
 ---
 
@@ -47,11 +48,11 @@ Call `handoff` to write a durable resume packet. Skip if work continues immediat
 Done when: Handoff file written to `~/.claude/handoffs/latest.md` or project-scoped path.
 
 ### Phase 5 — Push to centralized brain (if graph or memory changed)
-Memory and graph live on external drive (ADR-0029). SessionEnd hook auto-pushes; explicit push is needed here if:
+Memory and graph live on External HD (ADR-0029). SessionEnd hook auto-pushes; explicit push is needed here if:
 - **Graph refreshed** (graphify full build or `--update` run this session).
 - **Memory captured AND session is NOT ending soon** (hook won't fire for hours).
 
-**Mount guard required** (§1 in `references/mount-guard.sh`): vault + RAG embedder cache are on external drive. If unmounted, blind push corrupts state. Fail loud, never silent.
+**Mount guard required** (§1 in `references/mount-guard.sh`): vault + RAG embedder cache are on External HD. If unmounted, blind push corrupts state. Fail loud, never silent.
 
 Run: `bash references/push-protocol.sh`. If mount guard blocks → surface blocker as Phase 5 status, halt phase, continue session.
 
@@ -73,7 +74,7 @@ KNOWLEDGE LOOP — <topic>
   Open watch: <future obligation | (none)>
 ```
 
-Each skipped phase includes **why** (e.g., "SKIPPED: pure recall session" not just "SKIPPED"). If mount guard blocks → Phase 5 status is "BLOCKED: external drive unmounted", do not retry.
+Each skipped phase includes **why** (e.g., "SKIPPED: pure recall session" not just "SKIPPED"). If mount guard blocks → Phase 5 status is "BLOCKED: External HD unmounted", do not retry.
 
 ## Signal-first rule
 

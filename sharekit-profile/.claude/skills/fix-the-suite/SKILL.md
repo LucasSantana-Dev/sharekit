@@ -11,6 +11,7 @@ auto-invoke: bloated-suite + slow-suite + test-failure-clusters
 metadata:
   owner: global-agents
   tier: contextual
+  canonical_source: ~/.claude/skills/fix-the-suite
 ---
 
 # Fix The Suite
@@ -36,7 +37,7 @@ blocker, never silently falls back.
 
 ## Workflow
 
-**Pre-flight:** Mount check — if `${EXTERNAL_HD}` unmounted, RAG queries degrade;
+**Pre-flight:** Mount check — if `/Volumes/External HD` unmounted, RAG queries degrade;
 note and proceed with `/config-drift-detect` grep-only fallback mode.
 
 ### Phase 1 — Diagnose
@@ -109,7 +110,7 @@ and `~/.agents/`.
   halt; do not proceed to Phase 3 without resolution
 - **Phase 4 collapse:** Mutation score <40% after cleanup → revert Phase 3 deletions;
   the cleanup removed real protection; resume Phase 2 with integration-test-first strategy
-- **external drive unmounted:** Mount check fails → note that RAG queries will use grep-only
+- **External HD unmounted:** Mount check fails → note that RAG queries will use grep-only
   fallback; proceed
 
 ## Outputs / Evidence

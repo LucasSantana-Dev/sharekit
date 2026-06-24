@@ -17,6 +17,7 @@ metadata:
     optimization and code generation.
   owner: global-agents
   tier: contextual
+  canonical_source: ~/.agents/skills/supabase-postgres-best-practices
 ---
 
 

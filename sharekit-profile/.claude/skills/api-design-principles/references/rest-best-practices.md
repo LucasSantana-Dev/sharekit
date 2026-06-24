@@ -237,7 +237,7 @@ async def get_users(request: Request):
 ### Bearer Token
 
 ```
-Authorization: Bearer eyJhbGciOiJIUzI1NiIs...
+Authorization: Bearer <your-jwt-token>
 
 401 Unauthorized - Missing/invalid token
 403 Forbidden - Valid token, insufficient permissions

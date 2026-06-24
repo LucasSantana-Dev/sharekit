@@ -6,6 +6,7 @@ argument-hint: <NEXT_VERSION> (e.g., 2.7.0)
 metadata:
   owner: lucas-dev
   tier: production
+  canonical_source: ~/.agents/skills/version-bump
 ---
 
 Automate version bumping across an npm monorepo (npm workspaces), promote CHANGELOG entries, and open a PR with auto-merge enabled.

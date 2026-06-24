@@ -27,9 +27,9 @@ Build compact, validation-gated plans for multi-phase work. Use only when reduci
 
 **Step 1: Query existing decisions.** (DONE WHEN: checked for related prior plans/ADRs or no vault mounted)
 
-Run if external drive mounted:
+Run if External HD mounted:
 ```bash
-mount | grep -q "${EXTERNAL_HD}" && \
+mount | grep -q "/Volumes/External HD" && \
   python3 ~/.claude/rag-index/query.py "scope of <topic> / rollout strategy for <topic>" --top 3 --scope handoffs --fast
 ```
 Read `.claude/plans/` for current topic. If a conflicting plan exists, surface blocker and halt — don't replan.
@@ -68,7 +68,7 @@ Use template at `references/plan-template.md`. Include: goal, scope, phases (wit
 
 ## Stop conditions (halt & surface blocker — do not proceed to next step)
 
-- **external drive unmounted:** RAG unavailable; proceed with Step 2 only (local guidance).
+- **External HD unmounted:** RAG unavailable; proceed with Step 2 only (local guidance).
 - **Material ambiguity unresolved:** surface ambiguity, halt before Step 4.
 - **Plan already exists & unchanged:** surface "plan exists at <path>" — validate user intent to replan before restarting.
 

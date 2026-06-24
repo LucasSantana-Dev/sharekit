@@ -5,6 +5,7 @@ description: Use when executing implementation plans with independent tasks in t
 metadata:
   owner: global-agents
   tier: contextual
+  canonical_source: ~/.agents/skills/subagent-driven-development
   progressive_disclosure: split
 ---
 

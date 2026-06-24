@@ -7,6 +7,7 @@ argument-hint: "[<repo-path>]"
 metadata:
   owner: global-agents
   tier: contextual
+  canonical_source: ~/.claude/skills/config-drift-detect
 ---
 
 # Config Drift Detect

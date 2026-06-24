@@ -15,7 +15,7 @@ command -v ffmpeg-full   # text filters (captions/cards) — Homebrew ffmpeg is 
 command -v mlx_whisper || pipx install mlx-whisper  # only needed if footage has speech
 ```
 
-Whisper downloads models to `~/.cache/whisper` (~500MB–1.5GB). Per storage policy, move it to external drive after first run and symlink back.
+Whisper downloads models to `~/.cache/whisper` (~500MB–1.5GB). Per storage policy, move it to External HD after first run and symlink back.
 
 ## Pipeline
 

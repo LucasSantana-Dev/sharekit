@@ -48,7 +48,7 @@ A unit-of-work is "independent" if its inputs do not depend on another unit's ou
 ### Dispatch mechanics
 
 1. **Single tool-use block**: send all `Agent()` calls in ONE assistant message. Multiple messages = serial = violation.
-2. **One worktree per repo-touching agent**: when ≥2 parallel agents will read or write the same repo, each gets its own git worktree at `${WORKTREES_ROOT}/<task>-<agent-n>/`. Use `EnterWorktree` (per-session isolation) or `git worktree add` directly. Do not point multiple agents at the same checkout — index lockfile contention and branch-state races silently corrupt work.
+2. **One worktree per repo-touching agent**: when ≥2 parallel agents will read or write the same repo, each gets its own git worktree at `${DEV_ROOT}/.worktrees/<task>-<agent-n>/`. Use `EnterWorktree` (per-session isolation) or `git worktree add` directly. Do not point multiple agents at the same checkout — index lockfile contention and branch-state races silently corrupt work.
 3. **Pick the right agent type**:
    - `Explore` for read-only search/lookup
    - `general-purpose` for multi-step research
@@ -62,9 +62,9 @@ A unit-of-work is "independent" if its inputs do not depend on another unit's ou
 ### Worktree hygiene
 
 - Naming: `<short-task>-<n>` (e.g. `auth-refactor-1`, `auth-refactor-2`).
-- Location: `${WORKTREES_ROOT}/` (NEVER `~/.claude/worktrees/` or internal-disk paths — see CLAUDE.md storage policy).
+- Location: `${DEV_ROOT}/.worktrees/` (NEVER `~/.claude/worktrees/` or internal-disk paths — see CLAUDE.md storage policy).
 - After parallel agents finish: `git worktree remove` the ones whose work was merged or abandoned. Keep only worktrees with in-flight changes.
-- If `${EXTERNAL_HD}` is unmounted, halt and tell the user rather than falling back to internal disk.
+- If `/Volumes/External HD` is unmounted, halt and tell the user rather than falling back to internal disk.
 
 ### Refusal pattern
 
@@ -75,5 +75,5 @@ If you catch yourself about to execute the second of N independent units sequent
 - [FAIL] Three Read() calls on three files in three separate assistant turns when reading them in parallel would do.
 - [FAIL] Auditing 6 repos by `cd`-ing into each one sequentially. Use `Agent()` × 6 with worktrees.
 - [FAIL] Running `/test-health`, `/config-drift-detect`, `/coverage-gap` in series when they're independent diagnostics. Fan out.
-- [FAIL] Two parallel agents pointed at the same `${DEV_ROOT}/<repo>` checkout. Worktree each.
+- [FAIL] Two parallel agents pointed at the same `~/Desenvolvimento/<repo>` checkout. Worktree each.
 - [FAIL] Asking the user "should I do these in parallel?" when the rule already mandates it — just do it.

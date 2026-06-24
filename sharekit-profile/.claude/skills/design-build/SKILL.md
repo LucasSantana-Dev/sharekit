@@ -10,6 +10,7 @@ auto-invoke: ui-build-requests
 metadata:
   owner: global-agents
   tier: contextual
+  canonical_source: ~/.claude-env/skills/design-build
 ---
 
 # Design Build

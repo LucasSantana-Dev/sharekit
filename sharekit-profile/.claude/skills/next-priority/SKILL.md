@@ -17,9 +17,9 @@ Choose the next action using evidence and repo priority rules, not intuition.
 
 ### 1. Stop/failure conditions — halt if met
 
-- **Mount guard** — external drive required for RAG queries. Verify:
+- **Mount guard** — External HD required for RAG queries. Verify:
   ```bash
-  mount | grep -q "${EXTERNAL_HD}" || { echo "BLOCKED: external drive unmounted — RAG unreachable"; exit 1; }
+  mount | grep -q "/Volumes/External HD" || { echo "BLOCKED: External HD unmounted — RAG unreachable"; exit 1; }
   ```
 - **No repo detected** — `git rev-parse --show-toplevel` fails → surface "not in a repo" and halt.
 - **Ambiguous state** (simultaneous merge conflicts, uncommitted deletions, detached HEAD + active PR) → surface exact conflicts; do not guess intent.

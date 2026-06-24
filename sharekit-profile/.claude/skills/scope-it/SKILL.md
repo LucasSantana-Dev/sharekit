@@ -4,6 +4,7 @@ description: "Map the blast radius of a task before writing any code. Identifies
 metadata:
   owner: global-agents
   tier: ephemeral
+  canonical_source: ~/.claude/skills/scope-it
 ---
 
 # Scope It

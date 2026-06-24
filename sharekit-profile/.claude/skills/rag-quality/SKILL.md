@@ -12,7 +12,7 @@ triggers:
 
 Measure how well the RAG system retrieves relevant documents. Identify zero-hit queries (gaps in the corpus), low-confidence hits, and retrieval quality regressions.
 
-> **Preflight — mount guard** (`standards/knowledge-brain.md` §1): quality checks run `query.py`, whose **embedder cache lives on the external drive**. If `${EXTERNAL_HD}` is unmounted, the embedder won't load and every query looks like a zero-hit/regression — surface the unmount and stop; don't report a false quality collapse. Check: `mount | grep "${EXTERNAL_HD}"`.
+> **Preflight — mount guard** (`standards/knowledge-brain.md` §1): quality checks run `query.py`, whose **embedder cache lives on the External HD**. If `/Volumes/External HD` is unmounted, the embedder won't load and every query looks like a zero-hit/regression — surface the unmount and stop; don't report a false quality collapse. Check: `mount | grep "/Volumes/External HD"`.
 
 ## Quick quality check
 
@@ -64,7 +64,7 @@ Results:
    rrf: 2.85, cos: 0.73, bm25: 8.2
    snippet: "---\nname: rag-quality\ndescription: Evaluate retrieval quality..."
 
-2. path: ${DEV_ROOT}/forgekit/packages/catalog/catalog/skills/adt-rag/SKILL.md
+2. path: /Volumes/External\ HD/Desenvolvimento/forgekit/packages/catalog/catalog/skills/adt-rag/SKILL.md
    rrf: 2.12, cos: 0.61, bm25: 7.1
    snippet: "# Creating a skill\n\nSkills in forgekit..."
 ```

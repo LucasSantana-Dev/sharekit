@@ -19,6 +19,7 @@ platforms:
 metadata:
   owner: global-agents
   tier: contextual
+  canonical_source: ~/.agents/skills/deployment-automation
   progressive_disclosure: split
 ---
 

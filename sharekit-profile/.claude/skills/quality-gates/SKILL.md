@@ -12,6 +12,7 @@ argument-hint: "[all|code|test|security|docs|build]"
 metadata:
   owner: global-agents
   tier: contextual
+  canonical_source: ~/.agents/skills/quality-gates
 triggers:
   - quality gates
   - verify all gates

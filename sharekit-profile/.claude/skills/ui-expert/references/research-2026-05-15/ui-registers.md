@@ -50,7 +50,7 @@ status: research-output
 - Bright cyan/neon accent colors (monochrome signals sophistication; neon signals SaaS energy)
 - Newsletter modal or exit-intent popup (personal portfolios offer one subscribe link, if any)
 
-**Example from <your-domain> R1 failures (F1–F10):**
+**Example from <github-user>.tech R1 failures (F1–F10):**
 - F3: Unsourced metrics ("40% faster") — SaaS tactic, not portfolio
 - F4: Identical bento-card rhythm across sections — SaaS pattern, portfolio needs varied rhythm
 - F5: Newsletter-first CTA strategy — SaaS revenue model, not portfolio identity
@@ -384,7 +384,7 @@ These are not minor variations; they're opposite philosophies. A hybrid skill wo
 
 3. **Option B (split siblings) is the right structure.** Each register has a distinct pattern set (3+ dimension divergences) and anti-pattern set. Unified skill with internal chapters would require 60–80 lines per chapter, defeating code organization benefits of a single skill. Siblings cost more to maintain (boilerplate duplication) but gain clarity and scalability.
 
-4. **Register mismatch is the #1 failure mode in ui-expert v2.** The original <your-domain> failures (F1–F10 from R1) are almost entirely register-mismatch errors: applying SaaS landing patterns to a personal-portfolio brief. Phase 2 gate (register-lock) catches this upstream; Phase 3 test should re-run original <your-domain> brief against new `ui-expert-portfolio` skill to verify all F1–F10 are caught.
+4. **Register mismatch is the #1 failure mode in ui-expert v2.** The original <github-user>.tech failures (F1–F10 from R1) are almost entirely register-mismatch errors: applying SaaS landing patterns to a personal-portfolio brief. Phase 2 gate (register-lock) catches this upstream; Phase 3 test should re-run original <github-user>.tech brief against new `ui-expert-portfolio` skill to verify all F1–F10 are caught.
 
 5. **Anti-pattern rules scale per-register.** R1's 12 rules are ~90% personal-portfolio-specific. SaaS landing needs different rules (hero presence, social-proof visibility, CTA urgency). Each sibling skill should own 3–4 register-specific rules + import ~5 shared rules (CTA discipline, typography hierarchy, palette restraint) from a common library.
 
@@ -414,7 +414,7 @@ Gate 0.5 (register-lock) should:
 2. Ask 1–2 clarifying questions if ambiguous (pre-login vs. post-login, founder brand vs. product, narrative vs. reference)
 3. Route to appropriate sibling skill with detected register pre-filled
 
-Re-test against original <your-domain> brief:
+Re-test against original <github-user>.tech brief:
 - Brief says "portfolio site for engineer" → should route to `ui-expert-portfolio`
 - F1–F10 failures should be caught as register-mismatch errors (applying SaaS patterns to portfolio register)
 

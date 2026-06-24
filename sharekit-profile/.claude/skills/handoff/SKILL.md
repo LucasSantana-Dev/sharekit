@@ -23,11 +23,11 @@ Capture active task state before running out of context, switching models, or st
 
 ## Guard condition
 
-Before writing: verify external drive mounted and target directory is writable.
+Before writing: verify External HD mounted and target directory is writable.
 
 ```bash
-mount | grep -q "${EXTERNAL_HD}" || {
-  echo "BLOCKED: external drive unmounted — cannot write ~/.claude/handoffs/<project>/latest.md"
+mount | grep -q "/Volumes/External HD" || {
+  echo "BLOCKED: External HD unmounted — cannot write ~/.claude/handoffs/<project>/latest.md"
   exit 1
 }
 ```
@@ -37,7 +37,7 @@ mount | grep -q "${EXTERNAL_HD}" || {
 Write to `~/.claude/handoffs/<project>/latest.md` with these sections in order:
 
 - **Active objective** — one sentence, what you're finishing or resuming
-- **Repo, branch, worktree** — exact paths + worktree parent (e.g., `${WORKTREES_ROOT}/my-task/`)
+- **Repo, branch, worktree** — exact paths + worktree parent (e.g., `${DEV_ROOT}/.worktrees/my-task/`)
 - **What changed** — file paths touched, git status summary (no full diffs)
 - **What was verified** — tests passed, deploys green, decision checkpoints cleared
 - **What remains** — next 2–3 steps, in order
@@ -56,7 +56,7 @@ See `references/template.md` for format.
 
 ## Done when
 
-- [ ] external drive mounted
+- [ ] External HD mounted
 - [ ] Target directory exists (`~/.claude/handoffs/<project>/`)
 - [ ] Packet written and readable
 - [ ] Next action is copy-pasteable (tested in same session if possible)

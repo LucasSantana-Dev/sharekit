@@ -6,6 +6,7 @@ auto-invoke: choice-questions + library-evaluations
 metadata:
   owner: global-agents
   tier: contextual
+  canonical_source: ~/.claude/skills/research-and-decide
 ---
 
 # Research and Decide
@@ -45,7 +46,7 @@ search_knowledge(query="<your question>", top=5)
 ```
 If a prior ADR answers the question with high confidence → surface it ("we already decided this in ADR-NNNN; re-open only if <specific condition> changed") and STOP. Skip to Phase 4 (record the decision to keep the prior choice active).
 
-**Mount guard** (`standards/knowledge-brain.md` §1 — fail loud, never silent): before the pre-check, run `mount | grep -q "${EXTERNAL_HD}"`. If unmounted, do NOT silently skip — state plainly: "[WARN] external drive unmounted — prior-decision RAG pre-check skipped; a duplicate ADR may already exist." Then continue to 1b (offline research is fine; the pre-check is an optimization, not a gate).
+**Mount guard** (`standards/knowledge-brain.md` §1 — fail loud, never silent): before the pre-check, run `mount | grep -q "/Volumes/External HD"`. If unmounted, do NOT silently skip — state plainly: "[WARN] External HD unmounted — prior-decision RAG pre-check skipped; a duplicate ADR may already exist." Then continue to 1b (offline research is fine; the pre-check is an optimization, not a gate).
 
 **1b. Explore candidates**
 - Open-ended exploration: invoke `brainstorming` to surface options and constraints

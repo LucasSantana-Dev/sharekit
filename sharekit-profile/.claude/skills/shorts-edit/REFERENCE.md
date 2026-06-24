@@ -23,8 +23,8 @@ mlx_whisper input.mp4 --model mlx-community/whisper-large-v3-turbo --language pt
 - **Default model: `whisper-large-v3-turbo`** — the small model mangled PT-BR badly in production (DeepSeek→"Pissique", ChatGPT→"cheiro de PT", 35%→25%). Turbo is fast on Apple Silicon and dramatically more accurate. Use small only for throwaway drafts.
 - **Always pass `--initial-prompt` with a tech glossary** — it biases Whisper toward the domain terms the video actually uses. Update the term list per video (product names, libs).
 - Even with turbo: review the SRT before burning; numbers spoken on camera (stats, versions) must be confirmed by ear — two runs of the small model disagreed 35% vs 25%.
-- Set `HF_HOME="${EXTERNAL_HD}/.hf-cache"` — model weights are >1GB (storage policy).
-- Model cache lives in `~/.cache/whisper` — move to external drive and symlink once it exceeds ~100MB (storage policy).
+- Set `HF_HOME="/Volumes/External HD/.hf-cache"` — model weights are >1GB (storage policy).
+- Model cache lives in `~/.cache/whisper` — move to External HD and symlink once it exceeds ~100MB (storage policy).
 
 ## Caption styling (force_style values used by captions.sh)
 

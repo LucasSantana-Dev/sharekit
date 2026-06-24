@@ -10,6 +10,7 @@ allowed-tools: Bash(*)
 metadata:
   owner: global-agents
   tier: ephemeral
+  canonical_source: ~/.agents/skills/insights
 ---
 
 
@@ -52,7 +53,7 @@ jq '.hooks.PreToolUse | length' ~/.claude/settings.json 2>/dev/null
 jq '.mcpServers | length' ~/.claude/settings.json 2>/dev/null
 
 # Memory files
-ls ~/.claude/projects/*/memory/ 2>/dev/null | wc -l
+ls ~/.claude/projects/-Users-<github-user>/memory/ 2>/dev/null | wc -l
 ```
 
 ## Report format

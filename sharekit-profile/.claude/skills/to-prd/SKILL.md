@@ -5,6 +5,7 @@ description: |
   Use when: capturing product spec from session context without interview;
   distilling feature requirements into tracked issue; converting decisions/prototypes into formal spec.
 metadata:
+  owner: <your-email>
   tier: sonnet
   canonical_source: null
 ---
@@ -14,7 +15,7 @@ metadata:
 ## Step 1: Gather prior context via RAG
 Mount check before search:
 ```bash
-mount | grep -q "${EXTERNAL_HD}" || { echo "BLOCKED: external drive unmounted — RAG unreachable"; exit 1; }
+mount | grep -q "/Volumes/External HD" || { echo "BLOCKED: External HD unmounted — RAG unreachable"; exit 1; }
 ```
 
 **Done when:** Prior PRDs and architectural decisions are queried and reviewed for consistency.
@@ -69,7 +70,7 @@ Publish the PRD as a new issue/feature request. Apply the `ready-for-agent` tria
 Output verdict first: "PRD published to [tracker] as [issue-link]. Key decisions: [top 3 bullets]. Modules: [list]." Then any caveats or further notes.
 
 ## Stop/failure conditions
-- **RAG unavailable (external drive unmounted):** halt at Step 1, surface blocker.
+- **RAG unavailable (External HD unmounted):** halt at Step 1, surface blocker.
 - **Prior PRD contradicts current context:** halt at Step 1, surface contradiction, require user reconciliation.
 - **Issue tracker not configured:** halt at Step 5, surface configuration requirement.
 - **User rejects module list or testing scope:** return to Step 3, iterate.

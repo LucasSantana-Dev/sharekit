@@ -1,76 +1,93 @@
 ---
 name: decide
-description: 'Composite skill — two-phase decision pipeline with mode routing and decision brief checkpoint. Quick Mode: inline verdict for low-stakes choices (no ADR). Full Mode: chains research-and-decide → decision brief → adr-write for MED/HIGH stake architectural decisions. Stops after Phase 1 if research is inconclusive. Use when making an architectural or tooling decision that needs both a recommendation and a durable record. Triggers: pick between X and Y and record, research and decide before building, choose a tool/pattern and document it, evaluate options with critic challenge, decide between libraries/frameworks.'
+description: 'Composite skill — mode-routed decision pipeline. Quick Mode: verdict-in-text for low-stakes choices (<5 min, no ADR). Full Mode: research-and-decide → decision brief checkpoint → adr-write → memory capture for architectural decisions. Stops after Phase 1 if research is inconclusive. Triggers: decide between X and Y, pick a tool/approach and document it, research and choose, evaluate options with critic, what should we use for X.'
 user-invocable: true
 auto-invoke: 'architectural-decisions-needing-documentation'
 metadata:
   owner: global-agents
   tier: contextual
+  canonical_source: ~/.claude/skills/decide
 ---
 
 # Decide
 
 Research options → reach a recommendation → document it as an ADR.
 
-A workflow that scales to the stakes: low-stakes questions get a quick inline verdict, significant architectural choices get full research + critic + documented ADR. This ensures every decision is handled proportionally — not every choice needs a 30-minute process, but big decisions need a defensible paper trail.
+A three-part workflow: research candidates, challenge the recommendation with critic review, and capture the decision durably. Ensures decisions are defensible and revisitable.
 
-## Mode routing (first step — always)
+## Auto-invocation triggers
 
-Before doing anything else, calibrate the stake level and route accordingly:
+- User asks to "decide between X and Y", "research and decide", "pick a tool/approach and document it"
+- After `adr-gap` flags an undocumented decision that needs retroactive capture
+- When starting a significant architectural choice (ORM, framework, deploy target, caching strategy)
 
-**Quick Decision Mode** — use when ALL of these are true:
-- Choice is reversible within a sprint (swapping a utility function, picking a small helper library, implementation style)
-- Only 2 clear options, no significant architectural coupling
-- Decision affects a single component or file, not a cross-cutting concern
-- No team alignment required, no durable record needed
+---
 
-→ Deliver an inline verdict in under 200 words: state the recommendation, the 1-2 key tradeoffs, and done. No ADR. No research-and-decide. No phases.
+## Mode routing (run before anything else)
 
-**Full Decision Mode** — use when ANY of these is true:
-- Hard to reverse in <1 sprint (ORM choice, deploy target, caching strategy, framework)
-- Affects ≥2 services/modules or sets a cross-team pattern
-- User explicitly asked to "document", "record", or "write an ADR"
-- Stake level is MED or HIGH (see calibration below)
+**Quick Decision Mode** — for low-stakes implementation choices that don't need a durable record:
+- Signals: "should I use X or Y for this one task", utility-library choices, micro-patterns, choices easily reversed in <30 min, choices with no downstream consumers
+- Output: 3–5 sentence verdict inline. Reasoning + key tradeoff + recommendation. No ADR. No research-and-decide.
+- When in doubt: ask "does a wrong answer here cost you more than 1 hour to undo?" If no → Quick Mode.
 
-→ Proceed through all phases below.
+**Full Decision Mode** — for architectural, tooling, or infrastructure decisions that need durability:
+- Signals: framework choice, data layer, caching strategy, auth approach, deploy target, any decision that will outlive the current PR or affect ≥3 files
+- Output: research brief + decision brief checkpoint + ADR file + memory capture
+- Proceed with this mode for everything below.
 
-## Stake calibration (Full Mode only)
+---
 
-| Level | Research effort | Alternatives required |
-|-------|----------------|----------------------|
-| HIGH  | ≥3 alternatives, brainstorm + adr-research | ≥3 (brainstorm extra if needed) |
-| MED   | ≥2 alternatives, surface tradeoffs | ≥2 |
-| LOW   | Quick inline verdict (Quick Mode) | — |
+## Stake calibration
 
-HIGH indicators: cross-service coupling, team-wide pattern, security/compliance surface, hard lock-in, significant cost implications.
+Before invoking research-and-decide, classify stake level:
 
-MED indicators: affects a single service, moderate reversibility cost, team will use this daily.
+| Level | Signals | Alternatives required | ADR required |
+|---|---|---|---|
+| **HIGH** | Framework, data layer, infra dependency, security model | ≥3 with tradeoffs | Yes |
+| **MED** | Library choice, pattern selection, API design | ≥2 with tradeoffs | Yes |
+| **LOW** | Implementation detail, micro-pattern, reversible choice | 1 alternative sufficient | No (Quick Mode) |
 
-## Phase 0 — Guards (Full Mode only)
+HIGH-stake decisions: invoke `brainstorming` AND `adt-research` before recommending. MED-stake: `adt-research` alone is sufficient.
 
-Before invoking research:
+---
 
-1. **Mount guard**: `mount | grep -q "${EXTERNAL_HD}"` — if unmounted, state plainly and continue without RAG; RAG pre-check is optional, not blocking.
+## Workflow
 
-2. **Duplicate ADR check**: search conventional ADR directories (`docs/adr/`, `docs/decisions/`, `adr/`) for an ADR covering the same decision question. If found → emit path in reconciliation, mark "already documented", stop. Do NOT create a duplicate.
+### Phase 0 — Mount guard + duplicate check
 
-## Phase 1 — Research and Recommend (Full Mode only)
+```bash
+mount | grep -q "/Volumes/External HD" || echo "[WARN] External HD unmounted — RAG pre-check skipped"
+```
+
+Check whether an ADR for this decision already exists **before** invoking research-and-decide:
+```bash
+grep -r "<decision-keyword>" docs/adr/ docs/architecture/ adr/ 2>/dev/null | head -5
+```
+
+If a matching ADR exists → surface it immediately: "ADR already exists at [path]. Re-open only if [specific condition] changed." Skip to reconciliation. Do not duplicate.
+
+### Phase 1 — Research and Recommend
 
 Invoke `research-and-decide` on the decision question.
 
-This skill chains internally: RAG pre-check (have we decided this before?) → research candidates → critic challenge → adoption plan → ADR template prep. See `research-and-decide/SKILL.md` for full orchestration.
+This phase chains internally: RAG pre-check → research candidates → decision-critic challenge → adoption plan. See `research-and-decide/SKILL.md` for full orchestration.
 
-**Evidence minimum**: research must surface ≥2 options with explicit tradeoffs before proceeding. If fewer than 2 alternatives are found → push back: "If there's no alternative, this isn't a decision worth recording — provide at least one competing option."
+**Evidence minimum** (enforce before proceeding):
+- ≥2 alternatives with explicit tradeoffs documented (not just named)
+- Each alternative compared on: cost, migration friction, lock-in risk, failure modes specific to this stack
+- Fewer than 2 alternatives → push back: "if there's only one option, this is a constraint, not a decision worth recording."
 
-**Confidence gate**: after research completes, assess confidence:
+**Confidence gate** — classify before proceeding to Phase 1.5:
+- **HIGH confidence**: ≥2 alternatives researched, critic challenge completed, claims-to-verify list verified, one option clearly superior on ≥3 dimensions
+- **MED confidence**: ≥2 alternatives, critic completed, 1–2 unverified claims remain — surface them and proceed with caveat
+- **LOW confidence**: fewer than 2 alternatives, critic flipped leading option without resolution, or critical unknowns block the decision → emit inconclusive, STOP
 
-- **HIGH**: ≥2 alternatives with tradeoffs, critic done, unverified claims listed, one option is clearly superior on the decision criteria → proceed to Phase 1.5
-- **MED**: recommendation exists but 1-2 claims are unverified or the margin is narrow → proceed to Phase 1.5 with caveat flagged
-- **LOW**: no clear winner, critic flipped the leading option, or research returned "requires more constraints" → emit "Phase 1 inconclusive: [reason]. Provide additional constraints before proceeding." Halt; do NOT write ADR.
+**Proceed to Phase 1.5:** confidence is HIGH or MED.
+**Stop:** confidence is LOW → emit `Phase 1 inconclusive: [reason]. Provide [specific missing input] before proceeding.` Do NOT write an ADR for a LOW-confidence decision.
 
-## Phase 1.5 — Decision Brief checkpoint
+### Phase 1.5 — Decision brief checkpoint
 
-Before writing the ADR, emit this structured brief and pause for review (10 seconds without objection = proceed):
+Before writing the ADR, emit a Decision Brief for human review:
 
 ```
 DECISION BRIEF — <decision question>
@@ -78,53 +95,70 @@ DECISION BRIEF — <decision question>
 Recommendation: <chosen option>
 Confidence:     HIGH | MED — <why>
 Stake level:    HIGH | MED
+
 Evidence (top 3):
-  1. <finding with source>
-  2. <finding with source>
-  3. <finding with source>
+1. <strongest evidence point>
+2. <second evidence point>
+3. <third evidence point>
+
 Alternatives considered:
-  • <option A> — <tradeoff vs recommendation>
-  • <option B> — <tradeoff vs recommendation>
-Key unknowns:       <what would change this recommendation>
-Switch triggers:    <specific concrete condition — not "when requirements change">
-Unverified claims:  <from decision-critic's claims-to-verify list, or "none">
+- <option A>: <tradeoff in one sentence>
+- <option B>: <tradeoff in one sentence>
+- <option C if exists>: <tradeoff>
+
+Key unknowns:       <what could change this if verified false>
+Switch triggers:    <specific, concrete condition that would make us rechoose — not "if requirements change">
+Unverified claims:  <from decision-critic's claims-to-verify list — if any>
 ──────────────────────────────────────
 Proceed to write ADR? (10s without objection = yes)
 ```
 
-**Switch trigger quality gate**: triggers must be specific and observable. Examples:
-- GOOD: "When date-fns releases v4 with native timezone support" / "When bundle size exceeds 500KB" / "When we need pub/sub (Redis) not just cache"
-- BAD: "When requirements change" / "When the team grows" / "If performance becomes an issue"
+**Switch triggers must be concrete**, e.g.:
+- "When <library> releases v3 breaking the current adapter"
+- "When monthly cost exceeds $X at current growth rate"
+- "When team grows past N engineers and the shared config becomes a bottleneck"
 
-If no specific trigger can be identified, write: "No anticipated trigger — revisit if [specific observable condition]."
+Vague triggers ("when requirements change", "when we scale") are rejected — push back for a specific condition.
 
-## Phase 2 — Document the Decision (Full Mode only, after brief approval)
+Wait 10 seconds. If user objects or requests changes, revise the brief. If user confirms (or 10s passes), proceed to Phase 2.
 
-Invoke `adr-write` using Phase 1's output and the decision brief.
+### Phase 2 — Document the Decision
 
-Pass to adr-write: decision title, context (the question + why it matters), chosen option + rationale, consequences, alternatives considered, and the switch triggers from the brief.
+Invoke `adr-write` using the Decision Brief's output.
 
-**ADR quality gate** before writing: the ADR must include:
-- ≥2 alternatives with their tradeoffs
-- ≥1 specific switch trigger (not vague)
-If either is missing, loop back to Phase 1 to gather what's needed.
+Pass to adr-write:
+- Decision title
+- Context (the question + why it matters + stake level)
+- Chosen option + rationale (use evidence points from brief)
+- Confidence level + unverified claims (if MED)
+- Alternatives considered with tradeoffs
+- Consequences (positive + negative)
+- Switch triggers (specific, from the brief — not vague)
+
+**ADR quality gate** — the ADR must include:
+- [ ] ≥2 alternatives with explicit tradeoffs (not just listed)
+- [ ] At least 1 specific switch trigger (not "when requirements change")
+- [ ] If MED confidence: unverified claims section noting what to verify post-ADR
 
 See `adr-write/SKILL.md` §3–5 for template, directory search, ADR numbering, and supersession handling.
 
-**Done when:** ADR is staged (not auto-committed), and reconciliation block is emitted.
+**Completion criteria:** ADR file staged (not committed) with all sections; superseded ADRs marked if applicable.
 
-## Phase 3 — Memory capture (Full Mode only)
+### Phase 3 — Memory capture
 
-After ADR is staged, call `save_memory()` to record the decision for future recall:
+After ADR is staged, capture the decision for future session recall:
 
 ```
-save_memory({
-  type: "project",
-  name: "<decision-slug>",
-  summary: "<chosen option> chosen for <decision question> — ADR at <path>",
-  switch_trigger: "<the specific switch trigger from brief>"
-})
+save_memory(
+  key: "decision-<slug>",
+  content: "<decision question> → chose <option>. ADR: <path>. Switch when: <trigger>.",
+  type: "project"
+)
 ```
+
+This ensures future sessions can answer "have we decided X" without reading the ADR file.
+
+---
 
 ## Reconciliation
 
@@ -134,34 +168,42 @@ Always output this block, even on stop/failure:
 DECIDE — <decision question>
   Mode:            Quick | Full
   Stake:           HIGH | MED | LOW
-  Confidence:      HIGH | MED | LOW — <reason>
-  Phase 0 Guards:  passed | blocked (<reason>)
+  Phase 0 Check:   Duplicate found at <path> | No duplicate
   Phase 1 Research: <recommendation X | inconclusive (stopped)>
-                    Reason: <constraint needed | critic flipped | no alternatives>
-  Brief:           emitted | skipped (quick mode) | user objected (<what changed>)
+                    Confidence: HIGH | MED | LOW
+                    Reason: <evidence summary | constraint needed | critic flipped | too few alternatives>
+  Phase 1.5 Brief: Approved | Revised | Blocked
   Phase 2 ADR:     <docs/adr/NNNN-slug.md | skipped (inconclusive) | already exists at <path>>
-  Memory:          saved | skipped (quick mode)
+  Phase 3 Memory:  Captured | Skipped (LOW confidence)
 
-Decision: <one-line summary | "pending human input">
-ADR path: <path | "N/A">
-Next: <what to do next>
+Decision: <one-line summary | pending human input>
+ADR path: <path | "N/A — Phase 1 blocked">
+Switch trigger: <specific trigger | "N/A">
+Next: <provide constraints / re-run research / stage + commit ADR>
 ```
+
+---
 
 ## Failure / Stop Conditions
 
 **Phase 0 stop:**
-- Duplicate ADR found → surface path, do not create duplicate, mark reconciliation "already documented"
+- Duplicate ADR exists → surface path, skip all phases, mark in reconciliation
 
-**Phase 1 stop (LOW confidence):**
-- Research returns no clear winner → emit "Phase 1 inconclusive", halt, await human input
-- Critic flips leading option and no decision emerges → halt with reason
-- Fewer than 2 alternatives surfaced → push back, halt
+**Phase 1 stop / hold:**
+- Confidence is LOW → emit "Phase 1 inconclusive: [specific reason]. Need [specific missing input]." Halt. Await human input.
+- Critic flips leading option and no new option emerges → add the flipped dimension to the research brief; invoke `research-and-decide` once more with that dimension; if still inconclusive → halt
+- Fewer than 2 alternatives with tradeoffs → push back: "this is a constraint, not a decision"
 
 **Phase 1.5 stop:**
-- User objects to Decision Brief → revise, do not proceed to Phase 2 without approval
+- User explicitly objects to the brief → revise and re-emit before proceeding to Phase 2
+- Switch triggers are vague → push back for specific conditions before continuing
+
+**Phase 2 stop:**
+- ADR quality gate fails (missing alternatives or vague triggers) → fix before staging
 
 **Never:**
-- Write an ADR that just says "we haven't decided yet"
-- Auto-commit ADR; stage it and await user confirmation
-- Proceed past Phase 1 without a clear recommendation
-- Accept "when requirements change" as a switch trigger — always push for specificity
+- Write an ADR that says "we haven't decided yet" or "this needs more research"
+- Auto-commit ADR — stage only, await user confirmation
+- Proceed to Phase 2 without HIGH or MED confidence
+- Skip the Decision Brief checkpoint (Phase 1.5) — it is the human review gate
+- Accept vague switch triggers ("when scale changes", "when requirements evolve")

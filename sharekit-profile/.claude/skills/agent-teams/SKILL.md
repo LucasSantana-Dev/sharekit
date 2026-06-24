@@ -6,6 +6,7 @@ description: Coordinate multiple agent sessions for parallel implementation, rev
 metadata:
   owner: global-agents
   tier: contextual
+  canonical_source: ~/.agents/skills/agent-teams
 ---
 
 

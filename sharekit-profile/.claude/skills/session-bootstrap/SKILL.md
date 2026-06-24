@@ -6,6 +6,7 @@ auto-invoke: first-prompt-of-session + post-resume + post-handoff-load
 metadata:
   owner: global-agents
   tier: contextual
+  canonical_source: ~/.claude/skills/session-bootstrap
 ---
 
 # Session Bootstrap

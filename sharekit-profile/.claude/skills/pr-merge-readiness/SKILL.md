@@ -11,6 +11,7 @@ argument-hint: "[<PR number or URL>] [--strict]"
 metadata:
   owner: global-agents
   tier: contextual
+  canonical_source: ~/.claude/skills/pr-merge-readiness
 ---
 
 # PR Merge Readiness

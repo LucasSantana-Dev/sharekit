@@ -6,6 +6,7 @@ auto-invoke: '"bootstrap this repo", "set up release branch", "new repo setup", 
 metadata:
   owner: global-agents
   tier: contextual
+  canonical_source: ~/.claude/skills/repo-bootstrap
 ---
 
 # Repo Bootstrap
@@ -121,7 +122,7 @@ minors hold for review, framework packages always hold.
 ```
 
 The `worktree_root` reflects the user's storage policy. If the user is on a
-machine without external drive mounted, the path is still recorded — `/branch-hygiene`
+machine without External HD mounted, the path is still recorded — `/branch-hygiene`
 will skip the orphan-sweep phase at runtime.
 
 ### Phase 6 — Stub `.claude/standards/release-cadence.md` (skip if exists)

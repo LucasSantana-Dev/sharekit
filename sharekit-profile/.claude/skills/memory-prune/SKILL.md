@@ -10,6 +10,7 @@ triggers:
 metadata:
   owner: global-agents
   tier: contextual
+  canonical_source: ~/.claude/skills/memory-prune
 ---
 
 # memory-prune
@@ -18,7 +19,7 @@ Project memory files at `~/.claude/projects/<encoded-cwd>/memory/*.md` accumulat
 
 This skill audits the memory dir, classifies each entry, and proposes archival.
 
-> **Preflight — mount guard** (`standards/knowledge-brain.md` §1): memory files are symlinked into the **brain vault on the external drive**. If `${EXTERNAL_HD}` is unmounted, the dir reads as empty/missing — **never archive or delete on that**: absent-during-unmount means *unknown*, not *stale* (a stale check deleted valid RAG chunks 2026-06-18). Hard-stop and surface if `mount | grep "${EXTERNAL_HD}"` is empty.
+> **Preflight — mount guard** (`standards/knowledge-brain.md` §1): memory files are symlinked into the **brain vault on the External HD**. If `/Volumes/External HD` is unmounted, the dir reads as empty/missing — **never archive or delete on that**: absent-during-unmount means *unknown*, not *stale* (a stale check deleted valid RAG chunks 2026-06-18). Hard-stop and surface if `mount | grep "/Volumes/External HD"` is empty.
 
 ## When NOT to run
 

@@ -25,7 +25,7 @@ metadata:
 ## Stop/Failure Conditions
 
 - **No convergence plan** — if phases cannot merge cleanly (conflicting changes, no clear gate), surface blocker, halt before merge.
-- **external drive unmounted** — if RAG/handoff lookup fails (mount check), fall back to plan file + inline state, log degradation.
+- **External HD unmounted** — if RAG/handoff lookup fails (mount check), fall back to plan file + inline state, log degradation.
 - **Human review blocker** — if review comments exist on any open PR from a human author, halt before auto-merge (CLAUDE.md hard-rule).
 
 ## Cross-links

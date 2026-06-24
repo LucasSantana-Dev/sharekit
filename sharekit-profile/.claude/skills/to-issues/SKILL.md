@@ -15,9 +15,9 @@ Work from whatever is already in the conversation context. If the user passes an
 
 **Before drafting:** Query existing issues and plans to avoid duplication.
 
-Check external drive mount (RAG/vault depend on it):
+Check External HD mount (RAG/vault depend on it):
 ```bash
-mount | grep -q "${EXTERNAL_HD}" || { echo "BLOCKED: external drive unmounted — RAG unreachable"; exit 1; }
+mount | grep -q "/Volumes/External HD" || { echo "BLOCKED: External HD unmounted — RAG unreachable"; exit 1; }
 ```
 
 Then search for related issues + decisions:

@@ -65,7 +65,7 @@ If a question can be answered by the codebase, explore before asking the user. R
 
 Mount guard (before RAG/vault queries):
 ```bash
-mount | grep -q "${EXTERNAL_HD}" || { echo "BLOCKED: external drive unmounted — RAG/vault unreachable"; }
+mount | grep -q "/Volumes/External HD" || { echo "BLOCKED: External HD unmounted — RAG/vault unreachable"; }
 ```
 
 **Don't ask the user what the codebase can answer.** If the answer exists in code, commit history, or prior decisions, find it first.

@@ -10,6 +10,7 @@ auto-invoke: merge-requests + pr-completion-claims
 metadata:
   owner: global-agents
   tier: contextual
+  canonical_source: ~/.claude/skills/merge-confidently
 ---
 
 # Merge Confidently

@@ -325,7 +325,7 @@ status: research-output (consumed by ui-expert deepening Phase 2-3)
 
 ## Anti-patterns avoided
 
-1. **Eyebrow-tag inflation.** Credible portfolios do NOT prefix every section with metadata eyebrows like "NOW," "ABOUT/IDENTITY," "REACH ME," "CAPABILITY MAP." When tags appear, they're used once per context, not systemically. (The failed <your-domain> output had eyebrows on every section — anti-pattern.)
+1. **Eyebrow-tag inflation.** Credible portfolios do NOT prefix every section with metadata eyebrows like "NOW," "ABOUT/IDENTITY," "REACH ME," "CAPABILITY MAP." When tags appear, they're used once per context, not systemically. (The failed <github-user>.tech output had eyebrows on every section — anti-pattern.)
 
 2. **CTA button stacks.** Portfolio rarely has 3+ competing buttons in the hero ("Join Discord," "View Projects," "Download Resume," "Contact Me"). Credible portfolios choose one primary action or zero. Stacks signal desperation, not clarity.
 
@@ -439,5 +439,5 @@ Credible personal portfolios are *under-designed*, not over-designed. The defaul
 
 **Recommended next steps for Phase 2–3:**
 - Run `/research-and-decide` over the Option A (deepen unified ui-expert) vs. Option B (split into per-register skills) using this inventory.
-- Phase 4 re-test should apply improved Gate 4 to the original <your-domain> brief and verify each of the 10 F1–F10 failures are caught and flagged.
+- Phase 4 re-test should apply improved Gate 4 to the original <github-user>.tech brief and verify each of the 10 F1–F10 failures are caught and flagged.
 - If Phase 2 chooses Option B (split), these 5 anchors should become the "personal-portfolio" skill's reference chapter; the 6-10 portfolio links can populate secondary examples.

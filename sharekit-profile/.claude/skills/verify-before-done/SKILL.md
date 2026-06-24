@@ -14,6 +14,7 @@ triggers:
 metadata:
   owner: global-agents
   tier: contextual
+  canonical_source: ~/.claude/skills/verify-before-done
 ---
 
 # Verify Before Done

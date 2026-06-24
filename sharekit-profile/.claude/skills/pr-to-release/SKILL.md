@@ -6,6 +6,7 @@ auto-invoke: pr-creation-requests + "merge to release" + "open a PR" when releas
 metadata:
   owner: global-agents
   tier: contextual
+  canonical_source: ~/.claude/skills/pr-to-release
 ---
 
 # PR → Release Branch

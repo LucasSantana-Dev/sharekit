@@ -6,6 +6,7 @@ auto-invoke: '"set up this repo", "configure repo for release workflow", "bootst
 metadata:
   owner: global-agents
   tier: contextual
+  canonical_source: ~/.claude/skills/repo-setup
 ---
 
 # Repo Setup
@@ -124,9 +125,9 @@ Before invoking Phase 1:
    ```bash
    git remote get-url origin >/dev/null 2>&1 || { echo "no origin remote"; exit 1; }
    ```
-3. Check external drive mounted (see standards/knowledge-brain.md §1):
+3. Check External HD mounted (see standards/knowledge-brain.md §1):
    ```bash
-   mount | grep -q "${EXTERNAL_HD}" || echo "WARNING: external drive unmounted — RAG/vault operations may degrade"
+   mount | grep -q "/Volumes/External HD" || echo "WARNING: External HD unmounted — RAG/vault operations may degrade"
    ```
    This is informational; do not block on it.
 
@@ -158,7 +159,7 @@ REPO-SETUP — <repo>
 Pre-flight:
   Git repo:        ✓ | (blocked: not a git repository)
   origin remote:   ✓ | (blocked: no origin remote)
-  external drive:     ✓ | (warning: unmounted)
+  External HD:     ✓ | (warning: unmounted)
 
 Phase 1 — Repo Bootstrap:
   Release branch:  created | (skipped: already exists) | (blocked: <reason>)

@@ -6,6 +6,7 @@ auto-invoke: '"prod is broken", "hotfix", "emergency fix", "users can''t X right
 metadata:
   owner: global-agents
   tier: contextual
+  canonical_source: ~/.claude/skills/hotfix
 ---
 
 # Hotfix

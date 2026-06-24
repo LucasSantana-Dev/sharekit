@@ -11,6 +11,7 @@ auto-invoke: greenfield-feature-requests + spec-to-prod-workflows
 metadata:
   owner: global-agents
   tier: contextual
+  canonical_source: ~/.claude/skills/feature-from-zero
 ---
 
 # Feature From Zero
@@ -45,7 +46,7 @@ Present plan to user for review.
 ### Phase 3 — Implement (always)
 
 Invoke `scope-and-execute` Phase 4 (execute), dispatching by work structure:
-- **Independent tracks** (≥2): dispatch parallel sub-agents in a single message, each with its own worktree under `${WORKTREES_ROOT}/`. See `standards/workflow.md` parallel-execution rule.
+- **Independent tracks** (≥2): dispatch parallel sub-agents in a single message, each with its own worktree under `${DEV_ROOT}/.worktrees/`. See `standards/workflow.md` parallel-execution rule.
 - **Sequential phases**: loop compositely; parallel sub-tasks within each phase.
 - **Complex multi-phase** (≥3 tightly-coupled phases): three-man-team.
 

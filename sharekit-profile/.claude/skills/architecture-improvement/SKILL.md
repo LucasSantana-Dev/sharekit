@@ -12,6 +12,7 @@ auto-invoke: architecture-audit-requests + refactoring-research + structural-deb
 metadata:
   owner: global-agents
   tier: contextual
+  canonical_source: ~/.claude/skills/architecture-improvement
 ---
 
 # Architecture Improvement
@@ -33,7 +34,7 @@ Map coupling, find orphans, deepen modules, sharpen domain language, and record 
 - `standards/code-standards.md §3` — module depth and interface design
 - `standards/durable-execution.md §3` — idempotency check (is codebase state stable before audit?)
 - After Phase 5 (if ADR written): auto-chain `/docs-sync` to mirror to `~/.claude/` and `~/.agents/`
-- If any phase is blocked by external drive unmounted: mount check (CLAUDE.md §1)
+- If any phase is blocked by External HD unmounted: mount check (CLAUDE.md §1)
 
 ## Workflow
 
@@ -43,8 +44,8 @@ Before spending tokens on architectural analysis, check whether a recent assessm
 
 **Step 0a — Mount guard:**
 ```bash
-mount | grep -q "${EXTERNAL_HD}" || {
-  echo "WARN: external drive unmounted — RAG/vault unreachable; falling back to grep-only discovery"
+mount | grep -q "/Volumes/External HD" || {
+  echo "WARN: External HD unmounted — RAG/vault unreachable; falling back to grep-only discovery"
   export RAG_AVAILABLE=false
 }
 ```
@@ -71,7 +72,7 @@ python3 ~/.claude/rag-index/query.py "architecture $(basename $(pwd)) coupling o
 
 ---
 
-**Pre-flight continued:** Mount check — if `${EXTERNAL_HD}` unmounted, RAG queries degrade; note and proceed with grep-only fallback. The skill is read-only until Phase 5 (recommendations are non-binding).
+**Pre-flight continued:** Mount check — if `/Volumes/External HD` unmounted, RAG queries degrade; note and proceed with grep-only fallback. The skill is read-only until Phase 5 (recommendations are non-binding).
 
 ### Phase 1 — Map coupling (read-only discovery)
 
@@ -176,7 +177,7 @@ Critic output is a `confidence` score (high/medium/low) per candidate + optional
 - **Phase 4.5 critic flags all candidates as low confidence with insufficient evidence:** Surface critic feedback to user; ask proceed or abort Phase 5
 - **Phase 5 candidate conflicts with prior ADR:** Note conflict in ADR "Consequences"; do not skip — decision is to update/supersede prior ADR
 - **Phase 5 no user-approved candidates and no new terms:** Skip ADR writing entirely; output "No decisions to record"
-- **external drive unmounted:** Mount check fails → note that RAG queries will use grep-only fallback; proceed
+- **External HD unmounted:** Mount check fails → note that RAG queries will use grep-only fallback; proceed
 - **User halts mid-phase:** Surface where you stopped as the composite's output; resume at that phase next session
 
 ## Outputs / Evidence

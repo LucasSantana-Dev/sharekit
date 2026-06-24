@@ -4,6 +4,7 @@ description: "Brief a subagent with task context + constraints, then verify comp
 metadata:
   owner: global-agents
   tier: ephemeral
+  canonical_source: ~/.claude/skills/brief-and-drill
 ---
 
 # Brief and Drill
@@ -55,7 +56,7 @@ Agent passes if response includes:
 
 **Halt delegation and escalate if:**
 - Agent fails the drill twice (Attempt 2 comprehension miss) → rewrite the brief for clarity or split the task, do NOT retry drill again.
-- Brief references external drive but mount-check not done → add guard: `mount | grep -q "${EXTERNAL_HD}" || { echo "BLOCKED: external drive unmounted"; }` (see standards/knowledge-brain.md §1).
+- Brief references External HD but mount-check not done → add guard: `mount | grep -q "/Volumes/External HD" || { echo "BLOCKED: External HD unmounted"; }` (see standards/knowledge-brain.md §1).
 - Agent discovers a conflicting constraint during drill → surface it; resolve with the orchestrator before proceeding.
 
 **Hard rules:**

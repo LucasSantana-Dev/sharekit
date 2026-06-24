@@ -159,7 +159,7 @@ Forbidden in this phase:
 - Default "cyan-on-dark" (Linear/Vercel) palette unless brief explicitly requests it. Reason: this palette is the Sophisticated Dark Aesthetic Mismatch (anti-ai-slop-tells.md § N4); credible portfolios use brand-personal palettes.
 - Bento-grid as the dominant section pattern. Use varied / asymmetric rhythm per ui-registers.md.
 - More than 1 CTA in hero. Portfolio CTAs are 0-1 in hero, 1-3 total on page.
-- Eyebrow tags on every section ("NOW", "ABOUT", "REACH ME", "MORE DETAILS" — the <your-domain> failure mode).
+- Eyebrow tags on every section ("NOW", "ABOUT", "REACH ME", "MORE DETAILS" — the <github-user>.tech failure mode).
 - Unsourced round-number metrics ("40% faster", "100k MAU"). If a portfolio claims a metric, it must be tied to a specific named project or company.
 
 **saas-landing register requires:**

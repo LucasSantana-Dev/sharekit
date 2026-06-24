@@ -8,6 +8,7 @@ license: Complete terms in LICENSE.txt
 metadata:
   owner: global-agents
   tier: ephemeral
+  canonical_source: ~/.agents/skills/frontend-design
 ---
 
 

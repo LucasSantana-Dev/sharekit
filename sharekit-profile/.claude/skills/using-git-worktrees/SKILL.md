@@ -6,6 +6,7 @@ description: Create isolated git worktrees for feature work that should not reus
 metadata:
   owner: global-agents
   tier: contextual
+  canonical_source: ~/.agents/skills/using-git-worktrees
 ---
 
 

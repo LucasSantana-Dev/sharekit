@@ -6,6 +6,7 @@ auto-invoke: '"prisma migrate", "apply migration", "schema change", "db generate
 metadata:
   owner: global-agents
   tier: contextual
+  canonical_source: ~/.claude/skills/prisma-migrate
 ---
 
 # Prisma Migrate

@@ -55,8 +55,8 @@ CI-WATCH — [PR#N or HEAD] — [BLOCKED | READY | NEEDS_RERUN]
 Before diagnosing from scratch, check prior incidents (speeds diagnosis by ≥60% on recurring gotchas):
 
 ```bash
-# Mount guard (external drive holds RAG index & embedder cache)
-mount | grep -q "${EXTERNAL_HD}" || { echo "BLOCKED: external drive unmounted — RAG unreachable"; exit 1; }
+# Mount guard (External HD holds RAG index & embedder cache)
+mount | grep -q "/Volumes/External HD" || { echo "BLOCKED: External HD unmounted — RAG unreachable"; exit 1; }
 
 # Query prior CI failures on this repo
 python3 ~/.claude/rag-index/query.py "CI failures on this repo" --top 5 --fast

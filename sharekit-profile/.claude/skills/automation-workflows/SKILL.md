@@ -6,6 +6,7 @@ description: Design reusable automation for repetitive development loops. Use wh
 metadata:
   owner: global-agents
   tier: stateful
+  canonical_source: ~/.agents/skills/automation-workflows
 ---
 
 

@@ -7,6 +7,7 @@ disable-model-invocation: true
 metadata:
   owner: global-agents
   tier: contextual
+  canonical_source: ~/.agents/skills/session-cleanup
 ---
 
 

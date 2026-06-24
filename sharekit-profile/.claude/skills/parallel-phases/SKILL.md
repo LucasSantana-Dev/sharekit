@@ -23,6 +23,7 @@ triggers:
 metadata:
   owner: global-agents
   tier: contextual
+  canonical_source: ~/.claude/skills/parallel-phases
 ---
 
 # Parallel Phases
@@ -338,6 +339,6 @@ report; resolve the dependency (e.g., confirm with the user, modify the plan), t
 
 ---
 
-*Canonical source:* `<HOME>/.claude/skills/parallel-phases`
+*Canonical source:* `~/.claude/skills/parallel-phases`
 
 *Last updated:* 2026-06-22 (bloat reduction + quality spec alignment)

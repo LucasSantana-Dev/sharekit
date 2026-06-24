@@ -12,6 +12,7 @@ triggers:
 metadata:
   owner: global-agents
   tier: contextual
+  canonical_source: ~/.claude/skills/repo-state-snapshot
 ---
 
 # Repo State Snapshot

@@ -6,6 +6,7 @@ auto-invoke: refactor-requests-with-cross-file-scope
 metadata:
   owner: global-agents
   tier: contextual
+  canonical_source: ~/.claude/skills/refactor-pipeline
 ---
 
 # Refactor Pipeline
@@ -25,8 +26,8 @@ Before proposing a refactor, check whether this module was recently refactored o
 
 **Step 0a — Mount guard:**
 ```bash
-mount | grep -q "${EXTERNAL_HD}" || {
-  echo "WARN: external drive unmounted — RAG unreachable; falling back to local discovery only"
+mount | grep -q "/Volumes/External HD" || {
+  echo "WARN: External HD unmounted — RAG unreachable; falling back to local discovery only"
   export RAG_AVAILABLE=false
 }
 ```

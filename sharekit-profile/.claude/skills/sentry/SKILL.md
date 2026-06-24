@@ -6,6 +6,7 @@ description: Use when the user asks to inspect Sentry issues or events, summariz
 metadata:
   owner: global-agents
   tier: contextual
+  canonical_source: ~/.agents/skills/sentry
 ---
 
 

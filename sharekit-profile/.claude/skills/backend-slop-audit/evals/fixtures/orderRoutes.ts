@@ -3,7 +3,7 @@ import { db } from '../db'
 
 const router = Router()
 
-const STRIPE_KEY = 'sk_FAKE_EXAMPLE_DO_NOT_USE'
+const STRIPE_KEY = 'sk_live_<stripe-key>'
 
 // Create an order and return it with its line items + the buyer.
 router.post('/orders', async (req, res) => {

@@ -7,6 +7,7 @@ description: |
 metadata:
   owner: global-agents
   tier: contextual
+  canonical_source: ~/.agents/skills/api-design-principles
   progressive_disclosure: split
 ---
 
@@ -128,7 +129,7 @@ Return:
 - Stop if data model is not defined — return blocker and ask for requirements.
 - Stop if API paradigm choice is ambiguous (HATEOAS vs. pure REST, Federation vs. single graph) — return decision tree from relevant reference and ask which constraint matters most.
 - Stop if no documentation tool (OpenAPI, GraphQL SDL) is chosen — surface and halt.
-- Do not proceed if external drive is unmounted (references cached there); verify via `mount | grep -q "${EXTERNAL_HD}"`.
+- Do not proceed if External HD is unmounted (references cached there); verify via `mount | grep -q "/Volumes/External HD"`.
 
 ## Auto-Chain Guidance
 

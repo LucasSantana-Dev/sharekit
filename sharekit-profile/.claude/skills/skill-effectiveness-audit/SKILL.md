@@ -7,6 +7,7 @@ argument-hint: "[--days N] [--skill <name>]"
 metadata:
   owner: global-agents
   tier: contextual
+  canonical_source: ~/.claude/skills/skill-effectiveness-audit
 ---
 
 # Skill Effectiveness Audit

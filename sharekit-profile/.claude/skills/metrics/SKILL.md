@@ -8,6 +8,7 @@ argument-hint: '[tokens|sessions|efficiency|trends]'
 metadata:
   owner: global-agents
   tier: contextual
+  canonical_source: ~/.agents/skills/metrics
 ---
 
 

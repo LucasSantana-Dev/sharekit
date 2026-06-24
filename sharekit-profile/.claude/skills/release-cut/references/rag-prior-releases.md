@@ -5,8 +5,8 @@ Optional Phase 1 enhancement — query prior release patterns before cutting.
 ## Mount guard (required)
 
 ```bash
-mount | grep -q "${EXTERNAL_HD}" || {
-  echo "BLOCKED: external drive unmounted — RAG/vault unreachable"
+mount | grep -q "/Volumes/External HD" || {
+  echo "BLOCKED: External HD unmounted — RAG/vault unreachable"
   exit 1
 }
 ```

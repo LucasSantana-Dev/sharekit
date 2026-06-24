@@ -13,6 +13,7 @@ triggers:
 metadata:
   owner: global-agents
   tier: contextual
+  canonical_source: ~/.claude/skills/plan-to-issues
 ---
 
 # Plan to Issues

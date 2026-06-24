@@ -146,7 +146,7 @@ status: research-output (consumed by ui-expert deepening Phase 2-3)
 - N15 Trends Drained of Originality (S1) — major
 - N16 Agency-vs-Personal Confusion (S3) — major
 
-## Cross-reference: F1-F10 from <your-domain> mapped to harvested patterns
+## Cross-reference: F1-F10 from <github-user>.tech mapped to harvested patterns
 
 | Live failure | Pattern explained |
 | --- | --- |

@@ -6,6 +6,7 @@ argument-hint: '[analyze|compact|targeted|mcp-first]'
 metadata:
   owner: global-agents
   tier: contextual
+  canonical_source: ~/.agents/skills/optimize-context
 ---
 
 

@@ -11,6 +11,7 @@ argument-hint: '[<file-or-directory>] [--pr <N>] [--comment]'
 metadata:
   owner: global-agents
   tier: contextual
+  canonical_source: ~/.claude-env/skills/code-review
 ---
 
 # Code Review — Senior QA
@@ -37,11 +38,11 @@ is **evidence → impact → fix**. You praise what is genuinely good and refuse
 ## Process
 
 1. **RAG-first recall.** Query prior review patterns and findings on this codebase before
-   wide grep/read. Unblock if external drive unmounted.
-   Done when: (a) external drive mounted or fallback declared, (b) prior patterns loaded or
+   wide grep/read. Unblock if External HD unmounted.
+   Done when: (a) External HD mounted or fallback declared, (b) prior patterns loaded or
    "no priors found" logged.
    ```bash
-   mount | grep -q "${EXTERNAL_HD}" || { echo "BLOCKED: external drive unmounted — RAG unreachable; falling back to grep"; }
+   mount | grep -q "/Volumes/External HD" || { echo "BLOCKED: External HD unmounted — RAG unreachable; falling back to grep"; }
    python3 ~/.claude/rag-index/query.py "code review findings patterns" --top 5 [--format json] [--fast]
    # or: search_knowledge(query="prior code review on <module/repo>", top=5) for cross-project patterns
    ```
@@ -188,7 +189,7 @@ Stop when (surface blocker, do not silently fallback):
   Done when: Blocker named; user asked to unblock.
 - Code unreadable without running it; cannot verify a claim without access to the tool/endpoint.
   Done when: Claim flagged as unverified; assumption stated.
-- external drive unmounted and RAG query attempted — surface this, do not skip RAG step.
+- External HD unmounted and RAG query attempted — surface this, do not skip RAG step.
   Done when: Blocker surfaced; fallback to grep documented.
 
 Never:

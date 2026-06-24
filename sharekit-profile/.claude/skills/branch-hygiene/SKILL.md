@@ -6,6 +6,7 @@ auto-invoke: '"branch hygiene", "clean up branches", "prune branches", "stale wo
 metadata:
   owner: global-agents
   tier: contextual
+  canonical_source: ~/.claude/skills/branch-hygiene
 ---
 
 # Branch Hygiene
@@ -16,7 +17,7 @@ whose remote was deleted, but misses:
 - Worktrees pointing at branches that no longer exist
 - Local branches merged into `main` or `release` weeks ago
 - Remote PR branches that the contributor forgot to delete
-- Orphan worktree directories on external drive with no git registration
+- Orphan worktree directories on External HD with no git registration
 
 This composite handles all four in one pass with confirmation prompts at every
 destructive step.
@@ -59,15 +60,15 @@ git worktree list --porcelain
 ```
 
 Compare `git worktree list` output against the directory listing under
-`$WORKTREE_ROOT` (default: `${WORKTREES_ROOT}/` —
+`$WORKTREE_ROOT` (default: `${DEV_ROOT}/.worktrees/` —
 the user's storage policy). For any directory that exists on disk but is NOT
 registered as a worktree:
 - Confirm with user before removing (single prompt summarizing all orphans)
 - `rm -rf` only after explicit confirmation
 - Record paths removed in the reconciliation block
 
-If `${EXTERNAL_HD}` is not mounted, skip the orphan sweep with
-`(skipped: external drive not mounted)`.
+If `/Volumes/External HD` is not mounted, skip the orphan sweep with
+`(skipped: External HD not mounted)`.
 
 ### Phase 4 — Branches merged to main (composite logic)
 

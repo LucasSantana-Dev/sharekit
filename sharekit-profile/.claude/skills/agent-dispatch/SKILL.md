@@ -49,7 +49,7 @@ Invoke any agent-box task script from this Mac session, or run an ad-hoc claude 
 
 1. If `<task>` matches a named alias above, run the mapped script directly on homelab:
    ```bash
-   ssh homelab "/home/luk-server/homelab/scripts/agent-tasks/<script>"
+   ssh homelab "${HOMELAB_ROOT}/scripts/agent-tasks/<script>"
    ```
 
 2. If `<task>` is a free-form prompt, dispatch to agent-box via claude -p:

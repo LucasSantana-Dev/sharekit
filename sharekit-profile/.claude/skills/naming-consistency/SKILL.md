@@ -4,6 +4,7 @@ description: 'Detect naming conventions from existing code, then audit new or al
 metadata:
   owner: global-agents
   tier: ephemeral
+  canonical_source: ~/.claude/skills/naming-consistency
 ---
 
 # Naming Consistency

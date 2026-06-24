@@ -13,7 +13,7 @@ triggers:
 
 Audit what's indexed and what's missing. Use coverage reports to plan curation and decide between incremental fixes and full rebuilds.
 
-> **Preflight — mount guard** (`standards/knowledge-brain.md` §1): these commands hit the RAG index whose **embedder cache lives on the external drive**. If `${EXTERNAL_HD}` is unmounted, `query.py`/`build.py` can't load the embedder — surface that and stop; don't report misleading "zero coverage"/"gaps". Check: `mount | grep "${EXTERNAL_HD}"`.
+> **Preflight — mount guard** (`standards/knowledge-brain.md` §1): these commands hit the RAG index whose **embedder cache lives on the External HD**. If `/Volumes/External HD` is unmounted, `query.py`/`build.py` can't load the embedder — surface that and stop; don't report misleading "zero coverage"/"gaps". Check: `mount | grep "/Volumes/External HD"`.
 
 ## Coverage audit
 

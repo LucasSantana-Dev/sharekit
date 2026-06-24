@@ -15,6 +15,7 @@ auto-invoke: open-ended-feature-or-fix-requests
 metadata:
   owner: global-agents
   tier: contextual
+  canonical_source: ~/.claude/skills/scope-and-execute
 ---
 
 # Scope and Execute
@@ -100,7 +101,7 @@ SCOPE AND EXECUTE — <task>
 | Analysis → scope >1 week | Halt; recommend breaking to phases |
 | Plan rejected (user feedback) | Halt; restart Phase 3 next turn |
 | Pre-merge verdict ≠ MERGE | Halt; surface blocker, do not push |
-| Missing external drive mount | Halt; surface, fall back to grep + claude-mem (see skill-quality-spec.md) |
+| Missing External HD mount | Halt; surface, fall back to grep + claude-mem (see skill-quality-spec.md) |
 
 ## References
 

@@ -6,6 +6,7 @@ argument-hint: "[path/to/project] [--per-file <path>]"
 metadata:
   owner: global-agents
   tier: contextual
+  canonical_source: ~/.claude/skills/mutation-test
 ---
 
 # Mutation Test

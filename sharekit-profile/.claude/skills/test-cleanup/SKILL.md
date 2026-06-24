@@ -6,6 +6,7 @@ argument-hint: "[path/to/tests] [--dry-run]"
 metadata:
   owner: global-agents
   tier: contextual
+  canonical_source: ~/.claude/skills/test-cleanup
 ---
 
 # Test Cleanup

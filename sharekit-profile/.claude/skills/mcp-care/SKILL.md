@@ -6,6 +6,7 @@ auto-invoke: mcp-list-failures + monthly-mcp-review + new-server-evaluation
 metadata:
   owner: global-agents
   tier: contextual
+  canonical_source: ~/.claude/skills/mcp-care
 ---
 
 # MCP Care

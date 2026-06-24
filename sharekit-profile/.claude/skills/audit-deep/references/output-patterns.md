@@ -79,7 +79,7 @@ REMEDIATION PLAN:
 NEEDS_REVIEW:
   • Finding X conflicts with memory #3415; user to decide
 
-Snapshot: ~/.claude/projects/-<dev-root>/memory/audit_deep_<repo>_<date>.md
+Snapshot: ~/.claude/projects/-Volumes-External-HD-Desenvolvimento/memory/audit_deep_<repo>_<date>.md
 ```
 
 ## Partial/Error format
@@ -112,7 +112,7 @@ audit_deep_<repo-slug>_<YYYY-MM-DD>.md
 Example: audit_deep_homelab_2026-06-22.md
 ```
 
-Store in: `$HOME/.claude/projects/-<dev-root>/memory/` (symlinked to knowledge-brain).
+Store in: `$HOME/.claude/projects/-Volumes-External-HD-Desenvolvimento/memory/` (symlinked to knowledge-brain).
 
 ## Trend tracking example (in MEMORY.md)
 

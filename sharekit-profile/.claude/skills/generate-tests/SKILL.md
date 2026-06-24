@@ -7,6 +7,7 @@ argument-hint: '[<file-or-function>]'
 metadata:
   owner: global-agents
   tier: ephemeral
+  canonical_source: ~/.agents/skills/generate-tests
 ---
 
 # Generate Tests

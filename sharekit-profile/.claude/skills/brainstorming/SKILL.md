@@ -6,6 +6,7 @@ description: Facilitate collaborative idea exploration and turn rough concepts i
 metadata:
   owner: global-agents
   tier: ephemeral
+  canonical_source: ~/.agents/skills/brainstorming
 ---
 
 

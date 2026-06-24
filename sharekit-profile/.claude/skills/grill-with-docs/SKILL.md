@@ -17,14 +17,14 @@ Before grilling begins, load the project's existing language and decisions.
 
 **Done when:** CONTEXT.md (if exists), all active ADRs, and project glossary are known. If no CONTEXT.md exists, note that — it will be created on first term resolution.
 
-**Stop condition — external drive unmount:** if external drive is not mounted, fall back to codebase grep + code inspection (RAG unavailable); do not return empty findings.
+**Stop condition — External HD unmount:** if External HD is not mounted, fall back to codebase grep + code inspection (RAG unavailable); do not return empty findings.
 
 Mount check and RAG pre-load (run in parallel):
 ```bash
-mount | grep -q "${EXTERNAL_HD}" || echo "BLOCKED: external drive unmounted — RAG degraded"
+mount | grep -q "/Volumes/External HD" || echo "BLOCKED: External HD unmounted — RAG degraded"
 ```
 
-If external drive is mounted, query the RAG index for domain decisions (shell CLI; or the MCP equivalent `rag_query(query="...", top=10, scope_types=["memory","handoffs"])`):
+If External HD is mounted, query the RAG index for domain decisions (shell CLI; or the MCP equivalent `rag_query(query="...", top=10, scope_types=["memory","handoffs"])`):
 ```bash
 python3 ~/.claude/rag-index/query.py "domain model glossary terminology context decisions" --top 10 --scope memory --fast
 ```

@@ -6,6 +6,7 @@ description: Deploy applications and infrastructure to Cloudflare using Workers,
 metadata:
   owner: global-agents
   tier: contextual
+  canonical_source: ~/.agents/skills/cloudflare-deploy
   progressive_disclosure: split
 ---
 

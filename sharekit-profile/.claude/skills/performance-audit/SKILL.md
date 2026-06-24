@@ -6,6 +6,7 @@ description: Audit MCP Gateway performance across system health, routing, cachin
 metadata:
   owner: global-agents
   tier: contextual
+  canonical_source: ~/.agents/skills/performance-audit
 ---
 
 # Performance Audit

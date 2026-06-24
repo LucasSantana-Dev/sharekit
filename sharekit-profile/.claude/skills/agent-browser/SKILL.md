@@ -9,6 +9,7 @@ allowed-tools: Bash(npx agent-browser:*), Bash(agent-browser:*)
 metadata:
   owner: global-agents
   tier: contextual
+  canonical_source: ~/.agents/skills/agent-browser
   progressive_disclosure: split
 ---
 

@@ -28,7 +28,7 @@ This section governs WHEN you must dispatch subagents instead of working in the 
 
 ### Worktree rule (when 2+ parallel agents touch the same repo)
 
-EVERY parallel agent that reads or writes the same repo gets its own worktree at `${WORKTREES_ROOT}/<task>-<n>/`. No exceptions for "small" edits — git index contention is silent and corrupting.
+EVERY parallel agent that reads or writes the same repo gets its own worktree at `${DEV_ROOT}/.worktrees/<task>-<n>/`. No exceptions for "small" edits — git index contention is silent and corrupting.
 
 Read-only agents (`Explore`, search-only `general-purpose`) can share a checkout because they don't touch the index. Anything that runs `git`, edits files, or invokes test/build commands gets its own worktree.
 

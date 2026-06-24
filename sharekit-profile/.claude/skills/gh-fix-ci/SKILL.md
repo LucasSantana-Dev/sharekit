@@ -10,6 +10,7 @@ triggers:
 metadata:
   owner: global-agents
   tier: contextual
+  canonical_source: ~/.agents/skills/gh-fix-ci
 ---
 
 
@@ -33,7 +34,7 @@ Diagnose and fix failing GitHub PR checks and flaky CI via log inspection, patte
 
 ## Overview
 
-1. **Pre-flight: mount check & authz gate** — Verify external drive mounted (RAG access), gh authenticated, and PR is owned by you (NEVER automate on another person's PR).
+1. **Pre-flight: mount check & authz gate** — Verify External HD mounted (RAG access), gh authenticated, and PR is owned by you (NEVER automate on another person's PR).
 2. **Query repo's CI history** — Search for prior gotchas and patterns that have hit this repo before.
 3. **Inspect failing checks** — Fetch GitHub Actions logs and external check details.
 4. **Summarize failures** — Extract actionable log snippets; highlight missing logs.
@@ -54,8 +55,8 @@ Prereq: `gh` authenticated with repo + workflow scopes (run `gh auth login` if n
 
 **Mount guard** — Before querying RAG or knowledge-brain:
 ```bash
-mount | grep -q "${EXTERNAL_HD}" || \
-  { echo "BLOCKED: external drive unmounted — RAG/knowledge-brain unreachable." >&2; exit 0; }
+mount | grep -q "/Volumes/External HD" || \
+  { echo "BLOCKED: External HD unmounted — RAG/knowledge-brain unreachable." >&2; exit 0; }
 ```
 See `standards/knowledge-brain.md` §1 for details.
 
@@ -80,7 +81,7 @@ Surface: *"Cannot auto-fix: PR authored by [author] or has comments from reviewe
 
 Before wide investigation, search the repo's memory for CI patterns that have hit before:
 ```bash
-mount | grep -q "${EXTERNAL_HD}" || { echo "BLOCKED: external drive unmounted"; exit 0; }
+mount | grep -q "/Volumes/External HD" || { echo "BLOCKED: External HD unmounted"; exit 0; }
 # If mounted, query RAG for repo-scoped CI patterns:
 rag_query(query="CI failures on this project: formatter, CodeQL false positives, tag drift, flaky tests", 
           top=5, scope_types=["memory","handoffs"])
@@ -216,12 +217,12 @@ Applied in Step 1 (authz gate). If violated: surface blocker, do not proceed.
 
 **Standards to follow:**
 - `standards/pr-conventions.md` — branch naming, commit messages, required checks before merge
-- `standards/knowledge-brain.md` §1 — mount guard protocol (external drive may unmount mid-session)
+- `standards/knowledge-brain.md` §1 — mount guard protocol (External HD may unmount mid-session)
 
 ## Failure / Stop Conditions
 
 Stop and surface the blocker if ANY of:
-- external drive unmounted (mount guard fails in Step 1).
+- External HD unmounted (mount guard fails in Step 1).
 - `gh` unauthenticated or lacks repo/workflow scopes.
 - PR authored by another person OR has comments from a human reviewer.
 - GitHub Actions logs are unavailable and the failure reason is unclear (insufficient evidence to draft a plan).

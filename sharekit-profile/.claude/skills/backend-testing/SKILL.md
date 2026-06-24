@@ -20,6 +20,7 @@ platforms:
 metadata:
   owner: global-agents
   tier: contextual
+  canonical_source: ~/.agents/skills/backend-testing
   progressive_disclosure: split
 ---
 

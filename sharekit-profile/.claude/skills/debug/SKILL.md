@@ -4,6 +4,7 @@ description: Quick root-cause debugging. Systematic trace-before-fix workflow fo
 metadata:
   owner: global-agents
   tier: alias
+  canonical_source: ~/.claude/skills/systematic-debugging
 ---
 
 # Debug

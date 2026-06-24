@@ -30,10 +30,10 @@ Merge a ready PR or cut a release—without skipping CI or review gates.
 
 ## Step 1: Optional — Pre-ship history lookup
 
-If this is a release-cut, query prior incidents or releases (fail-loud if external drive unmounted):
+If this is a release-cut, query prior incidents or releases (fail-loud if External HD unmounted):
 
 ```bash
-mount | grep -q "${EXTERNAL_HD}" || { echo "BLOCKED: external drive unmounted — release history inaccessible"; exit 1; }
+mount | grep -q "/Volumes/External HD" || { echo "BLOCKED: External HD unmounted — release history inaccessible"; exit 1; }
 rag_query(query="releases and incidents in last 14 days", top=3)
 ```
 

@@ -20,7 +20,7 @@ Restore active task context before continuing work.
 
 **Done when:** Found ≥1 source or confirmed none exist.
 
-Mount guard: `mount | grep -q "${EXTERNAL_HD}" || { echo "BLOCKED: external drive unmounted — handoffs unreachable"; exit 1; }`
+Mount guard: `mount | grep -q "/Volumes/External HD" || { echo "BLOCKED: External HD unmounted — handoffs unreachable"; exit 1; }`
 
 Query order (stop at first match):
 1. Project handoff: `rag_query(query="current task state", top=1, scope_types=["handoffs"])` for `~/.claude/handoffs/<project>/latest.md`

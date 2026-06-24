@@ -6,6 +6,7 @@ description: Choose and apply backend architecture patterns such as Clean Archit
 metadata:
   owner: global-agents
   tier: contextual
+  canonical_source: ~/.agents/skills/architecture-patterns
 ---
 
 

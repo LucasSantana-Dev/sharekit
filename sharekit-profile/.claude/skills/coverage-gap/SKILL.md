@@ -6,6 +6,7 @@ argument-hint: "<PR_NUMBER> [--repo owner/name]"
 metadata:
   owner: lucas-dev
   tier: production
+  canonical_source: ~/.agents/skills/coverage-gap
 ---
 
 Analyze a PR diff, identify new or changed functions without tests, and dispatch a subagent to write focused tests.
@@ -49,7 +50,7 @@ Analyze a PR diff, identify new or changed functions without tests, and dispatch
 /coverage-gap 645
 
 # Analyze PR in specific repo
-/coverage-gap 645 --repo <GITHUB_USER>/<REPO>
+/coverage-gap 645 --repo <github-user>/Lucky
 ```
 
 ## Output / Evidence

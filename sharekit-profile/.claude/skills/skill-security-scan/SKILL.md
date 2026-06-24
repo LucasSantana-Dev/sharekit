@@ -7,6 +7,7 @@ auto-invoke: before-installing-third-party-skill + weekly-supply-chain
 metadata:
   owner: global-agents
   tier: contextual
+  canonical_source: ~/.claude-env/skills/skill-security-scan
 ---
 
 # skill-security-scan

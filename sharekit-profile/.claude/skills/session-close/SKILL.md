@@ -10,6 +10,7 @@ auto-invoke: session-end + context-budget-warning
 metadata:
   owner: global-agents
   tier: orchestration
+  canonical_source: ~/.claude/skills/session-close
 ---
 
 # Session Close
@@ -60,10 +61,10 @@ discovered.
   development workflow if changed)
 - OR "SKIPPED: no memory changes needed" if session was pure read-only
 - File paths confirmed written (`.agents/memory/<project>.md` or vault entries)
-- Mount guard passed (external drive accessible)
+- Mount guard passed (External HD accessible)
 
 **Stop condition:**
-- external drive unmounted → surface "BLOCKED: external drive unmounted — cannot access brain" 
+- External HD unmounted → surface "BLOCKED: External HD unmounted — cannot access brain" 
   and halt Phase 1. Offer fallback: "local-only memory to `.agents/memory/` available 
   instead; defer brain push."
 
@@ -94,7 +95,7 @@ Call `/handoff` to write a resume packet for the next session.
 **Skip condition:** All work merged/pushed and session is truly ending (not resuming 
 this branch later). Log: "SKIPPED: all work shipped; no handoff needed."
 
-**Stop condition:** (same as Phase 1) external drive unmounted → cannot write handoff to 
+**Stop condition:** (same as Phase 1) External HD unmounted → cannot write handoff to 
 `~/.claude/handoffs/`. Halt and surface blocker.
 
 ---
@@ -111,8 +112,8 @@ Call knowledge-loop Phase 5 (push-to-brain) to commit + sync vault changes.
 
 **Mount guard (required before any vault write — standards/knowledge-brain.md §1):**
 ```bash
-mount | grep -q "${EXTERNAL_HD}" || {
-  echo "BLOCKED: external drive unmounted — cannot push brain"
+mount | grep -q "/Volumes/External HD" || {
+  echo "BLOCKED: External HD unmounted — cannot push brain"
   echo "Defer push to next session or manually run after remounting."
   exit 0
 }
@@ -138,7 +139,7 @@ fi
 - `git -C "$BRAIN" log --oneline -1` reflects the push (verify in output)
 
 **Stop condition:**
-- Mount guard blocks → surface "BLOCKED: external drive unmounted" and halt Phase 3. 
+- Mount guard blocks → surface "BLOCKED: External HD unmounted" and halt Phase 3. 
   Do NOT retry. Session continues; brain push deferred until HD remounted.
 
 ---
@@ -153,7 +154,7 @@ SESSION CLOSE — <date / project>
 Phase 1 — Sync Memories:
   [OK] DONE:      <memory files written + mount OK>
   ⏭  SKIPPED:   <reason if no memories needed>
-  [BLOCKED] BLOCKED:    <mount/access error if external drive unmounted>
+  [BLOCKED] BLOCKED:    <mount/access error if External HD unmounted>
 
 Phase 2 — Handoff:
   [OK] DONE:      <handoff file path>
@@ -179,9 +180,9 @@ if bulk output (e.g., full memory files), gate with "ask for details."
 
 ## Stop/Failure Conditions (halt, surface blocker, do not continue)
 
-1. **external drive unmounted at any point** (Phase 1, 2, or 3)
+1. **External HD unmounted at any point** (Phase 1, 2, or 3)
    - Mount guard catches this before write
-   - Surface: "BLOCKED: external drive unmounted — cannot write durable state"
+   - Surface: "BLOCKED: External HD unmounted — cannot write durable state"
    - Offer fallback: "local-only memory available; defer brain push until remounted"
    - Halt the phase; do not skip to next phase
 
@@ -219,7 +220,7 @@ if bulk output (e.g., full memory files), gate with "ask for details."
   (references/template.md)
 - `/knowledge-loop` Phase 5 — brain push protocol, idempotency, mount guard 
   (see references/push-protocol.sh)
-- `standards/knowledge-brain.md` — brain architecture, external drive policy, mount 
+- `standards/knowledge-brain.md` — brain architecture, External HD policy, mount 
   guard enforcement
 - `standards/composite-contract.md` — phase bail-out rules, reconciliation patterns
 - `CLAUDE.md §1–2` — handoff resume pattern, durable checkpoints
@@ -231,7 +232,7 @@ if bulk output (e.g., full memory files), gate with "ask for details."
 - **Phases are sequential** (1 → 2 → 3); do not reorder
 - **Phases skip (not auto-reorder) if precondition fails** (e.g., "no handoff if all 
   work shipped")
-- **Mount guard is blocking** — if external drive unmounted, halt the phase; surface 
+- **Mount guard is blocking** — if External HD unmounted, halt the phase; surface 
   blocker; do not continue to next phase
 - **Idempotency:** state-check before each write; skip if already done
 - **Do NOT silently switch sub-skills or continue past a halt condition**

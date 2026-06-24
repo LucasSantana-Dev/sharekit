@@ -6,6 +6,7 @@ auto-invoke: '"dependabot PRs", "renovate queue", "clean up bot PRs", "update de
 metadata:
   owner: global-agents
   tier: contextual
+  canonical_source: ~/.claude/skills/dep-sweep
 ---
 
 # Dep Sweep

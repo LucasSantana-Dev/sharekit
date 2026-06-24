@@ -10,6 +10,7 @@ argument-hint: <commit-message> [--base <branch>] [--branch <name>] [--draft]
 metadata:
   owner: global-agents
   tier: stateful
+  canonical_source: ~/.agents/skills/pr-flow
 ---
 
 
@@ -44,7 +45,7 @@ Conventional commits, branch-first, no force-push.
 ```bash
 git status --short
 git rev-parse --verify <base> 2>/dev/null || { echo "BLOCKED: base branch <base> not found"; exit 1; }
-mount | grep -q "${EXTERNAL_HD}" || echo "WARNING: external drive unmounted — git-remote may fail"
+mount | grep -q "/Volumes/External HD" || echo "WARNING: External HD unmounted — git-remote may fail"
 ```
 
 **Stop if:**

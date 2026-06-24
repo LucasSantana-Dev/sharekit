@@ -4,6 +4,7 @@ description: 'Map module coupling via import graph analysis. Identifies high fan
 metadata:
   owner: global-agents
   tier: ephemeral
+  canonical_source: ~/.claude/skills/coupling-map
 ---
 
 # Coupling Map

@@ -6,6 +6,7 @@ description: Close out a development session by shipping work, capturing memory,
 metadata:
   owner: global-agents
   tier: stateful
+  canonical_source: ~/.agents/skills/session-wrap-up
 ---
 
 

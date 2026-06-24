@@ -5,6 +5,7 @@ description: Use when encountering any bug, test failure, or unexpected behavior
 metadata:
   owner: global-agents
   tier: contextual
+  canonical_source: ~/.agents/skills/systematic-debugging
   progressive_disclosure: split
 ---
 

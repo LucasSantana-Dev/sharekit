@@ -4,6 +4,7 @@ description: 'Scan a codebase for dead code: files not imported anywhere, export
 metadata:
   owner: global-agents
   tier: ephemeral
+  canonical_source: ~/.claude/skills/orphan-hunt
 ---
 
 # Orphan Hunt

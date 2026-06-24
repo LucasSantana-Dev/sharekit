@@ -11,6 +11,7 @@ description: 'Answer questions about the AI SDK and help build AI-powered featur
 metadata:
   owner: global-agents
   tier: ephemeral
+  canonical_source: ~/.agents/skills/ai-sdk
 ---
 
 

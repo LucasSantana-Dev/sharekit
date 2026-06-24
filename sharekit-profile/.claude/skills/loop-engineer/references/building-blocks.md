@@ -44,7 +44,7 @@ Isolation for parallel agents that write to the same repo.
 ```bash
 # Create worktree for agent N
 git worktree add \
-  "${WORKTREES_ROOT}/<loop-name>-<n>" \
+  "${DEV_ROOT}/.worktrees/<loop-name>-<n>" \
   -b "loop/<loop-name>-<timestamp>-<n>"
 ```
 
@@ -53,7 +53,7 @@ and read-only (Explore) agents do not need worktrees.
 
 **Cleanup**: After the loop completes, remove worktrees:
 ```bash
-git worktree remove "${WORKTREES_ROOT}/<loop-name>-<n>"
+git worktree remove "${DEV_ROOT}/.worktrees/<loop-name>-<n>"
 git branch -d "loop/<loop-name>-<timestamp>-<n>"
 ```
 

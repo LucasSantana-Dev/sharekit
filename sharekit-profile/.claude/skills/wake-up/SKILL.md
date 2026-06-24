@@ -35,7 +35,7 @@ Tight new-session brief. Cap output at **~800 tokens, structured**.
 
 1. **Active handoff** — `~/.claude/handoffs/<project>/latest.md` if it exists, else `~/.claude/handoffs/latest.md`. The "##  IMPLEMENT THIS" section feeds **what's next**; "Blockers" feed **blockers**.
 2. **RAG hits (top 3)** — `rag_query(query="<inferred from active handoff title or repo name>", top=3, scope_repos=null)`. Auto-scopes to cwd. Feed **context**.
-3. **Most recent memory note** — `ls -t ~/.claude/projects/*/memory/*.md | head -1` then read first ~40 lines. Use only if it adds something the handoff didn't.
+3. **Most recent memory note** — `ls -t ~/.claude/projects/-Users-<github-user>/memory/*.md | head -1` then read first ~40 lines. Use only if it adds something the handoff didn't.
 4. **Git state** — `git status -sb && git log -1 --oneline`. One line into **fresh state**.
 
 ## Rules

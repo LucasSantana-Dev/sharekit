@@ -6,6 +6,7 @@ auto-invoke: complex-bug-reports + production-incidents + recurring-failures
 metadata:
   owner: global-agents
   tier: contextual
+  canonical_source: ~/.claude/skills/debug-deep
 ---
 
 # Debug Deep

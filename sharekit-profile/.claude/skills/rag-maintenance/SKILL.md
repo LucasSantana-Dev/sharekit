@@ -7,6 +7,7 @@ auto-invoke: weekly-maintenance + low-relevance-recall-hits + corpus-drift-detec
 metadata:
   owner: global-agents
   tier: contextual
+  canonical_source: ~/.claude/skills/rag-maintenance
 ---
 
 # RAG Maintenance
@@ -24,18 +25,18 @@ Orchestrated end-to-end maintenance for the RAG index. Runs diagnostics → find
 
 ## Pair with standards
 
-- `standards/knowledge-brain.md` § 1 — **Mount guard (required):** external drive hosts embedder cache + memory vault
+- `standards/knowledge-brain.md` § 1 — **Mount guard (required):** External HD hosts embedder cache + memory vault
 - `standards/skill-quality-spec.md` § 3, 9 — RAG-first discovery patterns
 - `standards/rag-index/BENCHMARK.md` — baseline quality metrics (Hit@5, precision)
 
 ## Workflow
 
 **Preflight — Mount guard:**
-Mount `${EXTERNAL_HD}` is required for all phases (embedder cache, memory vault, canonical chunks). If unmounted: surface blocker loudly; do not attempt RAG operations.
+Mount `/Volumes/External HD` is required for all phases (embedder cache, memory vault, canonical chunks). If unmounted: surface blocker loudly; do not attempt RAG operations.
 
 ```bash
-mount | grep -q "${EXTERNAL_HD}" || { \
-  echo "BLOCKED: external drive unmounted — RAG embedder cache + memory vault unreachable"; \
+mount | grep -q "/Volumes/External HD" || { \
+  echo "BLOCKED: External HD unmounted — RAG embedder cache + memory vault unreachable"; \
   exit 1; \
 }
 ```
@@ -102,7 +103,7 @@ Open watch:              Weekly: refresh report every 7 days; if zero-hits persi
 
 ## Stop / Failure Conditions
 
-**Mount guard failure (Preflight):** `${EXTERNAL_HD}` unmounted → halt all phases, surface blocker, exit with error. Do not attempt RAG operations without the drive mounted.
+**Mount guard failure (Preflight):** `/Volumes/External HD` unmounted → halt all phases, surface blocker, exit with error. Do not attempt RAG operations without the drive mounted.
 
 **Phase 1 quality regressed:** Quality <80% (e.g., >20% queries <0.40 cosine) → surface regression in reconciliation, continue to Phase 2 for root cause (may be drift, may be coverage gap).
 
@@ -127,7 +128,7 @@ Lead with: **verdict** (index health: HEALTHY | NEEDS_MAINTENANCE | DEGRADED) + 
 Example:
 
 ```
-RAG-MAINTENANCE — <your-domain>
+RAG-MAINTENANCE — <github-user>.tech
 
 VERDICT: HEALTHY — 95% of queries score ≥0.55 cosine; no drift detected; corpus complete.
 
@@ -140,7 +141,7 @@ Snapshot: ~/.claude/rag-index/weekly.md
 Or if issues found:
 
 ```
-RAG-MAINTENANCE — <your-domain>
+RAG-MAINTENANCE — <github-user>.tech
 
 VERDICT: NEEDS_MAINTENANCE — 18% of queries score <0.40; 8 stale chunks detected; memory vault has 3 new files not yet indexed.
 

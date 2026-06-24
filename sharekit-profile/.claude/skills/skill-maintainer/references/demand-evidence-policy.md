@@ -3,9 +3,9 @@
 ## Allowed local sources
 
 - `post-wave3-gap-backlog.md`
-- local memory: `${DEV_ROOT}/forge-space/.agents/memory/forge-space.md`
-- local reports under `${DEV_ROOT}/forge-space/.agents/reports/`
-- local queue state in `${DEV_ROOT}/forge-space/.agents/task-queue.json`
+- local memory: `~/Desenvolvimento/forge-space/.agents/memory/forge-space.md`
+- local reports under `~/Desenvolvimento/forge-space/.agents/reports/`
+- local queue state in `~/Desenvolvimento/forge-space/.agents/task-queue.json`
 - installed `SKILL.md` files across the three skill roots
 - automation TOML files under `$CODEX_HOME/automations/`
 

@@ -6,6 +6,7 @@ argument-hint: "[path/to/project]"
 metadata:
   owner: global-agents
   tier: contextual
+  canonical_source: ~/.claude/skills/test-health
 ---
 
 # Test Health

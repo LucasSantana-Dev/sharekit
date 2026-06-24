@@ -6,6 +6,7 @@ auto-invoke: post-merge-deployment + release-cut-requests
 metadata:
   owner: global-agents
   tier: contextual
+  canonical_source: ~/.claude/skills/ship-it
 ---
 
 # Ship It
@@ -31,10 +32,10 @@ escalation.
 - **Done when:** `git tag -l` shows new tag; GitHub release visible on repo
 
 ### Phase 3 — Pre-deploy: check deployment history & mount guard (always)
-- Verify external drive mounted: `mount | grep -q "${EXTERNAL_HD}"` else halt
+- Verify External HD mounted: `mount | grep -q "/Volumes/External HD"` else halt
 - Query deployment history via RAG: `python3 ~/.claude/rag-index/query.py "deployment history for <repo>" --top 3 --scope memory` (identify prior incidents, cadence, rollback patterns)
 - If any P0/P1 incidents found in history → cross-check fix status before proceeding
-- **Done when:** external drive confirmed mounted, deployment history reviewed, prior incidents cleared
+- **Done when:** External HD confirmed mounted, deployment history reviewed, prior incidents cleared
 
 ### Phase 4 — Deploy (always — pick the right deployer)
 Detect deployment target from project:
@@ -62,7 +63,7 @@ Detect deployment target from project:
 
 ```
 SHIP IT — <repo> v<old> → v<new>
-  Pre-deploy:  external drive mounted ✓, history checked <STATUS>
+  Pre-deploy:  External HD mounted ✓, history checked <STATUS>
   Version:     <bump type>, commits since last tag: N <STATUS>
   Changelog:   M entries promoted from Unreleased <STATUS>
   Tag:         v<new> pushed <STATUS>
@@ -85,7 +86,7 @@ SHIP IT — <repo> v<old> → v<new>
 
 - Phase 1 reveals uncommitted changes → STOP, commit first
 - Phase 2 fails (tag conflict) → STOP, investigate tag history
-- Phase 3 deployment history check: external drive unmounted → STOP, surface blocker; prior P0/P1 incident unfixed → STOP, investigate first
+- Phase 3 deployment history check: External HD unmounted → STOP, surface blocker; prior P0/P1 incident unfixed → STOP, investigate first
 - Phase 4 deploy fails → STOP, surface error with logs, do NOT auto-rollback (escalate to incident-response)
 - Phase 5 verify fails (new Sentry issue, health endpoint down) → STOP, invoke `incident-response` per standards/incident-response.md §1, do NOT declare success
 - Never use `--force-with-lease` or `--admin` to push past gates

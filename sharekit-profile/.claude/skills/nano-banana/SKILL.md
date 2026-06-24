@@ -9,6 +9,7 @@ allowed-tools: Bash(infsh *)
 metadata:
   owner: global-agents
   tier: ephemeral
+  canonical_source: ~/.agents/skills/nano-banana
 ---
 
 

@@ -6,6 +6,7 @@ description: Deploy applications and websites to Vercel. Use when the user reque
 metadata:
   owner: global-agents
   tier: contextual
+  canonical_source: ~/.agents/skills/vercel-deploy
 ---
 
 

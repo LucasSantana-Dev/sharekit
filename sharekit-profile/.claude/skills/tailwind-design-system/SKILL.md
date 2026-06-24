@@ -7,6 +7,7 @@ description: Tailwind CSS v4 design-system guidance for tokens, theming, compone
 metadata:
   owner: global-agents
   tier: contextual
+  canonical_source: ~/.agents/skills/tailwind-design-system
   progressive_disclosure: split
 ---
 

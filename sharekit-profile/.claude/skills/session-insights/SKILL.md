@@ -6,6 +6,7 @@ auto-invoke: on-token-cost-question + weekly-spend-review
 metadata:
   owner: global-agents
   tier: contextual
+  canonical_source: ~/.claude-env/skills/session-insights
   adr: ADR-0035
 ---
 

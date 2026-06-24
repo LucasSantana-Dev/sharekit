@@ -6,6 +6,7 @@ auto-invoke: quarterly-per-repo + pre-security-release + post-incident
 metadata:
   owner: global-agents
   tier: contextual
+  canonical_source: ~/.claude/skills/security-sweep
 ---
 
 # Security Sweep

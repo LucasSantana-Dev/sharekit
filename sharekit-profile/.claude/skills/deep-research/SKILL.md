@@ -7,6 +7,7 @@ description: |
   across multiple sources. Triggers: research, fact-check, evaluate, cite sources, multi-source,
   deep-dive, due diligence, business case.
 metadata:
+  owner: <your-email>
   tier: sonnet
   canonical_source: ~/.claude/standards/skill-quality-spec.md
 ---
@@ -22,8 +23,8 @@ Mount-guarded query: before wide web search, check vault & RAG for existing rese
 the topic. If a complete prior report exists, cite it; if partial, resume from its gap.
 
 ```bash
-# Check if external drive is mounted (required for RAG/vault)
-mount | grep -q "${EXTERNAL_HD}" || { echo "BLOCKED: external drive unmounted"; exit 1; }
+# Check if External HD is mounted (required for RAG/vault)
+mount | grep -q "/Volumes/External HD" || { echo "BLOCKED: External HD unmounted"; exit 1; }
 ```
 
 Use the verified patterns from `~/.claude/standards/skill-quality-spec.md`:
@@ -129,7 +130,7 @@ listed, and verdict grounded in primary sources.
 
 - **Synthesis gate fails:** (ref. Step 2–4) fewer than 3 angles explored, sources too indirect,
   contradictions unreconciled with equal-authority split, or fewer than 2 sources per angle.
-- **external drive unmounted:** RAG/vault unreachable; skip Step 1 but note: "RAG unavailable;
+- **External HD unmounted:** RAG/vault unreachable; skip Step 1 but note: "RAG unavailable;
   relying on web search only."
 - **Topic has no prior opinion:** if you discover (via Steps 2–3) that there is no consensus
   or published data (e.g., asking about an unreleased product), say: "No published source found —

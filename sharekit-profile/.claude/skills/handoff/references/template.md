@@ -20,7 +20,7 @@ Example:
 ```
 Repo: ${DEV_ROOT}/myapp
 Branch: feat/auth-refresh
-Worktree: ${WORKTREES_ROOT}/auth-refresh-task-1/
+Worktree: ${DEV_ROOT}/.worktrees/auth-refresh-task-1/
 ```
 
 ## What Changed

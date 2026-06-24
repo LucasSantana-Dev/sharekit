@@ -4,6 +4,7 @@ description: 'Scan recent git history and open issues to find architectural deci
 metadata:
   owner: global-agents
   tier: ephemeral
+  canonical_source: ~/.claude/skills/adr-gap
 ---
 
 # ADR Gap

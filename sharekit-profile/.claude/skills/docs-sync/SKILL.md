@@ -6,6 +6,7 @@ argument-hint: "[<path>] [--direction canonical|newest|interactive]"
 metadata:
   owner: global-agents
   tier: contextual
+  canonical_source: ~/.claude/skills/docs-sync
 ---
 
 # Docs Sync

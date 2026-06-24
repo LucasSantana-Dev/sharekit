@@ -8,6 +8,7 @@ license: Complete terms in LICENSE.txt
 metadata:
   owner: global-agents
   tier: contextual
+  canonical_source: ~/.agents/skills/mcp-builder
   progressive_disclosure: split
 ---
 

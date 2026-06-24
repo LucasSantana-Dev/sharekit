@@ -14,7 +14,7 @@ The `browser-use` command provides fast, persistent browser automation. A backgr
 > **broken under Python 3.14** (`browser-use doctor` crashes: `RuntimeError: There is no current event loop`).
 > The runtime is currently DEFERRED — do NOT invoke `browser-use` commands until reinstalled under 3.12:
 > `pipx reinstall --python python3.12 browser-use` and point `BROWSER_USE_HOME` / `PLAYWRIGHT_BROWSERS_PATH`
-> at the external drive. Until then, use `agent-browser`, `use-my-browser`, or the Playwright MCP instead.
+> at the External HD. Until then, use `agent-browser`, `use-my-browser`, or the Playwright MCP instead.
 
 ```bash
 browser-use doctor    # Verify installation

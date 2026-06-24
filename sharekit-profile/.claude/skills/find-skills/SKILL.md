@@ -6,6 +6,7 @@ description: Discover relevant installable skills from the available skill ecosy
 metadata:
   owner: global-agents
   tier: contextual
+  canonical_source: ~/.agents/skills/find-skills
 ---
 
 

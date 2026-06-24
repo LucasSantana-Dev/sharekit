@@ -28,8 +28,8 @@ First, check if this research topic has already been explored:
 
 ```bash
 # Mount guard — fail loud if brain unreachable (standards/knowledge-brain.md §1)
-if ! mount | grep -q "${EXTERNAL_HD}" || [ ! -d "${DEV_ROOT}/knowledge-brain/.git" ]; then
-  echo "BLOCKED: external drive unmounted — knowledge-brain unreachable."
+if ! mount | grep -q "/Volumes/External HD" || [ ! -d "${DEV_ROOT}/knowledge-brain/.git" ]; then
+  echo "BLOCKED: External HD unmounted — knowledge-brain unreachable."
   exit 0
 fi
 
@@ -97,7 +97,7 @@ If uncertain after exhausting sources, say so explicitly.
 
 - **All sources silent** (no codebase match, no docs, no web results) → output: "No signal found in [sources checked]. Topic may be novel or misnamed."
 - **Gate failed after exhausting sources** → output: "Synthesis gate failed at [condition]. Missing: [what's needed]. Cannot produce findings."
-- **external drive unmounted** (Step 1) → output: "Knowledge-brain unreachable. Surface to user; cannot dedup prior research."
+- **External HD unmounted** (Step 1) → output: "Knowledge-brain unreachable. Surface to user; cannot dedup prior research."
 
 ## See Also
 

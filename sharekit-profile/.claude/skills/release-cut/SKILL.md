@@ -6,6 +6,7 @@ auto-invoke: manual only, BUT nudged by next-priority / session-bootstrap when r
 metadata:
   owner: global-agents
   tier: contextual
+  canonical_source: ~/.claude/skills/release-cut
 ---
 
 # Release Cut

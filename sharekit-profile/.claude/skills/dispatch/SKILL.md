@@ -66,7 +66,7 @@ Dispatch ONE `Explore` agentType critic — read-only, never edits — with:
 **Done when:** critic verdict returned; wrong assignments corrected or none found.
 
 ### Step 3: Launch in single message
-Dispatch all tracks as parallel `Agent()` calls in ONE tool-use block. If ≥2 tracks touch the same git repo, each MUST run in its own worktree (`${WORKTREES_ROOT}/<task>-<n>/`) to prevent index/lockfile collisions.
+Dispatch all tracks as parallel `Agent()` calls in ONE tool-use block. If ≥2 tracks touch the same git repo, each MUST run in its own worktree (`${DEV_ROOT}/.worktrees/<task>-<n>/`) to prevent index/lockfile collisions.
 
 **Done when:** all agents launched concurrently (you see multiple Agent calls in a single tool-use block; each track assigned exactly one agent; worktrees configured for same-repo collisions).
 

@@ -2,9 +2,9 @@
 
 ## Canonical owners
 
-- `<HOME>/.agents/skills` is the canonical shared skill store.
-- `<HOME>/.codex/skills` is reserved for Codex/system-specific skills.
-- `${DEV_ROOT}/forge-space/.agents/skills` is for Forge Space-only skills or thin overlays.
+- `~/.agents/skills` is the canonical shared skill store.
+- `~/.codex/skills` is reserved for Codex/system-specific skills.
+- `~/Desenvolvimento/forge-space/.agents/skills` is for Forge Space-only skills or thin overlays.
 
 ## Resolution rules
 

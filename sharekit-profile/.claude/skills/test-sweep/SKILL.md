@@ -6,6 +6,7 @@ auto-invoke: 'test-quality-improvement-requests'
 metadata:
   owner: global-agents
   tier: contextual
+  canonical_source: ~/.claude/skills/test-sweep
 ---
 
 # Test Sweep

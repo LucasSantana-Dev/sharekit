@@ -16,6 +16,7 @@ argument-hint: "[--strict] [path]"
 metadata:
   owner: global-agents
   tier: contextual
+  canonical_source: ~/.claude/skills/harness-audit
   origin: backport of ECC "AgentShield" concept (external-repo eval 2026-06-17)
 ---
 

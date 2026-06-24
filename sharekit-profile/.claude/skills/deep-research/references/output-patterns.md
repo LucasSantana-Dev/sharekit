@@ -47,7 +47,7 @@ Missing:
 
 Next:
   - [If user clarifies scope: ...]
-  - [If mounting external drive: ...]
+  - [If mounting External HD: ...]
   - [Fallback: ...]
 ```
 

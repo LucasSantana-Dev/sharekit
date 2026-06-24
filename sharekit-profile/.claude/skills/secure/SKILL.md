@@ -48,9 +48,9 @@ python3 ~/.claude/rag-index/query.py "security findings accepted risks" --top 5 
 
 If prior audit exists: compare scope (same files? same risk categories?). If this is a re-check after fixes, confirm fixes applied.
 
-**Halt if:** external drive unmounted — RAG unreachable.
+**Halt if:** External HD unmounted — RAG unreachable.
 ```bash
-mount | grep -q "${EXTERNAL_HD}" || { echo "BLOCKED: external drive unmounted — RAG unavailable"; exit 1; }
+mount | grep -q "/Volumes/External HD" || { echo "BLOCKED: External HD unmounted — RAG unavailable"; exit 1; }
 ```
 
 ---

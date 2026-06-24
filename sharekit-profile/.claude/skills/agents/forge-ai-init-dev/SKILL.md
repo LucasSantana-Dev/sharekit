@@ -7,6 +7,7 @@ description: >
 metadata:
   owner: forge-space
   tier: project
+  canonical_source: ~/.Claude/skills/agents/forge-ai-init-dev
 ---
 
 # forge-ai-init Development Skill

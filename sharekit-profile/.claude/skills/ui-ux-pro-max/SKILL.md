@@ -4,6 +4,7 @@ description: Searchable UI/UX reference library for targeted pattern/palette/fon
 metadata:
   owner: global-agents
   tier: contextual
+  canonical_source: ~/.agents/skills/ui-ux-pro-max
   progressive_disclosure: split
 ---
 

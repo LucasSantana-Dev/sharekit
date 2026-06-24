@@ -16,6 +16,7 @@ auto-invoke: <comma-separated phrases + signal triggers>
 metadata:
   owner: global-agents                   # or repo / org as appropriate
   tier: contextual                       # contextual | always-on | scheduled
+  canonical_source: ~/.claude/skills/<name>
 ---
 ```
 

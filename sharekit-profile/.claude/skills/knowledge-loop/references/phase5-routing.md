@@ -3,7 +3,7 @@
 **When to run Phase 5:**
 - Memory or graph changed this session (not pure recall).
 - Session is NOT ending soon (SessionEnd hook handles the automatic push).
-- external drive is mounted (mount guard §1 in mount-guard.sh).
+- External HD is mounted (mount guard §1 in mount-guard.sh).
 
 **When to skip Phase 5:**
 - Recall-only session with no writes.
@@ -11,7 +11,7 @@
 - Mount guard check fails → surface blocker, skip push, halt Phase 5.
 
 **What changes**
-- **Memory**: Any file written to `~/.claude/projects/-<dev-root>/memory/`.
+- **Memory**: Any file written to `~/.claude/projects/-Volumes-External-HD-Desenvolvimento/memory/`.
 - **Graph**: `graphify` ran a full build (`--update` or new graph) this session — snapshot at `graphify-out/graph.json`.
 
 **How to detect a change**

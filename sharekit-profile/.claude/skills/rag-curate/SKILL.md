@@ -28,11 +28,11 @@ Add missing docs or rewrite weak chunks after a diagnostic (`adt-rag-inspect`, `
 
 > **Phase 2 (ADR-0029) — SHIPPED 2026-06-21 (ADR-0030 One Brain):** the knowledge-brain vault is served by the `search_knowledge` MCP tool (rag-index `mcp_server.py`, scoped to `memory/standards/plans/handoffs/adrs` — implemented on the existing rag-index server, not a separate RAGLight MCP). For *retrieval*, use `search_knowledge(query=…)`. For *curation*, edit the vault's `.md` files directly; the existing `~/.claude/rag-index` build covers `memory/` via the symlink, so incremental reindex works unchanged.
 
-> **Before touching the Memory Vault, mount-guard** (`standards/knowledge-brain.md` §1): the vault + the RAG embedder cache are on the external drive. If it's unmounted, `query.py`/`build.py` can't load the embedder and the vault is unreachable — surface that and stop, don't curate blind. Write/edit memory via the symlink path `~/.claude/projects/-<dev-root>/memory/` (not the raw brain path) so the reindex-hook fires; `build.py` canonicalizes to the brain realpath, so each memory has ONE index path — never "dedup" by deleting brain-path chunks (they're canonical).
+> **Before touching the Memory Vault, mount-guard** (`standards/knowledge-brain.md` §1): the vault + the RAG embedder cache are on the External HD. If it's unmounted, `query.py`/`build.py` can't load the embedder and the vault is unreachable — surface that and stop, don't curate blind. Write/edit memory via the symlink path `~/.claude/projects/-Volumes-External-HD-Desenvolvimento/memory/` (not the raw brain path) so the reindex-hook fires; `build.py` canonicalizes to the brain realpath, so each memory has ONE index path — never "dedup" by deleting brain-path chunks (they're canonical).
 
 ## Three curation patterns
 
-> All `build.py`/`query.py` calls below assume the **mount guard passed** (`standards/knowledge-brain.md` §1) — the embedder cache is on the external drive. If `mount | grep "${EXTERNAL_HD}"` is empty, STOP: the embedder won't load and curating blind produces garbage. Memory-file edits go via the `~/.claude/.../memory` symlink path so the reindex-hook fires.
+> All `build.py`/`query.py` calls below assume the **mount guard passed** (`standards/knowledge-brain.md` §1) — the embedder cache is on the External HD. If `mount | grep "/Volumes/External HD"` is empty, STOP: the embedder won't load and curating blind produces garbage. Memory-file edits go via the `~/.claude/.../memory` symlink path so the reindex-hook fires.
 
 ### A. Missing doc → write + incremental reindex
 

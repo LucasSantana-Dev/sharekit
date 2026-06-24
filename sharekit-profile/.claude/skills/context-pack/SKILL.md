@@ -23,7 +23,7 @@ Bootstrap task-aware context in <3 minutes.
 ## Workflow
 
 **Step 1: Query RAG for decisions & patterns**
-- **Check mount guard:** `mount | grep -q "${EXTERNAL_HD}" || { echo "BLOCKED: external drive unmounted"; }` — if unmounted, surface blocker and fall back to step 2b.
+- **Check mount guard:** `mount | grep -q "/Volumes/External HD" || { echo "BLOCKED: External HD unmounted"; }` — if unmounted, surface blocker and fall back to step 2b.
 - **Query RAG:** Use exact command pattern:
   ```bash
   python3 ~/.claude/rag-index/query.py "<task question>" --top 5 [--scope memory] [--fast]
@@ -50,7 +50,7 @@ Bootstrap task-aware context in <3 minutes.
 
 ## Stop Conditions
 
-- **RAG unavailable (external drive unmounted):** surface blocker clearly; do not hide it in fallback.
+- **RAG unavailable (External HD unmounted):** surface blocker clearly; do not hide it in fallback.
 - **RAG returns ∅ AND no plans/handoffs exist:** read 2–3 files, stop. Expanding further dilutes signal.
 - **Task touches one known file:** skip context-pack entirely; direct read is faster.
 - **Marginal reads:** if the next read would not change the action, halt — each extra read dilutes budget.

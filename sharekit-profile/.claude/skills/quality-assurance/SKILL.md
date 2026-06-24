@@ -6,6 +6,8 @@ description: Choose and sequence the right QA skills and checks for a change, re
 metadata:
   owner: global-agents
   tier: contextual
+  canonical_source: ~/.agents/skills/quality-assurance
+  overlay_of: ~/.agents/skills/quality-gates
 ---
 
 

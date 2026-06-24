@@ -9,6 +9,7 @@ metadata:
   short-description: Fetch and fix GitHub PR review comments
   owner: global-agents
   tier: contextual
+  canonical_source: ~/.claude/skills/gh-address-comments
 ---
 
 # PR Comment Handler

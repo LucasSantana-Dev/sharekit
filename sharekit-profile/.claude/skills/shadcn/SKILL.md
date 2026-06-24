@@ -5,6 +5,7 @@ user-invocable: false
 metadata:
   owner: global-agents
   tier: contextual
+  canonical_source: ~/.agents/skills/shadcn
   progressive_disclosure: split
 ---
 

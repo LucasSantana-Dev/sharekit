@@ -7,6 +7,7 @@ argument-hint: '[focus <repo>]'
 metadata:
   owner: global-agents
   tier: stateful
+  canonical_source: ~/.agents/skills/ecosystem-health
 ---
 
 # Ecosystem Health — Lightweight Status Dashboard

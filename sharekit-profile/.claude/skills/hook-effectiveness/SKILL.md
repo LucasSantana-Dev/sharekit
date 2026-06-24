@@ -7,6 +7,7 @@ argument-hint: "[--days N]"
 metadata:
   owner: global-agents
   tier: contextual
+  canonical_source: ~/.claude/skills/hook-effectiveness
 ---
 
 # Hook Effectiveness

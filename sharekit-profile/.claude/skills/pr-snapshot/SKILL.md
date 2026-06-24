@@ -6,6 +6,7 @@ argument-hint: "<PR_NUMBERS> [--repo owner/name]"
 metadata:
   owner: lucas-dev
   tier: production
+  canonical_source: ~/.agents/skills/pr-snapshot
 ---
 
 Display a compact status table for multiple PRs in a single `gh api` call with visual indicators for check and review state.
@@ -49,7 +50,7 @@ Display a compact status table for multiple PRs in a single `gh api` call with v
 /pr-snapshot 645 646 647
 
 # Check PRs in a specific repo
-/pr-snapshot 645 646 647 --repo <GITHUB_USER>/<REPO>
+/pr-snapshot 645 646 647 --repo <github-user>/Lucky
 
 # Single PR
 /pr-snapshot 645

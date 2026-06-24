@@ -9,6 +9,7 @@ license: Complete terms in LICENSE.txt
 metadata:
   owner: global-agents
   tier: contextual
+  canonical_source: ~/.agents/skills/skill-creator
 ---
 
 
@@ -38,7 +39,7 @@ Use this skill to build or revise skills that another agent can reliably pick up
 ## Inputs / Prereqs
 
 - Know the skill's job, expected outputs, and trigger phrases.
-- Load `<HOME>/.agents/skills/skill-maintainer/references/skill-template.md` before drafting a new skill contract.
+- Load `~/.agents/skills/skill-maintainer/references/skill-template.md` before drafting a new skill contract.
 - Load `references/workflows.md`, `references/output-patterns.md`, or `references/compatibility-wrappers.md` only when the task needs them.
 
 ## Workflow
@@ -65,8 +66,8 @@ Use this skill to build or revise skills that another agent can reliably pick up
 
 ## Load These Resources
 
-- `<HOME>/.agents/skills/skill-maintainer/references/skill-template.md`
-- `<HOME>/.agents/skills/skill-maintainer/references/memory-tiers.md`
+- `~/.agents/skills/skill-maintainer/references/skill-template.md`
+- `~/.agents/skills/skill-maintainer/references/memory-tiers.md`
 - `references/workflows.md`
 - `references/output-patterns.md`
 - `references/compatibility-wrappers.md`

@@ -14,14 +14,14 @@ mcp_servers: [rag-index, claude-mem, serena]
 
 ## Pre-flight: Mount check
 
-**Before querying RAG or knowledge-brain vault, verify external drive is mounted:**
+**Before querying RAG or knowledge-brain vault, verify External HD is mounted:**
 
 ```bash
-mount | grep -q "${EXTERNAL_HD}" || \
-  { echo "BLOCKED: external drive unmounted — RAG/vault unreachable. Degrading to claude-mem + grep."; }
+mount | grep -q "/Volumes/External HD" || \
+  { echo "BLOCKED: External HD unmounted — RAG/vault unreachable. Degrading to claude-mem + grep."; }
 ```
 
-If unmounted: `rag_query` (embedder cache on external drive) and `search_knowledge` fail. Fall back to Source 2 (claude-mem FTS5) + shell grep. Degrade explicitly; do not return empty results.
+If unmounted: `rag_query` (embedder cache on External HD) and `search_knowledge` fail. Fall back to Source 2 (claude-mem FTS5) + shell grep. Degrade explicitly; do not return empty results.
 
 ---
 
@@ -82,7 +82,7 @@ search_knowledge(query="<natural-language question>", top=5)
 
 > If `search_knowledge` isn't listed as an available tool, the running rag-index MCP server predates 2026-06-21 — restart the session to reload it.
 
-> **Mount guard** (`standards/knowledge-brain.md` §1): the vault **and the RAG embedder cache** are on the external drive. If it's unmounted, Source 4 is unreachable AND Source 1 (`rag_query`) can't load the embedder — recall degrades to claude-mem (Source 2) + grep only. Check `mount | grep "${EXTERNAL_HD}"`; if absent, say so plainly rather than returning empty/misleading results.
+> **Mount guard** (`standards/knowledge-brain.md` §1): the vault **and the RAG embedder cache** are on the External HD. If it's unmounted, Source 4 is unreachable AND Source 1 (`rag_query`) can't load the embedder — recall degrades to claude-mem (Source 2) + grep only. Check `mount | grep "/Volumes/External HD"`; if absent, say so plainly rather than returning empty/misleading results.
 
 ## Auto-route decision table
 

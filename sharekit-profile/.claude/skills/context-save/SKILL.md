@@ -7,6 +7,7 @@ argument-hint: '[<note>]'
 metadata:
   owner: global-agents
   tier: stateful
+  canonical_source: ~/.agents/skills/context-save
 ---
 
 

@@ -6,6 +6,7 @@ argument-hint: "[<short title>]"
 metadata:
   owner: global-agents
   tier: contextual
+  canonical_source: ~/.claude/skills/adr-write
 ---
 
 # ADR Write
