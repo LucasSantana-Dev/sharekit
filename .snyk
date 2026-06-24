@@ -1,0 +1,9 @@
+# .snyk
+version: v1.25.0
+ignore:
+  HardcodedNonCryptoSecret:
+    - 'test/scan.test.ts':
+        reason: >
+          Intentional test fixture for the secret scanner — these patterns are used to
+          verify that scanForSecrets() detects AWS key and private key patterns. Not real credentials.
+        expires: '2028-01-01T00:00:00.000Z'
