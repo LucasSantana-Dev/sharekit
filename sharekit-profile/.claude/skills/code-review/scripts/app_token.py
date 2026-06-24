@@ -128,7 +128,11 @@ def main():
     if not a.app_id:
         raise SystemExit("--app-id (or CODE_REVIEW_APP_ID) is required")
     if a.key_file:
-        with open(a.key_file, "rb") as f:
+        from pathlib import Path
+        key_file = Path(a.key_file).resolve()
+        if not key_file.exists():
+            raise SystemExit(f"Key file not found: {a.key_file}")
+        with open(key_file, "rb") as f:
             key_pem = f.read()
     else:
         key_pem = sys.stdin.buffer.read()
