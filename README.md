@@ -1,5 +1,7 @@
 # sharekit
 
+![ShareKit banner](https://i.ibb.co/NgdM23Kz/sharekit-card.png)
+
 Share your AI coding setup — CLAUDE.md, skills, cursorrules, and dotfiles — with anyone. One command to install, one to rollback.
 
 ## Install
