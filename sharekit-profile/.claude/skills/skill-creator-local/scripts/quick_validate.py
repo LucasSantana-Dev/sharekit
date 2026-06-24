@@ -11,7 +11,7 @@ from pathlib import Path
 
 def validate_skill(skill_path):
     """Basic validation of a skill"""
-    skill_path = Path(skill_path)
+    skill_path = Path(skill_path).resolve()
 
     # Check SKILL.md exists
     skill_md = skill_path / 'SKILL.md'

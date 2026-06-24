@@ -101,6 +101,7 @@ test('scanForSecrets truncates long previews', () => {
 });
 
 test('scanForSecrets with file label includes it in finding', () => {
+  // snyk-ignore-next-line: HardcodedNonCryptoSecret
   const content = 'AKIAEXAMPLEKEY000000';
   const findings = scanForSecrets(content, '~/.claude/CLAUDE.md');
   assert(findings.length > 0);
@@ -108,6 +109,7 @@ test('scanForSecrets with file label includes it in finding', () => {
 });
 
 test('scanForSecrets detects multiple findings in one content', () => {
+  // snyk-ignore-next-line: HardcodedNonCryptoSecret
   const content = `AKIAEXAMPLEKEY000000
 -----BEGIN PRIVATE KEY-----
 test secret

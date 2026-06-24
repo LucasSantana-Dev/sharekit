@@ -203,10 +203,11 @@
         list.innerHTML = items
           .map((r) => {
             const owner = esc(r.owner.login);
+            const stars = Number.isInteger(r.stargazers_count) ? r.stargazers_count : 0;
             const cmd = 'npx @lucassantana/sharekit install ' + owner;
             return `<div class="card">
               <div class="top"><span class="owner">${owner}</span>${
-                r.stargazers_count ? `<span class="stars">★ ${r.stargazers_count}</span>` : ''
+                stars ? `<span class="stars">★ ${stars}</span>` : ''
               }</div>
               ${r.description ? `<div class="desc">${esc(r.description)}</div>` : ''}
               <div class="inst"><code>${cmd}</code><button class="copy" data-copy="${cmd}">copy</button></div>

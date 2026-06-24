@@ -113,6 +113,7 @@ def package_skill(skill_path, output_dir=None):
         output_path = Path.cwd()
 
     skill_filename = output_path / f"{skill_name}.skill"
+    skill_filename = skill_filename.resolve()
 
     # Create the .skill file (zip format)
     try:

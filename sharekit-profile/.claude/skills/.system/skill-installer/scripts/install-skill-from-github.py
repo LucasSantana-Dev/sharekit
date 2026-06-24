@@ -170,10 +170,13 @@ def _validate_skill(path: str) -> None:
 
 
 def _copy_skill(src: str, dest_dir: str) -> None:
+    src_real = os.path.realpath(src)
+    if not os.path.isdir(src_real):
+        raise InstallError(f"Source path is not a directory: {src}")
     os.makedirs(os.path.dirname(dest_dir), exist_ok=True)
     if os.path.exists(dest_dir):
         raise InstallError(f"Destination already exists: {dest_dir}")
-    shutil.copytree(src, dest_dir)
+    shutil.copytree(src_real, dest_dir)
 
 
 def _build_repo_url(owner: str, repo: str) -> str:
@@ -289,7 +292,10 @@ def main(argv: list[str]) -> int:
                 dest_dir = os.path.join(dest_root, skill_name)
                 if os.path.exists(dest_dir):
                     raise InstallError(f"Destination already exists: {dest_dir}")
-                skill_src = os.path.join(repo_root, path)
+                skill_src = os.path.realpath(os.path.join(repo_root, path))
+                repo_root_real = os.path.realpath(repo_root)
+                if not skill_src.startswith(repo_root_real + os.sep) and skill_src != repo_root_real:
+                    raise InstallError(f"Skill path escapes repository: {path}")
                 _validate_skill(skill_src)
                 _copy_skill(skill_src, dest_dir)
                 installed.append((skill_name, dest_dir))
