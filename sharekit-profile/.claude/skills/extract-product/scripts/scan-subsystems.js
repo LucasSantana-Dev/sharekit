@@ -13,7 +13,7 @@
 const fs = require('fs')
 const path = require('path')
 
-const roots = process.argv.slice(2)
+const roots = process.argv.slice(2).map(r => path.resolve(r))
 if (roots.length === 0) {
     console.error('usage: node scan-subsystems.js <root> [<root> ...]')
     process.exit(2)
