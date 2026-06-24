@@ -1,0 +1,28 @@
+{
+  "eval_id": 2,
+  "run": "with_skill",
+  "expectations": [
+    {
+      "text": "recommends-sonnet",
+      "passed": true,
+      "evidence": "Sonnet is the right call—classification is a single-pass judgment task"
+    },
+    {
+      "text": "uses-quick-decision-mode",
+      "passed": true,
+      "evidence": "No headers, no analysis steps, direct verdict in first sentence"
+    },
+    {
+      "text": "states-tradeoff",
+      "passed": true,
+      "evidence": "Saves ~60% tokens (vs Opus); also suggests escalation pattern for ambiguous issues"
+    },
+    {
+      "text": "under-100-words",
+      "passed": true,
+      "evidence": "Response is 2 sentences ~50 words — well under limit"
+    }
+  ],
+  "pass_rate": 1.0,
+  "notes": "Excellent. Adds value beyond baseline: the escalation pattern (flag ambiguous → Sonnet, escalate 2-5 unclear → Opus) is a genuinely useful optimization the baseline didn't surface."
+}

@@ -1,0 +1,33 @@
+{
+  "eval_id": 3,
+  "run": "without_skill",
+  "expectations": [
+    {
+      "text": "flags-sequential-steps-1-3",
+      "passed": true,
+      "evidence": "Security, test-health, and config-drift audits have zero dependencies on each other but run one-at-a-time"
+    },
+    {
+      "text": "flags-opus-misuse-steps-1-3",
+      "passed": true,
+      "evidence": "Steps 1–3 are mechanical read-only analysis (use Sonnet/Haiku or read-only agent types)"
+    },
+    {
+      "text": "endorses-opus-step-4",
+      "passed": true,
+      "evidence": "Opus is for orchestration and the ADR synthesis only"
+    },
+    {
+      "text": "provides-concrete-rewrite",
+      "passed": true,
+      "evidence": "Launch three agents in parallel, wait for all to finish, then run synthesis + ADR (Opus)"
+    },
+    {
+      "text": "uses-structured-output-format",
+      "passed": false,
+      "evidence": "Uses ## Summary instead of ## Efficiency [verdict] format"
+    }
+  ],
+  "pass_rate": 0.8,
+  "notes": "Strong baseline again. Only miss is the output format. Content-wise nearly identical to skill output."
+}

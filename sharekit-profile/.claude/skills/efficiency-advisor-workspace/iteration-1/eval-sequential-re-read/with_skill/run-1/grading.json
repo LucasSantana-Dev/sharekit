@@ -1,0 +1,11 @@
+{
+  "summary": {"pass_rate": 1.0, "passed": 5, "failed": 0, "total": 5},
+  "expectations": [
+    {"text": "identifies-re-read-waste", "passed": true, "evidence": "Flags 'Redundant file reads' HIGH: 48k-64k total redundant tokens, each agent reads full 400-line file"},
+    {"text": "recommends-parallel-not-sequential", "passed": true, "evidence": "Recommends parallel dispatch (one message, 8 Agent calls) as first HIGH finding"},
+    {"text": "consolidate-read-in-orchestrator", "passed": true, "evidence": "Suggests fork (orchestrator reads once, child agents inherit cached read) AND slicing approach"},
+    {"text": "provides-token-estimate", "passed": true, "evidence": "~85% fewer input tokens, ~8k baseline vs 56k-64k current — specific and grounded"},
+    {"text": "uses-structured-output-format", "passed": true, "evidence": "Uses ## Efficiency [EXPENSIVE] header with Status + Savings available + Key findings + Next"}
+  ],
+  "notes": "Unique insight: recommends fork as simplest option (inherits cache). Token estimate is more accurate than baseline."
+}

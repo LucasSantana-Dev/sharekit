@@ -1,0 +1,6 @@
+{
+  "eval_id": 3,
+  "eval_name": "parallel-audit",
+  "prompt": "Here's my plan for a codebase audit: Step 1 - run security audit (Opus agent). Step 2 - wait for it to finish, then run test health audit (Opus agent). Step 3 - wait, then run config drift check (Opus agent). Step 4 - synthesize all three findings and write an ADR (Opus agent). Is this efficient?",
+  "assertions": []
+}

@@ -1,0 +1,10 @@
+{
+  "summary": {"pass_rate": 0.75, "passed": 3, "failed": 1, "total": 4},
+  "expectations": [
+    {"text": "recommends-sonnet", "passed": true, "evidence": "This task is pure Sonnet-tier execution"},
+    {"text": "uses-quick-decision-mode", "passed": false, "evidence": "Uses bullet-point tier breakdown (Opus/Sonnet/Haiku bullets) — more formal than Quick Decision Mode"},
+    {"text": "states-tradeoff", "passed": true, "evidence": "Opus would waste token budget on unused reasoning capacity"},
+    {"text": "under-100-words", "passed": true, "evidence": "~80 words"}
+  ],
+  "notes": "Correct answer, wrong mode. Defaults to structured explanation rather than quick judgment."
+}

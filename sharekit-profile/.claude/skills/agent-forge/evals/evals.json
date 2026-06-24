@@ -1,0 +1,23 @@
+{
+  "skill_name": "agent-forge",
+  "evals": [
+    {
+      "id": 0,
+      "prompt": "Create an agent for /rag-eval",
+      "expected_output": "A ~/.claude/agents/rag-evaluator.md file with XML-structured agent prompt: Role (mission + in/out scope), Why_This_Matters, Skill_Operating_Procedure (full hitgate workflow), Success_Criteria, Constraints (opinionated defaults), Output_Format (verdict-first). Model: claude-sonnet-4-6.",
+      "files": []
+    },
+    {
+      "id": 1,
+      "prompt": "Forge an agent from /grill-with-options",
+      "expected_output": "A ~/.claude/agents/decision-griller.md file. Role: Decision Griller persona. Skill_Operating_Procedure includes: map decision tree first, AskUserQuestion one fork at a time, 95% convergence stop, non-answer handling. Constraints: makes decisions without asking user for confirmation on obvious steps. Output_Format: verdict-first with resolved decisions.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "I want specialized agents for /rag-eval /xp /grill-with-options — forge all three",
+      "expected_output": "Three agent files created in parallel: rag-evaluator.md, xp-navigator.md, decision-griller.md. Each has distinct persona, self-contained procedure, opinionated defaults, and verdict-first output. Batch summary table reported.",
+      "files": []
+    }
+  ]
+}

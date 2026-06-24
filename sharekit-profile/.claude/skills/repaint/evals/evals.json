@@ -1,0 +1,135 @@
+{
+  "skill_name": "repaint",
+  "evals": [
+    {
+      "id": 0,
+      "prompt": "Build a pricing page for my SaaS developer tool. I want it to look credible — not like every other startup landing page. Three tiers: Hobby (free), Pro ($29/mo), Team ($99/mo). The product is a code review tool for engineers.",
+      "expected_output": "A complete pricing page HTML/React implementation. Should: lock saas-landing register, pick a non-purple anchor (e.g. Linear/Vercel/Stripe), produce a token spec with specific OKLCH colors, avoid generic bento grid hero, avoid Inter as default body font, produce a slop audit verdict, show realistic pricing content not Lorem ipsum.",
+      "files": [],
+      "assertions": [
+        {"id": "register-locked", "description": "Output explicitly identifies register as saas-landing"},
+        {"id": "anchor-named", "description": "Output names at least one specific brand anchor (Linear/Vercel/Stripe/Notion/Raycast/etc.)"},
+        {"id": "token-spec-present", "description": "Output includes a token table with color, type, spacing values"},
+        {"id": "no-purple-gradient", "description": "No purple-to-pink/blue gradient in the implementation"},
+        {"id": "no-inter-default", "description": "Font choice is NOT Inter, Roboto, Arial, or system stack as default body"},
+        {"id": "no-generic-bento", "description": "Pricing layout is NOT a generic 3-equal-column bento grid"},
+        {"id": "slop-audit-run", "description": "Output includes slop audit verdict or references audit"},
+        {"id": "realistic-content", "description": "Uses realistic pricing labels and feature descriptions, not Lorem ipsum or 'Feature 1'"}
+      ]
+    },
+    {
+      "id": 1,
+      "prompt": "I need a settings panel component for a developer tool web app. It should have sections for: API keys, notifications, account info, and danger zone (delete account). The app already uses Tailwind CSS.",
+      "expected_output": "A settings panel component. Should: lock product-app register (no SaaS marketing patterns), pick appropriate anchor (e.g. Linear or Raycast for dev-tool density), token spec with 4pt/8pt grid, all 8 component states designed for interactive elements, especially the danger zone destructive action.",
+      "files": [],
+      "assertions": [
+        {"id": "product-app-register", "description": "Register is identified as product-app (not saas-landing)"},
+        {"id": "no-saas-marketing-patterns", "description": "No hero sections, dual CTA, bento grid, or SaaS marketing patterns in the component"},
+        {"id": "tailwind-scaffold-detected", "description": "Output acknowledges Tailwind CSS and routes to tailwind-design-system scaffold"},
+        {"id": "danger-zone-states", "description": "Danger zone / destructive action has proper disabled/confirm state designed"},
+        {"id": "dev-tool-anchor", "description": "Anchor references a developer-tool reference (Linear, Raycast, GitHub/Primer, or similar)"},
+        {"id": "all-sections-present", "description": "Implementation includes all 4 required sections: API keys, notifications, account info, danger zone"}
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Create an experimental hero section for my personal portfolio. I'm a frontend engineer who loves creative code. I want something bold and memorable — not the generic dark + cyan SaaS look. Surprise me.",
+      "expected_output": "An art-direction mode hero section. Should: detect art-direction mode, commit to a BOLD aesthetic direction (NOT cyan/violet on dark), use distinctive typography (not Inter), implement with real animations, be unforgettable — passes the name-swap identity test, routes to frontend-design path.",
+      "files": [],
+      "assertions": [
+        {"id": "art-direction-detected", "description": "Output explicitly identifies art-direction mode (not production mode)"},
+        {"id": "no-cyan-dark-palette", "description": "Color palette is NOT cyan/violet on dark background"},
+        {"id": "no-inter", "description": "Typography choice is NOT Inter, Roboto, or Arial"},
+        {"id": "aesthetic-direction-named", "description": "Output commits to a specific, named aesthetic direction (not just 'modern' or 'clean')"},
+        {"id": "personal-portfolio-register", "description": "Register is identified as personal-portfolio (not saas-landing)"},
+        {"id": "identity-specific", "description": "Hero content is specific to 'a frontend engineer who loves creative code' — not generic tech-professional copy"}
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "Build a product launch announcement page for a new feature in our team-chat app — we are launching threaded replies. It needs a headline, a short narrative of why threads matter, two or three feature highlights with a screenshot placeholder, and a CTA to try it. This is a one-off campaign page, not our main marketing site.",
+      "expected_output": "A marketing-register launch page. Should: lock marketing register (not saas-landing, not product-app), pick an editorial/marketing-appropriate anchor (e.g. Stripe marketing, Medium, The Verge, Linear changelog), produce a token spec with editorial typography, use a narrative-led layout rather than a repeated feature-grid rhythm, write realistic launch copy, and produce a slop audit verdict.",
+      "files": [],
+      "assertions": [
+      {"id": "marketing-register", "description": "Output identifies the register as marketing (not saas-landing or product-app)"},
+      {"id": "no-saas-landing-reflex", "description": "Does not apply default saas-landing patterns (dual-CTA hero, pricing tiers, generic bento feature grid) inappropriate to a single campaign page"},
+      {"id": "editorial-anchor", "description": "Anchor is a marketing/editorial reference (Stripe marketing, Medium, The Verge, Linear changelog, or similar), not a generic dashboard anchor"},
+      {"id": "narrative-led-layout", "description": "Layout is narrative/announcement-led, not a repeated icon+heading feature-card rhythm"},
+      {"id": "token-spec-present", "description": "Includes a token table with color, type, and spacing values"},
+      {"id": "realistic-launch-copy", "description": "Uses realistic launch copy about threaded replies, not Lorem ipsum or 'Feature 1'"},
+      {"id": "slop-audit-run", "description": "Output includes a slop audit verdict or references the audit"}
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "Create an API reference page for our REST endpoint POST /v1/messages. It should show the endpoint, the request parameters, an example request and response, and the error codes. Match the kind of docs developers actually read. We do not use any UI framework yet.",
+      "expected_output": "A docs-register reference page. Should: lock docs register, prioritize scannability and density over marketing flourish, treat code samples as first-class (monospace, distinct, copyable), name a developer-docs anchor (Stripe docs, Vercel docs, Twilio, Mintlify), avoid marketing hero/CTA patterns, and show realistic endpoint content.",
+      "files": [],
+      "assertions": [
+      {"id": "docs-register", "description": "Output identifies the register as docs (not marketing or saas-landing)"},
+      {"id": "no-marketing-patterns", "description": "No marketing hero, dual CTA, or conversion patterns — this is reference documentation"},
+      {"id": "code-sample-first-class", "description": "Request/response code samples are treated as first-class (monospace, distinct block, copy affordance)"},
+      {"id": "docs-anchor", "description": "Anchor references a developer-docs reference (Stripe docs, Vercel docs, Twilio, Mintlify, or similar)"},
+      {"id": "scannable-density", "description": "Layout favors scannable density (a params table, an error-code list) over decorative whitespace"},
+      {"id": "realistic-api-content", "description": "Shows realistic POST /v1/messages parameters, an example payload, and error codes, not placeholders"}
+      ]
+    },
+    {
+      "id": 5,
+      "prompt": "Add a 'Create workspace' dialog to our app. It needs a name field, a slug field auto-derived from the name, a visibility radio (private/public), and Create/Cancel buttons. Name is required.",
+      "expected_output": "A dialog that DEFERS to the existing shadcn design system. Should: detect components.json, use shadcn semantic tokens (bg-primary, text-muted-foreground, border-input, bg-destructive) and NOT raw color classes (bg-red-50) and NOT a parallel custom OKLCH palette, use shadcn primitives (Dialog, Field/FieldLabel, Button variants, cn()), use lucide icons not emoji, and design the form's disabled/error/loading states. This is the documented case where the skill most often regresses below a no-skill baseline.",
+      "files": [{"path": "components.json", "content": "{ \"style\": \"new-york\", \"tailwind\": { \"baseColor\": \"neutral\", \"cssVariables\": true, \"css\": \"app/globals.css\" }, \"aliases\": { \"ui\": \"@/components/ui\", \"utils\": \"@/lib/utils\" }, \"iconLibrary\": \"lucide\" }"}],
+      "assertions": [
+      {"id": "components-json-detected", "description": "Output acknowledges the existing shadcn setup (components.json) and routes to the shadcn scaffold path"},
+      {"id": "semantic-tokens-only", "description": "Uses shadcn semantic tokens (bg-primary, text-muted-foreground, border-input, bg-destructive) and not raw Tailwind color classes such as bg-red-50 or text-blue-600"},
+      {"id": "no-parallel-oklch-palette", "description": "Does not invent a parallel custom OKLCH token spec that competes with the design system's tokens"},
+      {"id": "shadcn-primitives", "description": "Uses shadcn primitives (Dialog, Field/FieldLabel or Label, Button variants) and cn() for conditional classes, not raw div plus template-literal ternaries"},
+      {"id": "lucide-not-emoji", "description": "Any icons use lucide (the project's iconLibrary), never emoji as UI icons"},
+      {"id": "validation-and-states", "description": "Implements the required-name validation and designs disabled/error/loading states for the form"}
+      ]
+    },
+    {
+      "id": 6,
+      "prompt": "Build a billing-history table for our app's account section — columns for date, description, amount, status, and an invoice download link. Paginated, ten rows per page.",
+      "expected_output": "A billing table that ADOPTS the existing DESIGN.md tokens verbatim. Should: load DESIGN.md, use its exact tokens (the oklch values, Geist/Geist Mono, 4pt base, 6px radius, green accent) rather than re-deriving a new token spec, take the product-app register from the file, follow the stated status-color rules (green for paid, muted for pending, red only for failed), and show realistic billing rows.",
+      "files": [{"path": "DESIGN.md", "content": "# DESIGN.md\nRegister: product-app\nAnchors: Linear (table density), Stripe Dashboard (status pills)\nTokens: bg oklch(0.16 0.01 265) · fg oklch(0.96 0 0) · muted oklch(0.62 0.01 265) · border oklch(0.27 0.01 265) · accent oklch(0.70 0.15 145) · danger oklch(0.58 0.20 25) · base 4pt · radius 6px · Geist / Geist Mono\nDirection: calm, dense, dark-first dev-tool surface; motion functional only; status uses the green accent for paid, muted for pending, the danger token only for failed."}],
+      "assertions": [
+      {"id": "design-md-loaded", "description": "Output explicitly loads and honors the existing DESIGN.md rather than deriving fresh tokens"},
+      {"id": "tokens-adopted-verbatim", "description": "Uses the DESIGN.md tokens (Geist/Geist Mono, the specified oklch values, 4pt base, 6px radius); does not substitute Inter or a different palette"},
+      {"id": "register-from-file", "description": "Register is taken as product-app from the DESIGN.md, not re-classified"},
+      {"id": "status-color-rules-followed", "description": "Status styling follows the DESIGN.md rule (green accent for paid, muted for pending, red only for failed)"},
+      {"id": "no-conflicting-gate3", "description": "Does not emit a competing Gate-3 token table that contradicts DESIGN.md"},
+      {"id": "realistic-billing-content", "description": "Rows show realistic billing history (dates, descriptions, amounts, statuses), not placeholders"}
+      ]
+    },
+    {
+      "id": 7,
+      "prompt": "Design a product detail page for an online eyewear store — a pair of glasses with photos, frame and lens options, price, an add-to-cart button, and a short description. Make it feel premium and trustworthy.",
+      "expected_output": "An e-commerce product page with a context-appropriate anchor. Should: recognize this is not a dev-tool brief, pick a retail/e-commerce anchor from references/context-anchors.md §A (Warby Parker, Aesop, or similar) rather than reflexively Linear/Vercel/Stripe-dev, produce a warm premium-retail token spec, use a product-photography-forward layout, write realistic eyewear product content, and run a slop audit.",
+      "files": [],
+      "assertions": [
+      {"id": "not-dev-tool-anchor", "description": "Anchor is not reflexively Linear/Vercel/Stripe-dev; it is a retail/e-commerce reference appropriate to the brief"},
+      {"id": "retail-anchor-named", "description": "Names a retail/e-commerce anchor (Warby Parker, Aesop, or a comparable premium retail brand)"},
+      {"id": "register-appropriate", "description": "Treats this as a marketing/commerce surface, not a dev-tool product-app"},
+      {"id": "token-spec-present", "description": "Includes a token table whose palette and type fit premium retail, not steely dev-tool grays"},
+      {"id": "photography-forward", "description": "Layout is product-photography-forward, not a dense data/dashboard layout"},
+      {"id": "realistic-eyewear-content", "description": "Uses realistic eyewear product copy (frame, lens, price, description), not Lorem ipsum"},
+      {"id": "no-emoji-icons", "description": "No emoji used as UI icons"}
+      ]
+    },
+    {
+      "id": 8,
+      "prompt": "Build an empty-state for a notifications inbox in our React app, shown when there are no notifications. Friendly, reassuring tone: tell the user they are all caught up and that we will let them know when something needs attention, plus a secondary link to notification settings.",
+      "expected_output": "A React empty-state whose contraction-heavy copy compiles. Should: render natural contractions (you're, we'll, don't) correctly — JSX text nodes left as written, string literals (aria-label, props, any data array) wrapped in double quotes or template literals, the apostrophe character itself never replaced with a double-quote or backtick — plus realistic reassuring copy and no emoji-as-icon.",
+      "files": [],
+      "assertions": [
+      {"id": "copy-compiles", "description": "The generated JSX/TS compiles; contractions do not break any string literal"},
+      {"id": "apostrophe-preserved", "description": "Apostrophes in contractions remain real apostrophes, never swapped for a double-quote or backtick character (the common over-correction)"},
+      {"id": "correct-string-delimiter", "description": "Any contraction inside a string literal (aria-label, prop, data array) uses a double-quote or template-literal outer delimiter"},
+      {"id": "jsx-text-untouched", "description": "Contractions in JSX text nodes are left exactly as written, not over-escaped"},
+      {"id": "reassuring-empty-state-copy", "description": "Copy is realistic and reassuring (you're all caught up, we'll notify you), not generic placeholder text"},
+      {"id": "no-emoji-icons", "description": "Any leading glyph or icon is a real icon, not emoji"}
+      ]
+    }
+  ]
+}

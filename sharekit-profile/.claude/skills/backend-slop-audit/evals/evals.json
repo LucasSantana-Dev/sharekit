@@ -1,0 +1,26 @@
+{
+    "skill_name": "backend-slop-audit",
+    "evals": [
+        {
+            "id": 0,
+            "name": "orders-endpoint-many-tells",
+            "prompt": "I just finished this orders endpoint (orderRoutes.ts) and I want to merge it today. Can you give it a once-over for anything sloppy or risky before I do?",
+            "expected_output": "Identifies the planted criticals (hardcoded Stripe key #22, unvalidated req.body #3, swallowed catches returning {ok:false}/[] #1, charge fetch with no timeout #4) and majors (N+1 buyer lookup #14, 200-on-error #9), plus the console.log #23 minor. Verdict FAIL. Evidence with file:line, concrete fix per finding, and hand-offs to security-review for the secret. Does NOT hallucinate findings not in the file.",
+            "files": ["fixtures/orderRoutes.ts"]
+        },
+        {
+            "id": 1,
+            "name": "wallet-transfer-python",
+            "prompt": "Review this transfer function (wallet_service.py) — something feels off but I can't put my finger on it.",
+            "expected_output": "Despite being Python (language-agnostic test), flags: string-built SQL / injection #19 (critical, defer security-review), read-check-write race on balance #5, missing transaction across debit+credit #20 (a crash between updates loses money), webhook POST with no timeout #4. Verdict FAIL. Concrete fixes (parameterized queries, single transaction, timeout). Evidence with line refs.",
+            "files": ["fixtures/wallet_service.py"]
+        },
+        {
+            "id": 2,
+            "name": "clean-profile-handler-pass",
+            "prompt": "Quick sanity check on this profile handler (getProfile.ts) before I open the PR — anything obviously wrong?",
+            "expected_output": "Recognizes this is largely correct: input validated (zod), parameterized ORM query, column selection (no over-fetch), honest status codes (400/404/500), structured logger, no swallowed errors. Verdict PASS (or WARN at most). Crucially does NOT invent criticals to look useful — false-positive discipline. May note at most a minor/nit. Pass-notes show the sweep was real.",
+            "files": ["fixtures/getProfile.ts"]
+        }
+    ]
+}

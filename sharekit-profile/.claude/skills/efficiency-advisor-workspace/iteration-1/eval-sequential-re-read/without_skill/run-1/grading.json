@@ -1,0 +1,11 @@
+{
+  "summary": {"pass_rate": 0.8, "passed": 4, "failed": 1, "total": 5},
+  "expectations": [
+    {"text": "identifies-re-read-waste", "passed": true, "evidence": "Mentions ~1000 tokens redundant I/O from each agent re-reading same file"},
+    {"text": "recommends-parallel-not-sequential", "passed": true, "evidence": "Dispatch all 8 agents in a single parallel Agent() call"},
+    {"text": "consolidate-read-in-orchestrator", "passed": true, "evidence": "Read SKILL.md once in the orchestrator; pass only the relevant section to each agent"},
+    {"text": "provides-token-estimate", "passed": true, "evidence": "~75% token savings estimate stated"},
+    {"text": "uses-structured-output-format", "passed": false, "evidence": "Uses ## Summary header, not ## Efficiency [verdict] — missing Status/Savings fields"}
+  ],
+  "notes": "Strong baseline (CLAUDE.md context). Underestimates re-read waste (says ~1000 tokens; actual is 3200+). Skill's estimate more accurate."
+}

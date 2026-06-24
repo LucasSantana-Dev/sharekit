@@ -1,0 +1,28 @@
+{
+  "eval_id": 2,
+  "run": "without_skill",
+  "expectations": [
+    {
+      "text": "recommends-sonnet",
+      "passed": true,
+      "evidence": "This task is pure Sonnet-tier execution"
+    },
+    {
+      "text": "uses-quick-decision-mode",
+      "passed": false,
+      "evidence": "Uses bullet-point tier breakdown (Opus / Sonnet / Haiku bullets), more formal than Quick Decision Mode requires"
+    },
+    {
+      "text": "states-tradeoff",
+      "passed": true,
+      "evidence": "Opus would waste token budget on unused reasoning capacity"
+    },
+    {
+      "text": "under-100-words",
+      "passed": true,
+      "evidence": "Response is ~80 words"
+    }
+  ],
+  "pass_rate": 0.75,
+  "notes": "Correct answer, wrong mode. Baseline defaults to structured explanation; skill correctly identifies this as a quick-mode trigger."
+}

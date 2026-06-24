@@ -1,0 +1,10 @@
+{
+  "summary": {"pass_rate": 1.0, "passed": 4, "failed": 0, "total": 4},
+  "expectations": [
+    {"text": "recommends-sonnet", "passed": true, "evidence": "Sonnet is the right call — classification is a single-pass judgment task"},
+    {"text": "uses-quick-decision-mode", "passed": true, "evidence": "No headers, no analysis steps, direct verdict in first sentence"},
+    {"text": "states-tradeoff", "passed": true, "evidence": "Saves ~60% tokens vs Opus; also suggests escalation pattern for ambiguous cases"},
+    {"text": "under-100-words", "passed": true, "evidence": "~50 words — well under limit"}
+  ],
+  "notes": "Adds novel insight: flag-then-escalate pattern (run Sonnet, escalate only unclear 2-5 to Opus). Baseline didn't surface this."
+}

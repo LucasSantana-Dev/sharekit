@@ -1,0 +1,23 @@
+{
+  "skill_name": "grill-with-options",
+  "evals": [
+    {
+      "id": 0,
+      "prompt": "I want to build a backend API for a mobile app. Help me work through the key decisions.",
+      "expected_output": "The skill should use AskUserQuestion to present bounded options for forking decisions (e.g., language/runtime, auth strategy, data storage, deployment target). Should ask one fork at a time, adapt based on prior answers, and end with a structured restatement of decisions made.",
+      "files": []
+    },
+    {
+      "id": 1,
+      "prompt": "We're about to deploy our app to production. Walk me through the deployment decisions we need to make.",
+      "expected_output": "The skill should surface deployment forks (e.g., platform choice, rollback strategy, traffic cutover, secret management) as AskUserQuestion calls with 2-4 options each. Options should explain consequences, not just definitions. Should converge on a restatement of the deployment plan.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "I'm planning a notifications feature — push, email, in-app. Help me decide the architecture.",
+      "expected_output": "The skill should identify decision forks in a notifications system (delivery channels, delivery guarantees, unsubscribe model, storage of notification history) and present each as a bounded AskUserQuestion. Should use multi-select where multiple choices can coexist and single-select where options are mutually exclusive.",
+      "files": []
+    }
+  ]
+}

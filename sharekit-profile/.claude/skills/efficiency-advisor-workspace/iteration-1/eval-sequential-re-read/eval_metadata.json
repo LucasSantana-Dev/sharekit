@@ -1,0 +1,6 @@
+{
+  "eval_id": 1,
+  "eval_name": "sequential-re-read",
+  "prompt": "I'm about to run a workflow that dispatches 8 agents sequentially: each one reads the same SKILL.md file (about 400 lines), analyzes one section, and writes findings to a file. Is this a good approach?",
+  "assertions": []
+}

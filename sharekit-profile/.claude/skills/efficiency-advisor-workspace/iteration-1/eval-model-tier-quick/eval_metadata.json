@@ -1,0 +1,6 @@
+{
+  "eval_id": 2,
+  "eval_name": "model-tier-quick",
+  "prompt": "Quick question: should I use Opus or Sonnet to triage 20 GitHub issues — reading each issue body and labeling them as bug/enhancement/wontfix?",
+  "assertions": []
+}

@@ -1,0 +1,125 @@
+{
+  "skill_name": "parallel-phases",
+  "evals": [
+    {
+      "id": 1,
+      "name": "simple-2-phase",
+      "prompt": "Execute this plan:\n\n## Phase 1 — Setup\n### Task T1: Create src/config.ts\n- specialist: impl\n- scope_files_out: [src/config.ts]\n- acceptance: File exports a Config interface with host, port, timeout fields\n\n### Task T2: Create src/logger.ts\n- specialist: impl\n- scope_files_out: [src/logger.ts]\n- depends_on: []\n- acceptance: File exports a log(level, message) function\n\n## Phase 2 — Integration\n### Task T3: Create src/index.ts\n- specialist: impl\n- scope_files_out: [src/index.ts]\n- depends_on: [T1, T2]\n- acceptance: Imports Config and log, creates app entry point\n\nRun the plan, show wave layout, execute each wave, run phase gate, emit final reconciliation.",
+      "expected_output": "Wave layout printed showing T1+T2 in Wave 1 of Phase 1 (parallel, no conflict), T3 in Wave 1 of Phase 2 (after dependency). Phase gate runs after each phase. Final reconciliation table shows all 3 tasks with outcomes.",
+      "assertions": [
+        {
+          "text": "Wave layout is printed before any agents are dispatched, showing T1 and T2 assigned to the same wave (parallel, non-conflicting scope)",
+          "discriminating": true
+        },
+        {
+          "text": "T3 is NOT in the same wave as T1 and T2. In the wave layout output, T3 appears in a later wave (Phase 2 or a wave index strictly greater than the wave containing T1 and T2), with depends_on cited as the reason.",
+          "discriminating": true
+        },
+        {
+          "text": "Final reconciliation output contains all three of: (a) a phase × task table with T1, T2, T3 and their outcomes, (b) a 'State change' section, (c) a 'Phase gates passed' count line",
+          "discriminating": true
+        },
+        {
+          "text": "T3 is not dispatched before both T1 and T2 appear as completed in the wave summary — T3's dispatch must follow T1+T2 completion, not precede it",
+          "discriminating": true
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "name": "conflict-guard-test",
+      "prompt": "Execute this plan:\n\n## Phase 1 — Parallel writes\n### Task T1: Update src/utils.ts — add formatDate()\n- specialist: impl\n- scope_files_out: [src/utils.ts]\n- acceptance: formatDate function added\n\n### Task T2: Update src/utils.ts — add parseDate()\n- specialist: impl\n- scope_files_out: [src/utils.ts]\n- acceptance: parseDate function added\n\n### Task T3: Create src/constants.ts\n- specialist: impl\n- scope_files_out: [src/constants.ts]\n- acceptance: FILE_VERSION constant exported\n\nShow wave layout and execute.",
+      "expected_output": "Conflict-guard detects T1 and T2 both write src/utils.ts. One is demoted to Wave 2 of Phase 1. T3 runs in Wave 1 alongside whichever of T1/T2 was not demoted. Wave summary shows the demotion decision.",
+      "assertions": [
+        {
+          "text": "T1 and T2 are NOT assigned to the same wave — they must appear in different wave slots in the wave layout output",
+          "discriminating": true
+        },
+        {
+          "text": "The wave layout output explicitly names 'src/utils.ts' as the file causing the conflict between T1 and T2 (not just 'conflict detected' — the specific file must appear in the demotion explanation)",
+          "discriminating": true
+        },
+        {
+          "text": "T3 is placed in Wave 1 alongside either T1 or T2 — T3 does NOT get demoted even though T1 and T2 conflict (src/constants.ts has no overlap with src/utils.ts)",
+          "discriminating": false
+        },
+        {
+          "text": "No false conflict is raised between T3 and either T1 or T2 — the output contains no demotion notice referencing T3",
+          "discriminating": true
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "name": "phase-gate-failure",
+      "prompt": "Execute this plan. The phase gate after Phase 1 returns exit code 1 (simulating a test failure — treat the gate as failed).\n\n## Phase 1 — Initial changes\n### Task T1: Modify src/auth.ts\n- specialist: impl\n- scope_files_out: [src/auth.ts]\n- acceptance: Add validateToken() function\n\n## Phase 2 — Follow-on changes\n### Task T2: Modify src/router.ts\n- specialist: impl\n- scope_files_out: [src/router.ts]\n- depends_on: [T1]\n- acceptance: Use validateToken in route middleware\n\nShow what happens when the gate fails.",
+      "expected_output": "Phase 1 tasks execute. Phase gate runs and fails. Execution stops — Phase 2 is NOT started. Partial reconciliation is emitted using the partial-execution template with 'stopped at P1' banner. Handoff file path mentioned. Phase gates passed: 0/1.",
+      "assertions": [
+        {
+          "text": "Execution stops after Phase 1 gate failure — no dispatch message, wave announcement, or agent invocation for Phase 2 task T2 appears anywhere in the output",
+          "discriminating": true
+        },
+        {
+          "text": "The reconciliation output contains a 'PARTIAL' or 'stopped at' banner (not a standard full-success reconciliation), and Phase 2 tasks are listed as 'NOT STARTED' or equivalent, not 'DONE'",
+          "discriminating": true
+        },
+        {
+          "text": "A 'Phase gates passed: 0/1' line (or equivalent count showing 0 passed out of 1) appears in the reconciliation output — the failure is recorded, not silently swallowed",
+          "discriminating": true
+        },
+        {
+          "text": "A handoff file path (e.g., ~/.claude/handoffs/...) is mentioned in the reconciliation output, indicating the partial state was persisted for resume",
+          "discriminating": true
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "name": "single-phase-no-gate",
+      "prompt": "Execute this plan. There is no build system or test command in this project.\n\n## Phase 1 — Parallel refactors\n### Task T1: Refactor src/api/users.ts\n- specialist: impl\n- scope_files_out: [src/api/users.ts]\n- acceptance: Extract getUser() into a separate function\n\n### Task T2: Refactor src/api/posts.ts\n- specialist: impl\n- scope_files_out: [src/api/posts.ts]\n- acceptance: Extract getPost() into a separate function\n\n### Task T3: Refactor src/api/comments.ts\n- specialist: impl\n- scope_files_out: [src/api/comments.ts]\n- acceptance: Extract getComment() into a separate function\n\nRun the plan.",
+      "expected_output": "Wave layout shows all 3 tasks in Wave 1 (single phase, no conflicts). No phase gate runs (no gate command detected). Final reconciliation shows all 3 tasks DONE with no partial-execution banner.",
+      "assertions": [
+        {
+          "text": "Wave layout output shows T1, T2, and T3 all assigned to the same wave (Wave 1 of Phase 1) — no conflict demotions since all files are distinct",
+          "discriminating": true
+        },
+        {
+          "text": "Phase gate auto-detection logs 'no gate detected', 'no test command found', or equivalent — the skill does not run a gate command when none is configured",
+          "discriminating": true
+        },
+        {
+          "text": "Final reconciliation does NOT show a 'PARTIAL' or 'stopped at' banner — all tasks are listed as DONE and Phase gates passed shows the skipped/no-gate state",
+          "discriminating": true
+        },
+        {
+          "text": "The output contains no reference to Phase 2 — the skill correctly treats this as a single-phase plan and does not fabricate additional phases",
+          "discriminating": false
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "name": "fan-out-cap-subwave",
+      "prompt": "Execute this plan:\n\n## Phase 1 — Mass parallel refactors\n### Task T1: Refactor src/mod1.ts\n- scope_files_out: [src/mod1.ts]\n- acceptance: Add type annotation\n### Task T2: Refactor src/mod2.ts\n- scope_files_out: [src/mod2.ts]\n- acceptance: Add type annotation\n### Task T3: Refactor src/mod3.ts\n- scope_files_out: [src/mod3.ts]\n- acceptance: Add type annotation\n### Task T4: Refactor src/mod4.ts\n- scope_files_out: [src/mod4.ts]\n- acceptance: Add type annotation\n### Task T5: Refactor src/mod5.ts\n- scope_files_out: [src/mod5.ts]\n- acceptance: Add type annotation\n### Task T6: Refactor src/mod6.ts\n- scope_files_out: [src/mod6.ts]\n- acceptance: Add type annotation\n### Task T7: Refactor src/mod7.ts\n- scope_files_out: [src/mod7.ts]\n- acceptance: Add type annotation\n### Task T8: Refactor src/mod8.ts\n- scope_files_out: [src/mod8.ts]\n- acceptance: Add type annotation\n### Task T9: Refactor src/mod9.ts\n- scope_files_out: [src/mod9.ts]\n- acceptance: Add type annotation\n### Task T10: Refactor src/mod10.ts\n- scope_files_out: [src/mod10.ts]\n- acceptance: Add type annotation\n### Task T11: Refactor src/mod11.ts\n- scope_files_out: [src/mod11.ts]\n- acceptance: Add type annotation\n\n## Phase 2 — Integration\n### Task T12: Update src/index.ts\n- scope_files_out: [src/index.ts]\n- depends_on: [T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11]\n- acceptance: Re-export all 11 modules\n\nRun the plan.",
+      "expected_output": "Wave layout shows Phase 1 split into sub-waves (max 8 per wave). T1–T8 in Sub-wave 1, T9–T11 in Sub-wave 2. T12 in Phase 2 Wave 1 after all Phase 1 sub-waves complete. Final reconciliation shows all 12 tasks DONE.",
+      "assertions": [
+        {
+          "text": "Wave layout for Phase 1 shows a sub-wave split — no single wave contains all 11 tasks. Output explicitly shows at most 8 tasks per wave/sub-wave.",
+          "discriminating": true
+        },
+        {
+          "text": "T12 is assigned to Phase 2 (after all Phase 1 sub-waves complete) — not placed in any Phase 1 wave despite having depends_on referencing Phase 1 tasks",
+          "discriminating": true
+        },
+        {
+          "text": "Final reconciliation lists all 12 tasks (T1–T12) with outcomes — no tasks are silently dropped from the report due to the large fan-out",
+          "discriminating": true
+        },
+        {
+          "text": "Sub-wave 1 of Phase 1 completes before Sub-wave 2 is dispatched (sequential sub-wave execution, not all 11 tasks at once)",
+          "discriminating": false
+        }
+      ]
+    }
+  ]
+}

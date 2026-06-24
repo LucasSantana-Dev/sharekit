@@ -1,0 +1,11 @@
+{
+  "summary": {"pass_rate": 1.0, "passed": 5, "failed": 0, "total": 5},
+  "expectations": [
+    {"text": "flags-sequential-steps-1-3", "passed": true, "evidence": "Dispatch 3 Sonnet agents in parallel → saves ~50% time"},
+    {"text": "flags-opus-misuse-steps-1-3", "passed": true, "evidence": "All four agents use Opus — Steps 1-3 are read-only audits; downgrade to Sonnet"},
+    {"text": "endorses-opus-step-4", "passed": true, "evidence": "Single Opus for synthesis + ADR — endorsed as correct"},
+    {"text": "provides-concrete-rewrite", "passed": true, "evidence": "Restructured plan: (1) 3 parallel Sonnet agents, (2) await all, (3) single Opus synthesis+ADR"},
+    {"text": "uses-structured-output-format", "passed": true, "evidence": "## Efficiency FIXABLE header with all required fields"}
+  ],
+  "notes": "Perfect score. Correctly distinguishes analysis (Sonnet) from synthesis (Opus) — the hardest assertion in this eval."
+}
