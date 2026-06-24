@@ -72,7 +72,7 @@ The agent should insert variant HTML at insertLine.`);
 
   // Find the source file. Generated files are excluded from auto-search so we
   // don't silently write variants into a file the next build will wipe.
-  let targetFile = filePath;
+  let targetFile = filePath ? path.resolve(process.cwd(), filePath) : null;
   let matchedQuery = null;
   if (!targetFile) {
     for (const q of queries) {
