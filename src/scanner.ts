@@ -143,8 +143,8 @@ export function scanForSecrets(content: string, fileLabel?: string): Finding[] {
       continue;
     }
 
-    // Rule 7: Bearer token (HIGH)
-    const bearerMatch = /Bearer [A-Za-z0-9._\-]{20,}/.exec(line);
+    // Rule 7: Bearer JWT (HIGH) — eyJ prefix identifies base64-encoded JSON header (JWT)
+    const bearerMatch = /Bearer eyJ[A-Za-z0-9._\-]{17,}/.exec(line);
     if (bearerMatch) {
       const preview = truncatePreview(line, bearerMatch.index, 0, 30, false);
       findings.push({
