@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-06-25
+
+### Added
+
+- `sharekit update <user> --additive` — update mode that only adds new files from the upstream profile; locally-modified files are preserved and never overwritten. Reports skipped count in output.
+
 ## [0.3.0] - 2026-06-23
 
 ### Added

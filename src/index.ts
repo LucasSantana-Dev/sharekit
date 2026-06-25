@@ -23,7 +23,7 @@ import {
 const HOME = os.homedir();
 const STATE = path.join(HOME, '.sharekit');
 
-const VERSION = '0.4.0';
+const VERSION = '0.5.0';
 const USAGE = `${kleur.bold('sharekit')} v${VERSION} — share your AI coding setup
 
   ${kleur.cyan('init')}       [skill...]              scaffold a publishable profile in ./sharekit-profile
@@ -41,6 +41,7 @@ const USAGE = `${kleur.bold('sharekit')} v${VERSION} — share your AI coding se
                                 --yes                auto-approve prompts
                                 --dry-run            show changes without writing files
                                 --include-hooks      also apply settings.json with shell hooks
+                                --additive           only add new files; preserve local edits
   ${kleur.cyan('rollback')}   <user> [opts]          restore the last backup
                                 --yes                auto-approve prompts
                                 --dry-run            show what would be restored
@@ -104,6 +105,7 @@ export async function main(argv = process.argv.slice(2)) {
     if (flags.includes('--yes')) opts.yes = true;
     if (flags.includes('--dry-run')) opts.dryRun = true;
     if (flags.includes('--include-hooks')) opts.includeHooks = true;
+    if (flags.includes('--additive')) opts.additive = true;
     await update(user, opts);
     return;
   }

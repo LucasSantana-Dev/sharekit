@@ -15,6 +15,7 @@ export interface InstallOpts {
   includeHooks?: boolean;
   yes?: boolean;
   dryRun?: boolean;
+  additive?: boolean;
 }
 
 export async function confirm(q: string, autoYes = false): Promise<boolean> {
@@ -96,7 +97,8 @@ export async function search(query?: string): Promise<void> {
 export function updateApply(
   user: string,
   includeHooks = false,
-  dirs: Dirs = DEFAULT_DIRS
+  dirs: Dirs = DEFAULT_DIRS,
+  additive = false
 ): { filesWritten: number; backupDir: string } {
   // Get the install record for this user
   const installed = readInstalled(dirs);
@@ -129,13 +131,25 @@ export function updateApply(
   const files = plan(dir, roots);
   printPlan(files, manifest);
 
-  const todo = files.filter((f) => f.status !== 'same' && !isExecutable(f, includeHooks));
+  const todo = files.filter(
+    (f) =>
+      (additive ? f.status === 'new' : f.status !== 'same') && !isExecutable(f, includeHooks)
+  );
   if (!todo.length) {
-    console.log(kleur.dim('\n  Already up to date.\n'));
+    console.log(kleur.dim(additive ? '\n  No new files to add.\n' : '\n  Already up to date.\n'));
     return { filesWritten: 0, backupDir: '' };
   }
 
-  const { backupDir, filesWritten } = applyProfile(files, user, includeHooks, dirs);
+  if (additive) {
+    const skipped = files.filter((f) => f.status === 'changed' && !isExecutable(f, includeHooks));
+    if (skipped.length) {
+      console.log(
+        kleur.dim(`\n  = ${skipped.length} locally-modified file(s) preserved (additive mode)`)
+      );
+    }
+  }
+
+  const { backupDir, filesWritten } = applyProfile(todo, user, includeHooks, dirs);
 
   // Update the install record with the new commit and timestamp
   recordInstall(user, dir, ref, manifest.version, dirs);
@@ -153,6 +167,7 @@ export async function update(
     const includeHooks = opts?.includeHooks ?? false;
     const yes = opts?.yes ?? false;
     const dryRun = opts?.dryRun ?? false;
+    const additive = opts?.additive ?? false;
 
     // Get the install record for this user
     const installed = readInstalled(dirs);
@@ -185,8 +200,23 @@ export async function update(
     const files = plan(fetchDir, roots);
     printPlan(files, manifest);
 
-    const todo = files.filter((f) => f.status !== 'same' && !isExecutable(f, includeHooks));
-    if (!todo.length) return void console.log(kleur.dim('\n  Already up to date.\n'));
+    const todo = files.filter(
+      (f) =>
+        (additive ? f.status === 'new' : f.status !== 'same') && !isExecutable(f, includeHooks)
+    );
+    if (!todo.length)
+      return void console.log(
+        kleur.dim(additive ? '\n  No new files to add.\n' : '\n  Already up to date.\n')
+      );
+
+    if (additive) {
+      const skipped = files.filter((f) => f.status === 'changed' && !isExecutable(f, includeHooks));
+      if (skipped.length) {
+        console.log(
+          kleur.dim(`\n  = ${skipped.length} locally-modified file(s) preserved (additive mode)`)
+        );
+      }
+    }
 
     // If hooks present and not explicitly included, warn
     const hasHooks = files.some((f) => isExecutable(f, false));
@@ -220,7 +250,7 @@ export async function update(
       return;
     }
 
-    const { backupDir, filesWritten } = updateApply(user, includeHooks, dirs);
+    const { backupDir, filesWritten } = updateApply(user, includeHooks, dirs, additive);
 
     console.log(
       kleur.green(`\n  ✓ Updated ${filesWritten} file(s).`) +

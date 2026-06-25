@@ -495,3 +495,121 @@ test('uninstall throws friendly error if user not installed', async () => {
 
   fs.rmSync(tmp, { recursive: true });
 });
+
+test('updateApply additive mode: adds new files, preserves locally-modified files', () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'sk-additive-'));
+  const home = path.join(tmp, 'home');
+  const state = path.join(tmp, 'state');
+  const cacheRoot = path.join(state, 'profiles');
+
+  fs.mkdirSync(path.join(home, '.claude'), { recursive: true });
+
+  const cacheKey = 'testuser@main';
+  const profileDir = path.join(cacheRoot, cacheKey);
+  fs.mkdirSync(profileDir, { recursive: true });
+
+  execSync('git init', { cwd: profileDir, stdio: 'pipe' });
+  execSync('git config user.email test@example.com', { cwd: profileDir, stdio: 'pipe' });
+  execSync('git config user.name Test', { cwd: profileDir, stdio: 'pipe' });
+
+  fs.writeFileSync(
+    path.join(profileDir, 'sharekit.toml'),
+    '[profile]\nname = "testuser"\nversion = "2.0.0"\n'
+  );
+  fs.mkdirSync(path.join(profileDir, 'claude'), { recursive: true });
+  fs.writeFileSync(path.join(profileDir, 'claude', 'CLAUDE.md'), 'upstream v2');
+  fs.writeFileSync(path.join(profileDir, 'claude', 'NEW_FILE.md'), 'new addition');
+  execSync('git add .', { cwd: profileDir, stdio: 'pipe' });
+  execSync('git commit -m "v2"', { cwd: profileDir, stdio: 'pipe' });
+
+  fs.writeFileSync(path.join(home, '.claude', 'CLAUDE.md'), 'local edits');
+
+  fs.mkdirSync(state, { recursive: true });
+  fs.writeFileSync(
+    path.join(state, 'installed.json'),
+    JSON.stringify({
+      testuser: {
+        user: 'testuser',
+        ref: 'main',
+        commit: 'abc123',
+        version: '1.0.0',
+        appliedAt: '2025-01-01T00:00:00.000Z',
+      },
+    })
+  );
+
+  const originalLog = console.log;
+  console.log = () => {};
+  const result = updateApply('testuser', false, { home, state }, true);
+  console.log = originalLog;
+
+  assert.equal(
+    fs.readFileSync(path.join(home, '.claude', 'NEW_FILE.md'), 'utf8'),
+    'new addition',
+    'new file should be added'
+  );
+  assert.equal(
+    fs.readFileSync(path.join(home, '.claude', 'CLAUDE.md'), 'utf8'),
+    'local edits',
+    'local edits should be preserved'
+  );
+  assert.equal(result.filesWritten, 1, 'only 1 file written (the new one)');
+
+  fs.rmSync(tmp, { recursive: true });
+});
+
+test('updateApply additive mode: no-op when profile has no new files', () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'sk-additive-noop-'));
+  const home = path.join(tmp, 'home');
+  const state = path.join(tmp, 'state');
+  const cacheRoot = path.join(state, 'profiles');
+
+  fs.mkdirSync(path.join(home, '.claude'), { recursive: true });
+
+  const cacheKey = 'testuser@main';
+  const profileDir = path.join(cacheRoot, cacheKey);
+  fs.mkdirSync(profileDir, { recursive: true });
+
+  execSync('git init', { cwd: profileDir, stdio: 'pipe' });
+  execSync('git config user.email test@example.com', { cwd: profileDir, stdio: 'pipe' });
+  execSync('git config user.name Test', { cwd: profileDir, stdio: 'pipe' });
+
+  fs.writeFileSync(
+    path.join(profileDir, 'sharekit.toml'),
+    '[profile]\nname = "testuser"\nversion = "2.0.0"\n'
+  );
+  fs.mkdirSync(path.join(profileDir, 'claude'), { recursive: true });
+  fs.writeFileSync(path.join(profileDir, 'claude', 'CLAUDE.md'), 'upstream v2');
+  execSync('git add .', { cwd: profileDir, stdio: 'pipe' });
+  execSync('git commit -m "v2"', { cwd: profileDir, stdio: 'pipe' });
+
+  fs.writeFileSync(path.join(home, '.claude', 'CLAUDE.md'), 'local edits');
+
+  fs.mkdirSync(state, { recursive: true });
+  fs.writeFileSync(
+    path.join(state, 'installed.json'),
+    JSON.stringify({
+      testuser: {
+        user: 'testuser',
+        ref: 'main',
+        commit: 'abc123',
+        version: '1.0.0',
+        appliedAt: '2025-01-01T00:00:00.000Z',
+      },
+    })
+  );
+
+  const originalLog = console.log;
+  console.log = () => {};
+  const result = updateApply('testuser', false, { home, state }, true);
+  console.log = originalLog;
+
+  assert.equal(result.filesWritten, 0, 'no files written when no new files exist');
+  assert.equal(
+    fs.readFileSync(path.join(home, '.claude', 'CLAUDE.md'), 'utf8'),
+    'local edits',
+    'local edits preserved'
+  );
+
+  fs.rmSync(tmp, { recursive: true });
+});
