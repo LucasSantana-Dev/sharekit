@@ -11,6 +11,10 @@ import {
   fetchProfile,
   updateApply,
   isImmutableRef,
+  rollback,
+  uninstall,
+  recordInstall,
+  restoreBackupToStamp,
 } from '../src/sharekit.ts';
 
 // FIX 1: Guard classify() against unreadable files (#46)
@@ -172,4 +176,211 @@ test('isImmutableRef: AMBIGUOUS cases bias toward MUTABLE (safe because #52a pul
   assert.equal(isImmutableRef('develop'), false, 'develop branch is mutable');
   assert.equal(isImmutableRef('HEAD'), false, 'HEAD is mutable');
   assert.equal(isImmutableRef('stable'), false, 'stable branch is mutable');
+});
+
+// FIX 5: Test corrupt applied.json parsing in rollback and uninstall (#124)
+// Helper: create a backup directory with given applied.json content
+function setupBackupDir(
+  user: string,
+  appliedContent: string
+): { tmp: string; state: string; home: string } {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'sk-corrupt-applied-'));
+  const home = path.join(tmp, 'home');
+  const state = path.join(tmp, 'state');
+  const backupDir = path.join(state, 'backups', `${user}-2025-01-15T10-30-45-000Z`);
+
+  // Set up home and backup directory
+  fs.mkdirSync(home, { recursive: true });
+  fs.mkdirSync(backupDir, { recursive: true });
+
+  // Write corrupt applied.json
+  fs.writeFileSync(path.join(backupDir, 'applied.json'), appliedContent);
+
+  // Record user in installed.json so uninstall thinks they're installed
+  fs.mkdirSync(state, { recursive: true });
+  const installed = {
+    [user]: { ref: 'main', commit: 'abc123', version: '1.0.0', timestamp: '2025-01-15T10:30:45Z' },
+  };
+  fs.writeFileSync(path.join(state, 'installed.json'), JSON.stringify(installed));
+
+  return { tmp, state, home };
+}
+
+test('uninstall throws when applied.json contains invalid JSON syntax', async () => {
+  const user = 'testuser';
+  const { tmp, state, home } = setupBackupDir(user, '{{{invalid json');
+
+  try {
+    await uninstall(user, { home, state }, true);
+    assert.fail('should have thrown');
+  } catch (e) {
+    assert.ok(e instanceof Error);
+    assert.match((e as Error).message, /Backup data is corrupt or unreadable/);
+    assert.match((e as Error).message, /not valid JSON/);
+  } finally {
+    fs.rmSync(tmp, { recursive: true });
+  }
+});
+
+test('uninstall throws when applied.json is not an array', async () => {
+  const user = 'testuser';
+  const { tmp, state, home } = setupBackupDir(user, '{}');
+
+  try {
+    await uninstall(user, { home, state }, true);
+    assert.fail('should have thrown');
+  } catch (e) {
+    assert.ok(e instanceof Error);
+    assert.match((e as Error).message, /Backup data is corrupt or unreadable/);
+    assert.match((e as Error).message, /must be an array/);
+  } finally {
+    fs.rmSync(tmp, { recursive: true });
+  }
+});
+
+test('uninstall throws when applied.json array contains non-object', async () => {
+  const user = 'testuser';
+  const { tmp, state, home } = setupBackupDir(user, '[null, "string", 123]');
+
+  try {
+    await uninstall(user, { home, state }, true);
+    assert.fail('should have thrown');
+  } catch (e) {
+    assert.ok(e instanceof Error);
+    assert.match((e as Error).message, /Backup data is corrupt or unreadable/);
+    assert.match((e as Error).message, /not an object/);
+  } finally {
+    fs.rmSync(tmp, { recursive: true });
+  }
+});
+
+test('uninstall throws when applied.json element missing dest field', async () => {
+  const user = 'testuser';
+  const { tmp, state, home } = setupBackupDir(user, '[{"status": "new"}]');
+
+  try {
+    await uninstall(user, { home, state }, true);
+    assert.fail('should have thrown');
+  } catch (e) {
+    assert.ok(e instanceof Error);
+    assert.match((e as Error).message, /Backup data is corrupt or unreadable/);
+    assert.match((e as Error).message, /dest must be a string/);
+  } finally {
+    fs.rmSync(tmp, { recursive: true });
+  }
+});
+
+test('uninstall throws when applied.json element missing status field', async () => {
+  const user = 'testuser';
+  const { tmp, state, home } = setupBackupDir(user, '[{"dest": "/path/to/file"}]');
+
+  try {
+    await uninstall(user, { home, state }, true);
+    assert.fail('should have thrown');
+  } catch (e) {
+    assert.ok(e instanceof Error);
+    assert.match((e as Error).message, /Backup data is corrupt or unreadable/);
+    assert.match((e as Error).message, /status must be a string/);
+  } finally {
+    fs.rmSync(tmp, { recursive: true });
+  }
+});
+
+test('uninstall throws when applied.json dest is not a string', async () => {
+  const user = 'testuser';
+  const { tmp, state, home } = setupBackupDir(user, '[{"dest": 123, "status": "new"}]');
+
+  try {
+    await uninstall(user, { home, state }, true);
+    assert.fail('should have thrown');
+  } catch (e) {
+    assert.ok(e instanceof Error);
+    assert.match((e as Error).message, /Backup data is corrupt or unreadable/);
+    assert.match((e as Error).message, /dest must be a string/);
+  } finally {
+    fs.rmSync(tmp, { recursive: true });
+  }
+});
+
+test('uninstall throws when applied.json status is not a string', async () => {
+  const user = 'testuser';
+  const { tmp, state, home } = setupBackupDir(user, '[{"dest": "/path/to/file", "status": true}]');
+
+  try {
+    await uninstall(user, { home, state }, true);
+    assert.fail('should have thrown');
+  } catch (e) {
+    assert.ok(e instanceof Error);
+    assert.match((e as Error).message, /Backup data is corrupt or unreadable/);
+    assert.match((e as Error).message, /status must be a string/);
+  } finally {
+    fs.rmSync(tmp, { recursive: true });
+  }
+});
+
+test('restoreBackupToStamp throws when applied.json contains invalid JSON', () => {
+  const user = 'testuser';
+  const { tmp, state, home } = setupBackupDir(user, '{{{invalid json');
+
+  try {
+    restoreBackupToStamp(user, '2025-01-15T10-30-45-000Z', { home, state });
+    assert.fail('should have thrown');
+  } catch (e) {
+    assert.ok(e instanceof Error);
+    assert.match((e as Error).message, /Backup data is corrupt or unreadable/);
+    assert.match((e as Error).message, /not valid JSON/);
+  } finally {
+    fs.rmSync(tmp, { recursive: true });
+  }
+});
+
+test('restoreBackupToStamp throws when applied.json is not an array', () => {
+  const user = 'testuser';
+  const { tmp, state, home } = setupBackupDir(user, 'null');
+
+  try {
+    restoreBackupToStamp(user, '2025-01-15T10-30-45-000Z', { home, state });
+    assert.fail('should have thrown');
+  } catch (e) {
+    assert.ok(e instanceof Error);
+    assert.match((e as Error).message, /Backup data is corrupt or unreadable/);
+    assert.match((e as Error).message, /must be an array/);
+  } finally {
+    fs.rmSync(tmp, { recursive: true });
+  }
+});
+
+test('restoreBackupToStamp throws when applied.json element has invalid dest type', () => {
+  const user = 'testuser';
+  const { tmp, state, home } = setupBackupDir(user, '[{"dest": null, "status": "changed"}]');
+
+  try {
+    restoreBackupToStamp(user, '2025-01-15T10-30-45-000Z', { home, state });
+    assert.fail('should have thrown');
+  } catch (e) {
+    assert.ok(e instanceof Error);
+    assert.match((e as Error).message, /Backup data is corrupt or unreadable/);
+    assert.match((e as Error).message, /dest must be a string/);
+  } finally {
+    fs.rmSync(tmp, { recursive: true });
+  }
+});
+
+test('restoreBackupToStamp throws when applied.json element has invalid status type', () => {
+  const user = 'testuser';
+  const { tmp, state, home } = setupBackupDir(
+    user,
+    '[{"dest": "/path/file", "status": ["array"]}]'
+  );
+
+  try {
+    restoreBackupToStamp(user, '2025-01-15T10-30-45-000Z', { home, state });
+    assert.fail('should have thrown');
+  } catch (e) {
+    assert.ok(e instanceof Error);
+    assert.match((e as Error).message, /Backup data is corrupt or unreadable/);
+    assert.match((e as Error).message, /status must be a string/);
+  } finally {
+    fs.rmSync(tmp, { recursive: true });
+  }
 });
