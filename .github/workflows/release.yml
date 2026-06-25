@@ -1,23 +1,22 @@
 name: Release
 
 # Publishes to npm + PyPI via OIDC trusted publishing when a v* tag is pushed.
-# No stored tokens: GitHub mints short-lived OIDC credentials each registry trusts.
+# Also builds native binaries and auto-updates the Homebrew tap.
+# No stored tokens for npm/PyPI: GitHub mints short-lived OIDC credentials.
 #
-# ONE-TIME SETUP — npm (required before first npm publish):
+# ONE-TIME SETUP — npm:
 #   npmjs.com → @lucassantana/sharekit → Settings → Trusted Publisher → GitHub Actions
-#     Organization/user:  LucasSantana-Dev
-#     Repository:         sharekit
-#     Workflow filename:  release.yml
-#   Docs: https://docs.npmjs.com/trusted-publishers
+#     Owner: LucasSantana-Dev  Repository: sharekit  Workflow: release.yml
 #
-# ONE-TIME SETUP — PyPI (required before first pip publish):
+# ONE-TIME SETUP — PyPI:
 #   pypi.org → Publishing → Add a pending publisher
-#     PyPI project name:  sharekit
-#     Owner:              LucasSantana-Dev
-#     Repository:         sharekit
-#     Workflow filename:  release.yml
-#     Environment:        (leave blank)
-#   Docs: https://docs.pypi.org/trusted-publishers/adding-a-publisher/
+#     Project name: sharekit  Owner: LucasSantana-Dev  Repository: sharekit  Workflow: release.yml
+#
+# ONE-TIME SETUP — Homebrew tap:
+#   1. Create github.com/LucasSantana-Dev/homebrew-tap (public repo)
+#   2. Add Formula/sharekit.rb from docs/distribution/homebrew-formula.rb
+#   3. Add secret HOMEBREW_TAP_TOKEN to this repo (sharekit):
+#      Fine-grained PAT with Contents: write on homebrew-tap repo only.
 
 on:
   push:
@@ -64,16 +63,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: oven-sh/setup-bun@v2
-      - run: npm ci # install deps for build context
+      - run: npm ci
       - name: Build binaries
         run: |
           mkdir -p dist
-          bun build --compile --target=bun-linux-x64 src/index.ts --outfile=dist/sharekit-linux-x64
-          bun build --compile --target=bun-linux-arm64 src/index.ts --outfile=dist/sharekit-linux-arm64
-          bun build --compile --target=bun-darwin-x64 src/index.ts --outfile=dist/sharekit-macos-x64
+          bun build --compile --target=bun-linux-x64    src/index.ts --outfile=dist/sharekit-linux-x64
+          bun build --compile --target=bun-linux-arm64  src/index.ts --outfile=dist/sharekit-linux-arm64
+          bun build --compile --target=bun-darwin-x64   src/index.ts --outfile=dist/sharekit-macos-x64
           bun build --compile --target=bun-darwin-arm64 src/index.ts --outfile=dist/sharekit-macos-arm64
-          bun build --compile --target=bun-windows-x64 src/index.ts --outfile=dist/sharekit-windows-x64.exe
-      - name: Create release with binaries
+          bun build --compile --target=bun-windows-x64  src/index.ts --outfile=dist/sharekit-windows-x64.exe
+      - name: Create GitHub Release with binaries
         uses: softprops/action-gh-release@v2
         with:
           files: |
@@ -85,24 +84,100 @@ jobs:
           body: |
             ## Install
 
-            **Direct download:**
-            - [Linux x64](https://github.com/LucasSantana-Dev/sharekit/releases/download/${{ github.ref_name }}/sharekit-linux-x64)
-            - [Linux ARM64](https://github.com/LucasSantana-Dev/sharekit/releases/download/${{ github.ref_name }}/sharekit-linux-arm64)
-            - [macOS x64](https://github.com/LucasSantana-Dev/sharekit/releases/download/${{ github.ref_name }}/sharekit-macos-x64)
-            - [macOS ARM64](https://github.com/LucasSantana-Dev/sharekit/releases/download/${{ github.ref_name }}/sharekit-macos-arm64)
-            - [Windows x64](https://github.com/LucasSantana-Dev/sharekit/releases/download/${{ github.ref_name }}/sharekit-windows-x64.exe)
-
-            **Via npm:**
+            **Homebrew:**
             ```bash
-            npm install -g @lucassantana/sharekit
+            brew install LucasSantana-Dev/tap/sharekit
             ```
 
-            **Via pip:**
+            **pip / pipx:**
             ```bash
             pip install sharekit
             pipx install sharekit
             ```
 
-            **Via Homebrew:** Coming soon
+            **npm:**
+            ```bash
+            npm install -g @lucassantana/sharekit
+            ```
+
+            **Direct download:**
+            - [macOS ARM64](https://github.com/LucasSantana-Dev/sharekit/releases/download/${{ github.ref_name }}/sharekit-macos-arm64)
+            - [macOS x64](https://github.com/LucasSantana-Dev/sharekit/releases/download/${{ github.ref_name }}/sharekit-macos-x64)
+            - [Linux x64](https://github.com/LucasSantana-Dev/sharekit/releases/download/${{ github.ref_name }}/sharekit-linux-x64)
+            - [Linux ARM64](https://github.com/LucasSantana-Dev/sharekit/releases/download/${{ github.ref_name }}/sharekit-linux-arm64)
+            - [Windows x64](https://github.com/LucasSantana-Dev/sharekit/releases/download/${{ github.ref_name }}/sharekit-windows-x64.exe)
           env:
             GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  release-brew:
+    needs: release # binaries must be uploaded before we can SHA them
+    runs-on: ubuntu-latest
+    if: ${{ secrets.HOMEBREW_TAP_TOKEN != '' }}
+    steps:
+      - name: Download binaries and compute SHA256
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          BASE="https://github.com/LucasSantana-Dev/sharekit/releases/download/${GITHUB_REF_NAME}"
+          mkdir -p /tmp/bins
+          for NAME in macos-arm64 macos-x64 linux-arm64 linux-x64; do
+            curl -fsSL "${BASE}/sharekit-${NAME}" -o "/tmp/bins/sharekit-${NAME}"
+          done
+          echo "VERSION=${VERSION}" >> $GITHUB_ENV
+          echo "SHA_MACOS_ARM64=$(sha256sum /tmp/bins/sharekit-macos-arm64 | cut -d' ' -f1)" >> $GITHUB_ENV
+          echo "SHA_MACOS_X64=$(sha256sum /tmp/bins/sharekit-macos-x64   | cut -d' ' -f1)" >> $GITHUB_ENV
+          echo "SHA_LINUX_ARM64=$(sha256sum /tmp/bins/sharekit-linux-arm64 | cut -d' ' -f1)" >> $GITHUB_ENV
+          echo "SHA_LINUX_X64=$(sha256sum /tmp/bins/sharekit-linux-x64   | cut -d' ' -f1)" >> $GITHUB_ENV
+
+      - name: Write updated formula
+        run: |
+          cat > /tmp/sharekit.rb << FORMULA
+          class Sharekit < Formula
+            desc "Share your AI coding setup — install profiles from GitHub with one command"
+            homepage "https://github.com/LucasSantana-Dev/sharekit"
+            license "MIT"
+            version "${VERSION}"
+
+            on_macos do
+              on_arm do
+                url "https://github.com/LucasSantana-Dev/sharekit/releases/download/v${VERSION}/sharekit-macos-arm64"
+                sha256 "${SHA_MACOS_ARM64}"
+              end
+              on_intel do
+                url "https://github.com/LucasSantana-Dev/sharekit/releases/download/v${VERSION}/sharekit-macos-x64"
+                sha256 "${SHA_MACOS_X64}"
+              end
+            end
+
+            on_linux do
+              on_arm do
+                url "https://github.com/LucasSantana-Dev/sharekit/releases/download/v${VERSION}/sharekit-linux-arm64"
+                sha256 "${SHA_LINUX_ARM64}"
+              end
+              on_intel do
+                url "https://github.com/LucasSantana-Dev/sharekit/releases/download/v${VERSION}/sharekit-linux-x64"
+                sha256 "${SHA_LINUX_X64}"
+              end
+            end
+
+            def install
+              bin.install stable.url.split("/").last => "sharekit"
+            end
+
+            test do
+              assert_match version.to_s, shell_output("#{bin}/sharekit --version")
+            end
+          end
+          FORMULA
+
+      - name: Push formula to homebrew-tap
+        env:
+          TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+        run: |
+          git clone "https://x-access-token:${TAP_TOKEN}@github.com/LucasSantana-Dev/homebrew-tap.git" /tmp/tap
+          cp /tmp/sharekit.rb /tmp/tap/Formula/sharekit.rb
+          cd /tmp/tap
+          git config user.email "actions@github.com"
+          git config user.name "GitHub Actions"
+          git add Formula/sharekit.rb
+          git commit -m "chore: bump sharekit to v${VERSION}"
+          git push
