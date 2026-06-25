@@ -58,7 +58,7 @@ test('init scaffolds a publishable profile from source root', () => {
   fs.rmSync(tmp, { recursive: true });
 });
 
-test('init errors if profile directory already exists', () => {
+test('init errors if profile directory already exists (no --force)', () => {
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'sk-init-'));
   const profileDir = path.join(tmp, 'sharekit-profile');
   fs.mkdirSync(profileDir);
@@ -67,8 +67,27 @@ test('init errors if profile directory already exists', () => {
     () => {
       init(profileDir, [], tmp);
     },
-    { message: /already exists/ }
+    { message: /already exists.*--force/i }
   );
+
+  fs.rmSync(tmp, { recursive: true });
+});
+
+test('init --force overwrites existing partial profile directory', () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'sk-init-force-'));
+  const profileDir = path.join(tmp, 'sharekit-profile');
+
+  // Create a partial/corrupt existing profile
+  fs.mkdirSync(path.join(profileDir, 'stale-dir'), { recursive: true });
+  fs.writeFileSync(path.join(profileDir, 'stale-file.txt'), 'leftover content');
+
+  // --force should succeed without throwing
+  init(profileDir, [], tmp, true);
+
+  // Fresh profile should exist; stale files should be gone
+  assert.ok(fs.existsSync(path.join(profileDir, 'sharekit.toml')), 'fresh sharekit.toml created');
+  assert.ok(!fs.existsSync(path.join(profileDir, 'stale-file.txt')), 'stale files removed');
+  assert.ok(!fs.existsSync(path.join(profileDir, 'stale-dir')), 'stale dirs removed');
 
   fs.rmSync(tmp, { recursive: true });
 });

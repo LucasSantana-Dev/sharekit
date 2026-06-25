@@ -558,7 +558,11 @@ export function init(
 ): void {
   // Check if profileDir already exists
   if (fs.existsSync(profileDir)) {
-    throw new Error(`Profile directory already exists: ${profileDir}`);
+    if (!force) {
+      throw new Error(`Profile directory already exists: ${profileDir}. Use --force to overwrite.`);
+    }
+    console.warn(kleur.yellow(`  Overwriting existing ${path.basename(profileDir)}/ ...`));
+    fs.rmSync(profileDir, { recursive: true, force: true });
   }
 
   const username = os.userInfo().username;

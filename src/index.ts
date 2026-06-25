@@ -27,7 +27,7 @@ const VERSION = '0.3.0';
 const USAGE = `${kleur.bold('sharekit')} v${VERSION} — share your AI coding setup
 
   ${kleur.cyan('init')}       [skill...]              scaffold a publishable profile in ./sharekit-profile
-                                --force              override high-severity secret blocking
+                                --force              overwrite existing dir; override secret blocking
   ${kleur.cyan('scan')}       [dir]                   scan an existing profile for secrets
                                 --force              exit 0 even if high-severity findings detected
   ${kleur.cyan('install')}    <user>[@<ref>] [opts]  fetch, preview, apply a profile
