@@ -5,8 +5,53 @@ import { parse as parseToml } from 'smol-toml';
 import { STATE, MAX_MANIFEST_BYTES } from './paths.js';
 
 export function parseUserRef(user: string): { user: string; ref?: string } {
-  const ref = user.includes('@') ? user.split('@').reverse()[0] : undefined;
-  const userName = ref ? user.slice(0, user.lastIndexOf('@')) : user;
+  if (!user || user.trim() === '') {
+    throw new Error('Invalid user reference: username cannot be empty');
+  }
+
+  if (!user.includes('@')) {
+    // No @: simple username, validate it
+    if (user.includes('..')) {
+      throw new Error(`Invalid user '${user}': username cannot contain '..'`);
+    }
+    if (user.includes('/')) {
+      throw new Error(
+        `Invalid user '${user}': username cannot contain path separators`
+      );
+    }
+    return { user, ref: undefined };
+  }
+
+  // Contains @: split and validate both parts
+  const atIndex = user.lastIndexOf('@');
+  const userName = user.slice(0, atIndex);
+  const ref = user.slice(atIndex + 1);
+
+  // Validate userName
+  if (!userName || userName.trim() === '') {
+    throw new Error(
+      `Invalid user reference '${user}': missing GitHub username before '@'`
+    );
+  }
+  if (userName.includes('..')) {
+    throw new Error(`Invalid user '${userName}': username cannot contain '..'`);
+  }
+  if (userName.includes('/')) {
+    throw new Error(
+      `Invalid user '${userName}': username cannot contain path separators`
+    );
+  }
+
+  // Validate ref
+  if (!ref || ref.trim() === '') {
+    throw new Error(
+      `Invalid user reference '${user}': ref cannot be empty after '@'`
+    );
+  }
+  if (ref.includes('..')) {
+    throw new Error(`Invalid ref '${ref}': ref cannot contain '..'`);
+  }
+
   return { user: userName, ref };
 }
 
@@ -20,6 +65,13 @@ export function fetchProfile(
   // Cache key: <user> for HEAD, <user>@<ref> for a pinned ref
   const cacheKey = ref ? `${user}@${ref}` : user;
   const dir = path.join(cacheRoot, cacheKey);
+
+  // Defense-in-depth: verify cache path doesn't escape cacheRoot
+  const resolvedCache = path.resolve(cacheRoot);
+  const resolvedDir = path.resolve(dir);
+  if (!resolvedDir.startsWith(resolvedCache + path.sep)) {
+    throw new Error(`Invalid profile path: cache escape detected for '${cacheKey}'`);
+  }
 
   if (fs.existsSync(dir)) {
     // Attempt a best-effort pull to refresh the cached checkout.
