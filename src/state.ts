@@ -12,10 +12,20 @@ export interface InstallRecord {
   appliedAt: string;
 }
 
-export function recordInstall(user: string, profileDir: string, ref: string, version: string | undefined, dirs: Dirs = DEFAULT_DIRS): void {
+export function recordInstall(
+  user: string,
+  profileDir: string,
+  ref: string,
+  version: string | undefined,
+  dirs: Dirs = DEFAULT_DIRS
+): void {
   let commit: string | null = null;
   try {
-    commit = execFileSync('git', ['-C', profileDir, 'rev-parse', 'HEAD'], { stdio: 'pipe', encoding: 'utf8', timeout: 30_000 }).trim();
+    commit = execFileSync('git', ['-C', profileDir, 'rev-parse', 'HEAD'], {
+      stdio: 'pipe',
+      encoding: 'utf8',
+      timeout: 30_000,
+    }).trim();
   } catch {}
   const record: InstallRecord = { user, ref, commit, version, appliedAt: new Date().toISOString() };
   const stateFile = path.join(dirs.state, 'installed.json');
@@ -43,7 +53,9 @@ export function readInstalled(dirs: Dirs = DEFAULT_DIRS): Record<string, Install
     }
     return parsed as Record<string, InstallRecord>;
   } catch (e) {
-    console.error(`${kleur.yellow('⚠  install state is corrupt')} — ${stateFile}\n  ${kleur.dim(`Reset: rm ${stateFile}`)}  to rebuild from scratch.`);
+    console.error(
+      `${kleur.yellow('⚠  install state is corrupt')} — ${stateFile}\n  ${kleur.dim(`Reset: rm ${stateFile}`)}  to rebuild from scratch.`
+    );
     return {};
   }
 }
@@ -62,11 +74,17 @@ export function list(dirs: Dirs = DEFAULT_DIRS): void {
     if (record.appliedAt) {
       const date = new Date(record.appliedAt);
       if (!Number.isNaN(date.getTime())) {
-        dateStr = date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+        dateStr = date.toLocaleDateString('en-US', {
+          year: 'numeric',
+          month: 'short',
+          day: 'numeric',
+        });
       }
     }
     const version = record.version ?? '(no version)';
-    console.log(`  ${kleur.cyan(`${record.user}@${record.ref}`)}  ${version}  ${kleur.dim(shortSha)}  ${kleur.dim(dateStr)}`);
+    console.log(
+      `  ${kleur.cyan(`${record.user}@${record.ref}`)}  ${version}  ${kleur.dim(shortSha)}  ${kleur.dim(dateStr)}`
+    );
   }
   console.log();
 }
@@ -86,13 +104,19 @@ export function acquireLock(lockPath: string = LOCK_FILE): void {
       const existingPid = fs.readFileSync(lockPath, 'utf8').trim();
       try {
         fs.statSync(`/proc/${existingPid}`);
-        console.error(`Another sharekit operation is running (PID ${existingPid}). Try again in a moment.`);
+        console.error(
+          `Another sharekit operation is running (PID ${existingPid}). Try again in a moment.`
+        );
         process.exit(1);
       } catch {
-        try { fs.unlinkSync(lockPath); } catch {}
+        try {
+          fs.unlinkSync(lockPath);
+        } catch {}
       }
     } catch {
-      try { fs.unlinkSync(lockPath); } catch {}
+      try {
+        fs.unlinkSync(lockPath);
+      } catch {}
     }
   }
   fs.mkdirSync(path.dirname(lockPath), { recursive: true });
@@ -100,5 +124,7 @@ export function acquireLock(lockPath: string = LOCK_FILE): void {
 }
 
 export function releaseLock(lockPath: string = LOCK_FILE): void {
-  try { fs.unlinkSync(lockPath); } catch {}
+  try {
+    fs.unlinkSync(lockPath);
+  } catch {}
 }
