@@ -73,17 +73,13 @@ if __name__ == "__main__":
 
     # Design system takes priority
     if args.design_system:
-        output_dir = None
-        if args.output_dir:
-            from pathlib import Path
-            output_dir = str(Path(args.output_dir).resolve())
         result = generate_design_system(
-            args.query,
-            args.project_name,
+            args.query, 
+            args.project_name, 
             args.format,
             persist=args.persist,
             page=args.page,
-            output_dir=output_dir
+            output_dir=args.output_dir
         )
         print(result)
         

@@ -11,7 +11,7 @@
 const fs = require('fs')
 const path = require('path')
 
-const dirs = process.argv.slice(2).map(d => path.resolve(d))
+const dirs = process.argv.slice(2)
 if (dirs.length === 0) {
     console.error('usage: node scan-extractable.js <dir> [<dir> ...]')
     process.exit(2)

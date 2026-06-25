@@ -14,7 +14,7 @@ MAX_SKILL_NAME_LENGTH = 64
 
 def validate_skill(skill_path):
     """Basic validation of a skill"""
-    skill_path = Path(skill_path).resolve()
+    skill_path = Path(skill_path)
 
     skill_md = skill_path / "SKILL.md"
     if not skill_md.exists():

@@ -64,8 +64,7 @@ Output (JSON):
     process.exit(0);
   }
 
-  const { file: foundFile, content, lines } = found;
-  const targetFile = path.resolve(foundFile);
+  const { file: targetFile, content, lines } = found;
   const relFile = path.relative(process.cwd(), targetFile);
 
   // Bail if the session lives in a generated file. The agent manually wrote

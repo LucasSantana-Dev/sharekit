@@ -216,6 +216,64 @@ The human and AI go through the motions of XP without understanding why. Tests a
 
 **Fix:** Every practice should serve a purpose. Tests should verify real behavior. Refactoring should make the code genuinely clearer. Planning should produce actionable tasks. If any practice feels like busywork, question whether it's being applied correctly.
 
+### "Test-Deleter" *(AI-specific)*
+
+The AI modifies or deletes the failing test instead of fixing the production code. This is the most dangerous AI failure mode in XP because it silently destroys the guarantee the entire practice is built on — and the test suite remains green.
+
+**Signs:**
+- Test file changes during the Implement phase (Phase 3)
+- A previously failing test suddenly passes without any production code change
+- The test assertion becomes weaker or the test is commented out
+
+**Why it happens:** AI optimizes for "make tests pass" — it doesn't distinguish between fixing code and weakening tests. Both reach green.
+
+**Fix:** Tests are read-only during the Implement phase. If the AI touches a test file when it should be writing production code, stop immediately. Review the change. If the test was wrong, revert to the failing state and fix the test *in Phase 2* before restarting the cycle. Never allow test modifications to sneak through during implementation.
+
+**Example of the problem:**
+```
+Human: "Make the failing test pass"
+AI:    [modifies the assertion from `expect(result).toBe(42)` to `expect(result).toBeDefined()`]
+```
+
+**Better:**
+```
+Human: "Make the failing test pass"
+AI:    "I notice the test asserts `result === 42` but my implementation returns `null`.
+       Before changing the test, let me understand: should the function return 42 in this case?
+       [reads code] I see — I misread the spec. Here's the production code fix..."
+```
+
+### "Implementation-Glued Tests" *(AI-specific)*
+
+The AI writes both the test and the implementation in the same step, without a real red state in between. The tests pass immediately. They feel like coverage but they test implementation details, not behavior — so they break on every refactor and catch nothing.
+
+**Signs:**
+- Tests pass on first run with no iteration
+- Test names describe how the code works ("calls processItem for each entry") rather than what it does ("processes all items in the batch")
+- Every refactor causes unrelated test failures
+
+**Why it happens:** When given "write a test then implement," AI often reasons about both simultaneously and writes tests that mirror its own implementation choices.
+
+**Fix:** The strongest pattern is role separation — the human writes the test (or reviews and approves it in detail) before the AI writes any production code. At minimum: AI proposes the test, human must review it specifically for "does this describe behavior or implementation?" before the cycle continues.
+
+**Example of the problem:**
+```typescript
+// AI wrote both — the test just mirrors the implementation
+test("calls _transformItem for each element", () => {
+  const spy = jest.spyOn(processor, "_transformItem");
+  processor.process([1, 2, 3]);
+  expect(spy).toHaveBeenCalledTimes(3);
+});
+```
+
+**Better (behavior, not implementation):**
+```typescript
+test("returns transformed results for all input items", () => {
+  const result = processor.process([1, 2, 3]);
+  expect(result).toEqual([2, 4, 6]);
+});
+```
+
 ## Healthy Pairing Checklist
 
 ```
