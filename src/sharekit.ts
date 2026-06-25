@@ -34,6 +34,7 @@ export {
   restoreBackupToStamp,
   readMetadata,
   writeMetadata,
+  parseApplied,
 } from './backup.js';
 export type { BackupInfo, RestoreMetadata } from './backup.js';
 

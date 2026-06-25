@@ -16,6 +16,33 @@ export interface RestoreMetadata {
 
 export type Status = 'new' | 'changed' | 'same';
 
+// Helper: Parse and validate applied.json
+export function parseApplied(raw: string): Array<{ dest: string; status: Status }> {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    throw new Error('applied.json is not valid JSON');
+  }
+  if (!Array.isArray(parsed)) {
+    throw new Error('applied.json must be an array');
+  }
+  for (let i = 0; i < parsed.length; i++) {
+    const item = parsed[i];
+    if (typeof item !== 'object' || item === null) {
+      throw new Error(`applied.json[${i}] is not an object`);
+    }
+    const { dest, status } = item as { dest?: unknown; status?: unknown };
+    if (typeof dest !== 'string') {
+      throw new Error(`applied.json[${i}].dest must be a string, got ${typeof dest}`);
+    }
+    if (typeof status !== 'string') {
+      throw new Error(`applied.json[${i}].status must be a string, got ${typeof status}`);
+    }
+  }
+  return parsed as Array<{ dest: string; status: Status }>;
+}
+
 // Helper: read metadata.json from backup directory
 // Returns {sourceVersion?, sourceCommit?} or {} if missing/unparseable
 export function readMetadata(backupDir: string): {
@@ -102,27 +129,8 @@ export function restoreBackupInternal(
   let applied: { dest: string; status: Status }[];
   const appliedPath = path.join(backupDir, 'applied.json');
   try {
-    const rawData = JSON.parse(fs.readFileSync(appliedPath, 'utf8'));
-
-    // Validate that it's an array
-    if (!Array.isArray(rawData)) {
-      throw new Error('applied.json must be an array');
-    }
-
-    // Validate array elements have required shape
-    applied = rawData.map((item, index) => {
-      if (typeof item !== 'object' || item === null) {
-        throw new Error(`applied.json[${index}] is not an object`);
-      }
-      const { dest, status } = item as { dest?: unknown; status?: unknown };
-      if (typeof dest !== 'string') {
-        throw new Error(`applied.json[${index}].dest must be a string, got ${typeof dest}`);
-      }
-      if (typeof status !== 'string') {
-        throw new Error(`applied.json[${index}].status must be a string, got ${typeof status}`);
-      }
-      return { dest, status: status as Status };
-    });
+    const rawData = fs.readFileSync(appliedPath, 'utf8');
+    applied = parseApplied(rawData);
   } catch (error) {
     const msg = error instanceof Error ? error.message : String(error);
     throw new Error(`Backup data is corrupt or unreadable: ${msg}`);
