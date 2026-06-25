@@ -121,6 +121,8 @@ Always review the profile and `.gitignore` sensitive files before `git push`. Th
 - **Preview before applying.** `sharekit preview` shows the exact diff (new/changed/unchanged counts and paths) — trust gate before any write.
 - **Everything is backed up.** Before applying, sharekit saves changed files to `~/.sharekit/backups/<user>-<timestamp>/`. Rollback restores them.
 
+See [SECURITY.md](SECURITY.md) for the full trust model, path assumptions, and responsible disclosure policy.
+
 ## Status
 
 - No registry/discovery yet — GitHub is the registry. Search `sharekit-profile` repos by topic or follow the convention.

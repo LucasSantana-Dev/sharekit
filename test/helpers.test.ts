@@ -65,6 +65,80 @@ test('applyProfile installs settings.json only when includeHooks is set', () => 
   fs.rmSync(tmp, { recursive: true });
 });
 
+test('applyProfile with --include-hooks: real hook definitions written to installed settings.json', () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'sk-hooks-real-'));
+  const profile = path.join(tmp, 'profile');
+  fs.mkdirSync(path.join(profile, 'claude'), { recursive: true });
+
+  const hookSettings = {
+    hooks: {
+      Stop: [{ hooks: [{ type: 'command', command: 'echo done' }] }],
+    },
+  };
+  fs.writeFileSync(path.join(profile, 'claude', 'settings.json'), JSON.stringify(hookSettings, null, 2));
+
+  const home = path.join(tmp, 'home');
+  const roots = { claude: path.join(home, '.claude'), cursor: path.join(home, '.cursor'), shared: home };
+  const dirs = { home, state: path.join(home, 'state') };
+  applyProfile(plan(profile, roots), 'u', true, dirs);
+
+  const installedPath = path.join(home, '.claude', 'settings.json');
+  assert.ok(fs.existsSync(installedPath), 'settings.json installed with --include-hooks');
+  const installed = JSON.parse(fs.readFileSync(installedPath, 'utf8'));
+  assert.deepEqual(installed, hookSettings, 'hook definitions preserved verbatim');
+
+  fs.rmSync(tmp, { recursive: true });
+});
+
+test('applyProfile without --include-hooks: profile with real hooks → settings.json absent', () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'sk-hooks-skip-'));
+  const profile = path.join(tmp, 'profile');
+  fs.mkdirSync(path.join(profile, 'claude'), { recursive: true });
+
+  const hookSettings = {
+    hooks: {
+      PreToolUse: [{ hooks: [{ type: 'command', command: 'echo pre' }] }],
+    },
+  };
+  fs.writeFileSync(path.join(profile, 'claude', 'settings.json'), JSON.stringify(hookSettings));
+  fs.writeFileSync(path.join(profile, 'claude', 'CLAUDE.md'), 'rules');
+
+  const home = path.join(tmp, 'home');
+  const roots = { claude: path.join(home, '.claude'), cursor: path.join(home, '.cursor'), shared: home };
+  const dirs = { home, state: path.join(home, 'state') };
+  applyProfile(plan(profile, roots), 'u', false, dirs);
+
+  assert.ok(!fs.existsSync(path.join(home, '.claude', 'settings.json')), 'settings.json NOT installed without --include-hooks');
+  assert.ok(fs.existsSync(path.join(home, '.claude', 'CLAUDE.md')), 'other files still installed');
+
+  fs.rmSync(tmp, { recursive: true });
+});
+
+test('applyProfile does not execute hooks in settings.json during apply', () => {
+  const sentinel = path.join(os.tmpdir(), `sk-hook-sentinel-${process.pid}`);
+  if (fs.existsSync(sentinel)) fs.rmSync(sentinel);
+
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'sk-hooks-noexec-'));
+  const profile = path.join(tmp, 'profile');
+  fs.mkdirSync(path.join(profile, 'claude'), { recursive: true });
+
+  const hookSettings = {
+    hooks: {
+      Stop: [{ hooks: [{ type: 'command', command: `touch ${sentinel}` }] }],
+    },
+  };
+  fs.writeFileSync(path.join(profile, 'claude', 'settings.json'), JSON.stringify(hookSettings));
+
+  const home = path.join(tmp, 'home');
+  const roots = { claude: path.join(home, '.claude'), cursor: path.join(home, '.cursor'), shared: home };
+  const dirs = { home, state: path.join(home, 'state') };
+  applyProfile(plan(profile, roots), 'u', true, dirs);
+
+  assert.ok(!fs.existsSync(sentinel), 'hook command was not executed during apply');
+
+  fs.rmSync(tmp, { recursive: true });
+});
+
 test('parseUserRef splits user and ref', () => {
   const { user: u1, ref: r1 } = parseUserRef('alice');
   assert.equal(u1, 'alice', 'user only: no ref');
