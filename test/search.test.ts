@@ -41,3 +41,38 @@ test('search lists only repos named sharekit-profile, with install hints', async
   assert.match(text, /install alice/, 'shows the install command');
   assert.doesNotMatch(text, /bob/, 'filters out non-exact repo names');
 });
+
+test('search excludes archived repos from results', async () => {
+  const realFetch = globalThis.fetch;
+  const realLog = console.log;
+  const out: string[] = [];
+  let capturedUrl = '';
+  console.log = (...a: unknown[]) => out.push(a.join(' '));
+
+  // mock GitHub search and capture the URL
+  globalThis.fetch = (async (url: string | Request) => {
+    capturedUrl = typeof url === 'string' ? url : url.url;
+    return new Response(
+      JSON.stringify({
+        items: [
+          {
+            name: 'sharekit-profile',
+            owner: { login: 'alice' },
+            description: 'alice setup',
+            stargazers_count: 4,
+          },
+        ],
+      }),
+      { status: 200 }
+    );
+  }) as typeof fetch;
+
+  try {
+    await search();
+  } finally {
+    globalThis.fetch = realFetch;
+    console.log = realLog;
+  }
+
+  assert.match(capturedUrl, /archived%3Afalse/, 'query includes URL-encoded archived:false');
+});

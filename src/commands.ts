@@ -32,7 +32,7 @@ export async function confirm(q: string, autoYes = false): Promise<boolean> {
 // Discover published profiles: GitHub IS the registry — search for repos named "sharekit-profile".
 export async function search(query?: string): Promise<void> {
   const q = encodeURIComponent(
-    `sharekit-profile in:name${query ? ` ${query}` : ''} is:archived:false`
+    `sharekit-profile in:name${query ? ` ${query}` : ''} archived:false`
   );
   const url = `https://api.github.com/search/repositories?q=${q}&sort=stars&per_page=30`;
   let data: { items?: Array<Record<string, unknown>> };
