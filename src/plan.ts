@@ -39,7 +39,7 @@ export function plan(profileDir: string, roots = ROOTS): PlanFile[] {
       currentPlanSkippedSymlinks.push(path.join(root, rel));
     }
   }
-  return files;
+  return files.filter((f) => f.status !== 'same');
 }
 
 function classify(src: string, dest: string): Status {
