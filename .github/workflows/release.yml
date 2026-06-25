@@ -19,7 +19,7 @@ on:
 
 permissions:
   id-token: write # mint the OIDC token npm exchanges for publish auth
-  contents: read
+  contents: write # create GitHub Release and upload binary assets
 
 jobs:
   publish:
@@ -34,3 +34,45 @@ jobs:
       - run: npm ci
       - run: npm run build
       - run: npm publish
+
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+      - run: npm ci # install deps for build context
+      - name: Build binaries
+        run: |
+          mkdir -p dist
+          bun build --compile --target=bun-linux-x64 src/index.ts --outfile=dist/sharekit-linux-x64
+          bun build --compile --target=bun-linux-arm64 src/index.ts --outfile=dist/sharekit-linux-arm64
+          bun build --compile --target=bun-darwin-x64 src/index.ts --outfile=dist/sharekit-macos-x64
+          bun build --compile --target=bun-darwin-arm64 src/index.ts --outfile=dist/sharekit-macos-arm64
+          bun build --compile --target=bun-windows-x64 src/index.ts --outfile=dist/sharekit-windows-x64.exe
+      - name: Create release with binaries
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/sharekit-linux-x64
+            dist/sharekit-linux-arm64
+            dist/sharekit-macos-x64
+            dist/sharekit-macos-arm64
+            dist/sharekit-windows-x64.exe
+          body: |
+            ## Install
+
+            **Direct download:**
+            - [Linux x64](https://github.com/LucasSantana-Dev/sharekit/releases/download/${{ github.ref_name }}/sharekit-linux-x64)
+            - [Linux ARM64](https://github.com/LucasSantana-Dev/sharekit/releases/download/${{ github.ref_name }}/sharekit-linux-arm64)
+            - [macOS x64](https://github.com/LucasSantana-Dev/sharekit/releases/download/${{ github.ref_name }}/sharekit-macos-x64)
+            - [macOS ARM64](https://github.com/LucasSantana-Dev/sharekit/releases/download/${{ github.ref_name }}/sharekit-macos-arm64)
+            - [Windows x64](https://github.com/LucasSantana-Dev/sharekit/releases/download/${{ github.ref_name }}/sharekit-windows-x64.exe)
+
+            **Via npm:**
+            ```bash
+            npm install -g @lucassantana/sharekit
+            ```
+
+            **Via Homebrew:** Coming soon
+          env:
+            GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

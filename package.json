@@ -26,6 +26,7 @@
   ],
   "scripts": {
     "build": "rm -rf dist && tsc -p tsconfig.json && chmod +x dist/index.js",
+    "build:binaries": "mkdir -p dist && bun build --compile --target=bun-linux-x64 src/index.ts --outfile=dist/sharekit-linux-x64 && bun build --compile --target=bun-linux-arm64 src/index.ts --outfile=dist/sharekit-linux-arm64 && bun build --compile --target=bun-darwin-x64 src/index.ts --outfile=dist/sharekit-macos-x64 && bun build --compile --target=bun-darwin-arm64 src/index.ts --outfile=dist/sharekit-macos-arm64 && bun build --compile --target=bun-windows-x64 src/index.ts --outfile=dist/sharekit-windows-x64.exe",
     "dev": "tsx src/index.ts",
     "test": "node --import tsx --test test/*.test.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit",

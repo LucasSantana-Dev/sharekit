@@ -1,0 +1,26 @@
+[build-system]
+requires = ["setuptools>=45", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "sharekit"
+version = "0.5.0"
+description = "Share your AI coding setup with anyone — one command to install, one to rollback."
+readme = "README.md"
+requires-python = ">=3.8"
+license = {text = "MIT"}
+keywords = ["ai", "claude", "cursor", "dotfiles", "cli", "config"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+]
+dependencies = []
+
+[project.urls]
+Repository = "https://github.com/LucasSantana-Dev/sharekit"
+Homepage = "https://github.com/LucasSantana-Dev/sharekit"
+
+[project.scripts]
+sharekit = "sharekit.__main__:main"
