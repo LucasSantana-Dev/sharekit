@@ -98,22 +98,58 @@ export function restoreBackupInternal(
   backupDir: string,
   dirs: Dirs = DEFAULT_DIRS
 ): RestoreMetadata {
-  const applied: { dest: string; status: Status }[] = JSON.parse(
-    fs.readFileSync(path.join(backupDir, 'applied.json'), 'utf8')
-  );
+  // Read and parse applied.json with safe error handling
+  let applied: { dest: string; status: Status }[];
+  const appliedPath = path.join(backupDir, 'applied.json');
+  try {
+    const rawData = JSON.parse(fs.readFileSync(appliedPath, 'utf8'));
+
+    // Validate that it's an array
+    if (!Array.isArray(rawData)) {
+      throw new Error('applied.json must be an array');
+    }
+
+    // Validate array elements have required shape
+    applied = rawData.map((item, index) => {
+      if (typeof item !== 'object' || item === null) {
+        throw new Error(`applied.json[${index}] is not an object`);
+      }
+      const { dest, status } = item as { dest?: unknown; status?: unknown };
+      if (typeof dest !== 'string') {
+        throw new Error(`applied.json[${index}].dest must be a string, got ${typeof dest}`);
+      }
+      if (typeof status !== 'string') {
+        throw new Error(`applied.json[${index}].status must be a string, got ${typeof status}`);
+      }
+      return { dest, status: status as Status };
+    });
+  } catch (error) {
+    const msg = error instanceof Error ? error.message : String(error);
+    throw new Error(`Backup data is corrupt or unreadable: ${msg}`);
+  }
 
   let filesRestored = 0;
   let filesRemoved = 0;
 
+  // Resolve home directory once for bounds checking
+  const resolvedHome = path.resolve(dirs.home);
+
   for (const a of applied) {
+    // Bounds-check: ensure dest is within dirs.home
+    const resolvedDest = path.resolve(a.dest);
+    if (!resolvedDest.startsWith(resolvedHome + path.sep)) {
+      console.warn(`Skipping out-of-bounds entry: ${a.dest}`);
+      continue;
+    }
+
     if (a.status === 'new') {
-      fs.rmSync(a.dest, { force: true }); // ponytail: leaves empty parent dirs; harmless
+      fs.rmSync(resolvedDest, { force: true }); // ponytail: leaves empty parent dirs; harmless
       filesRemoved++;
     } else {
-      const src = path.join(backupDir, path.relative(dirs.home, a.dest));
+      const src = path.join(backupDir, path.relative(resolvedHome, resolvedDest));
       if (fs.existsSync(src)) {
-        fs.mkdirSync(path.dirname(a.dest), { recursive: true }); // dest dir may have been removed since install
-        cp(src, a.dest);
+        fs.mkdirSync(path.dirname(resolvedDest), { recursive: true }); // dest dir may have been removed since install
+        cp(src, resolvedDest);
         filesRestored++;
       }
     }

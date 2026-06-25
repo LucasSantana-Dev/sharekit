@@ -328,9 +328,36 @@ export async function rollback(user: string, opts?: InstallOpts): Promise<void> 
   if (!last) return void console.log(kleur.yellow(`No backup for ${user}.`));
 
   const dir = path.join(root, last);
-  const applied: { dest: string; status: string }[] = JSON.parse(
-    fs.readFileSync(path.join(dir, 'applied.json'), 'utf8')
-  );
+
+  // Read and parse applied.json with safe error handling
+  let applied: { dest: string; status: string }[];
+  const appliedPath = path.join(dir, 'applied.json');
+  try {
+    const rawData = JSON.parse(fs.readFileSync(appliedPath, 'utf8'));
+
+    // Validate that it's an array
+    if (!Array.isArray(rawData)) {
+      throw new Error('applied.json must be an array');
+    }
+
+    // Validate array elements have required shape
+    applied = rawData.map((item, index) => {
+      if (typeof item !== 'object' || item === null) {
+        throw new Error(`applied.json[${index}] is not an object`);
+      }
+      const { dest, status } = item as { dest?: unknown; status?: unknown };
+      if (typeof dest !== 'string') {
+        throw new Error(`applied.json[${index}].dest must be a string, got ${typeof dest}`);
+      }
+      if (typeof status !== 'string') {
+        throw new Error(`applied.json[${index}].status must be a string, got ${typeof status}`);
+      }
+      return { dest, status };
+    });
+  } catch (error) {
+    const msg = error instanceof Error ? error.message : String(error);
+    throw new Error(`Backup data is corrupt or unreadable: ${msg}`);
+  }
 
   let versionStr = '';
   const metadataPath = path.join(dir, 'metadata.json');
@@ -396,9 +423,36 @@ export async function uninstall(
   }
 
   const backupDir = path.join(root, last);
-  const applied: { dest: string; status: string }[] = JSON.parse(
-    fs.readFileSync(path.join(backupDir, 'applied.json'), 'utf8')
-  );
+
+  // Read and parse applied.json with safe error handling
+  let applied: { dest: string; status: string }[];
+  const appliedPath = path.join(backupDir, 'applied.json');
+  try {
+    const rawData = JSON.parse(fs.readFileSync(appliedPath, 'utf8'));
+
+    // Validate that it's an array
+    if (!Array.isArray(rawData)) {
+      throw new Error('applied.json must be an array');
+    }
+
+    // Validate array elements have required shape
+    applied = rawData.map((item, index) => {
+      if (typeof item !== 'object' || item === null) {
+        throw new Error(`applied.json[${index}] is not an object`);
+      }
+      const { dest, status } = item as { dest?: unknown; status?: unknown };
+      if (typeof dest !== 'string') {
+        throw new Error(`applied.json[${index}].dest must be a string, got ${typeof dest}`);
+      }
+      if (typeof status !== 'string') {
+        throw new Error(`applied.json[${index}].status must be a string, got ${typeof status}`);
+      }
+      return { dest, status };
+    });
+  } catch (error) {
+    const msg = error instanceof Error ? error.message : String(error);
+    throw new Error(`Backup data is corrupt or unreadable: ${msg}`);
+  }
 
   // Print what will be removed/restored
   const toRemove = applied.filter((a) => a.status === 'new');
@@ -426,17 +480,27 @@ export async function uninstall(
     return void console.log(kleur.dim('\n  Aborted.\n'));
   }
 
+  // Resolve home directory once for bounds checking
+  const resolvedHome = path.resolve(dirs.home);
+
   // Execute the uninstall: reverse all changes
   for (const a of applied) {
+    // Bounds-check: ensure dest is within dirs.home
+    const resolvedDest = path.resolve(a.dest);
+    if (!resolvedDest.startsWith(resolvedHome + path.sep)) {
+      console.warn(`Skipping out-of-bounds entry: ${a.dest}`);
+      continue;
+    }
+
     if (a.status === 'new') {
       // File was added by the profile — remove it
-      fs.rmSync(a.dest, { force: true });
+      fs.rmSync(resolvedDest, { force: true });
     } else if (a.status === 'changed') {
       // File was changed — restore from backup
-      const src = path.join(backupDir, path.relative(dirs.home, a.dest));
+      const src = path.join(backupDir, path.relative(resolvedHome, resolvedDest));
       if (fs.existsSync(src)) {
-        fs.mkdirSync(path.dirname(a.dest), { recursive: true });
-        cp(src, a.dest);
+        fs.mkdirSync(path.dirname(resolvedDest), { recursive: true });
+        cp(src, resolvedDest);
       }
     }
   }
