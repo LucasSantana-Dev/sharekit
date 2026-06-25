@@ -19,6 +19,7 @@ import {
   uninstall,
   type InstallOpts,
 } from './sharekit.js';
+import { parseApplied } from './backup.js';
 
 const HOME = os.homedir();
 const STATE = path.join(HOME, '.sharekit');
@@ -185,9 +186,11 @@ export async function main(argv = process.argv.slice(2)) {
       const appliedPath = path.join(backupDir, 'applied.json');
       let applied: Array<{ dest: string; status: string }> = [];
       try {
-        applied = JSON.parse(fs.readFileSync(appliedPath, 'utf8'));
-      } catch {
-        console.error(kleur.red(`Could not read backup metadata at ${appliedPath}`));
+        const rawData = fs.readFileSync(appliedPath, 'utf8');
+        applied = parseApplied(rawData);
+      } catch (error) {
+        const msg = error instanceof Error ? error.message : String(error);
+        console.error(kleur.red(`Could not read backup metadata: ${msg}`));
         process.exit(1);
       }
 
