@@ -15,9 +15,7 @@ export function parseUserRef(user: string): { user: string; ref?: string } {
       throw new Error(`Invalid user '${user}': username cannot contain '..'`);
     }
     if (user.includes('/')) {
-      throw new Error(
-        `Invalid user '${user}': username cannot contain path separators`
-      );
+      throw new Error(`Invalid user '${user}': username cannot contain path separators`);
     }
     return { user, ref: undefined };
   }
@@ -29,24 +27,18 @@ export function parseUserRef(user: string): { user: string; ref?: string } {
 
   // Validate userName
   if (!userName || userName.trim() === '') {
-    throw new Error(
-      `Invalid user reference '${user}': missing GitHub username before '@'`
-    );
+    throw new Error(`Invalid user reference '${user}': missing GitHub username before '@'`);
   }
   if (userName.includes('..')) {
     throw new Error(`Invalid user '${userName}': username cannot contain '..'`);
   }
   if (userName.includes('/')) {
-    throw new Error(
-      `Invalid user '${userName}': username cannot contain path separators`
-    );
+    throw new Error(`Invalid user '${userName}': username cannot contain path separators`);
   }
 
   // Validate ref
   if (!ref || ref.trim() === '') {
-    throw new Error(
-      `Invalid user reference '${user}': ref cannot be empty after '@'`
-    );
+    throw new Error(`Invalid user reference '${user}': ref cannot be empty after '@'`);
   }
   if (ref.includes('..')) {
     throw new Error(`Invalid ref '${ref}': ref cannot contain '..'`);

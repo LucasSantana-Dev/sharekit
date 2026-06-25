@@ -100,10 +100,7 @@ test('Issue #100: restoreBackupInternal with non-string dest throws error', () =
   fs.mkdirSync(home, { recursive: true });
 
   // Write array with dest as number instead of string
-  fs.writeFileSync(
-    path.join(backupDir, 'applied.json'),
-    '[{"dest": 123, "status": "new"}]'
-  );
+  fs.writeFileSync(path.join(backupDir, 'applied.json'), '[{"dest": 123, "status": "new"}]');
 
   try {
     assert.throws(
@@ -309,11 +306,7 @@ test('Issue #100/#101: Valid applied.json is processed correctly', () => {
   // Check results
   assert.equal(metadata.filesRestored, 1, 'should restore 1 file');
   assert.equal(metadata.filesRemoved, 1, 'should remove 1 file');
-  assert.equal(
-    fs.readFileSync(file1, 'utf8'),
-    'original settings',
-    'file1 should be restored'
-  );
+  assert.equal(fs.readFileSync(file1, 'utf8'), 'original settings', 'file1 should be restored');
   assert.ok(!fs.existsSync(file2), 'file2 should be removed');
 
   fs.rmSync(tmp, { recursive: true });

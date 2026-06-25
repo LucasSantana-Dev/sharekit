@@ -75,10 +75,17 @@ test('applyProfile with --include-hooks: real hook definitions written to instal
       Stop: [{ hooks: [{ type: 'command', command: 'echo done' }] }],
     },
   };
-  fs.writeFileSync(path.join(profile, 'claude', 'settings.json'), JSON.stringify(hookSettings, null, 2));
+  fs.writeFileSync(
+    path.join(profile, 'claude', 'settings.json'),
+    JSON.stringify(hookSettings, null, 2)
+  );
 
   const home = path.join(tmp, 'home');
-  const roots = { claude: path.join(home, '.claude'), cursor: path.join(home, '.cursor'), shared: home };
+  const roots = {
+    claude: path.join(home, '.claude'),
+    cursor: path.join(home, '.cursor'),
+    shared: home,
+  };
   const dirs = { home, state: path.join(home, 'state') };
   applyProfile(plan(profile, roots), 'u', true, dirs);
 
@@ -104,11 +111,18 @@ test('applyProfile without --include-hooks: profile with real hooks → settings
   fs.writeFileSync(path.join(profile, 'claude', 'CLAUDE.md'), 'rules');
 
   const home = path.join(tmp, 'home');
-  const roots = { claude: path.join(home, '.claude'), cursor: path.join(home, '.cursor'), shared: home };
+  const roots = {
+    claude: path.join(home, '.claude'),
+    cursor: path.join(home, '.cursor'),
+    shared: home,
+  };
   const dirs = { home, state: path.join(home, 'state') };
   applyProfile(plan(profile, roots), 'u', false, dirs);
 
-  assert.ok(!fs.existsSync(path.join(home, '.claude', 'settings.json')), 'settings.json NOT installed without --include-hooks');
+  assert.ok(
+    !fs.existsSync(path.join(home, '.claude', 'settings.json')),
+    'settings.json NOT installed without --include-hooks'
+  );
   assert.ok(fs.existsSync(path.join(home, '.claude', 'CLAUDE.md')), 'other files still installed');
 
   fs.rmSync(tmp, { recursive: true });
@@ -130,7 +144,11 @@ test('applyProfile does not execute hooks in settings.json during apply', () => 
   fs.writeFileSync(path.join(profile, 'claude', 'settings.json'), JSON.stringify(hookSettings));
 
   const home = path.join(tmp, 'home');
-  const roots = { claude: path.join(home, '.claude'), cursor: path.join(home, '.cursor'), shared: home };
+  const roots = {
+    claude: path.join(home, '.claude'),
+    cursor: path.join(home, '.cursor'),
+    shared: home,
+  };
   const dirs = { home, state: path.join(home, 'state') };
   applyProfile(plan(profile, roots), 'u', true, dirs);
 
