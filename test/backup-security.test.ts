@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { restoreBackupInternal, listBackups } from '../src/sharekit.ts';
+import { restoreBackupInternal, listBackups, parseApplied } from '../src/sharekit.ts';
 import { uninstall, rollback } from '../src/commands.ts';
 
 // FIX Issue #100: Safe JSON parsing for applied.json
@@ -310,4 +310,58 @@ test('Issue #100/#101: Valid applied.json is processed correctly', () => {
   assert.ok(!fs.existsSync(file2), 'file2 should be removed');
 
   fs.rmSync(tmp, { recursive: true });
+});
+
+// Issue #124: Test parseApplied with various malformed JSON scenarios
+test('Issue #124: parseApplied gracefully handles JSON syntax errors', () => {
+  // Test 1: Invalid JSON syntax
+  assert.throws(
+    () => {
+      parseApplied('{invalid}');
+    },
+    (err: any) => {
+      assert.ok(err.message.includes('applied.json is not valid JSON'));
+      return true;
+    }
+  );
+});
+
+test('Issue #124: parseApplied gracefully handles truncated JSON', () => {
+  // Test 2: Truncated JSON
+  assert.throws(
+    () => {
+      parseApplied('[{"dest": "/tmp');
+    },
+    (err: any) => {
+      assert.ok(err.message.includes('applied.json is not valid JSON'));
+      return true;
+    }
+  );
+});
+
+test('Issue #124: parseApplied gracefully handles empty string', () => {
+  // Test 3: Empty string
+  assert.throws(
+    () => {
+      parseApplied('');
+    },
+    (err: any) => {
+      assert.ok(err.message.includes('applied.json is not valid JSON'));
+      return true;
+    }
+  );
+});
+
+test('Issue #124: parseApplied gracefully handles BOM-prefixed JSON', () => {
+  // Test 4: BOM prefix causes JSON.parse to fail
+  assert.throws(
+    () => {
+      parseApplied('﻿{}');
+    },
+    (err: any) => {
+      // BOM prefix prevents JSON.parse from recognizing valid JSON
+      assert.ok(err.message.includes('applied.json is not valid JSON'));
+      return true;
+    }
+  );
 });
