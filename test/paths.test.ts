@@ -18,7 +18,15 @@ test('tildify with maxLen longer than path returns full path unchanged', () => {
 });
 
 test('tildify with maxLen truncates long paths with ellipsis in middle', () => {
-  const longPath = path.join(HOME, '.claude', 'skills', 'very-long-skill-name', 'nested', 'deeply', 'SKILL.md');
+  const longPath = path.join(
+    HOME,
+    '.claude',
+    'skills',
+    'very-long-skill-name',
+    'nested',
+    'deeply',
+    'SKILL.md'
+  );
   const result = tildify(longPath, 20);
   assert.equal(result.length, 20, 'truncated result is exactly maxLen');
   assert.match(result, /\.\.\./, 'truncated result contains ellipsis');
@@ -72,10 +80,19 @@ test('walkWithSymlinks prevents symlink loop traversal', () => {
   const result = walkWithSymlinks(aDir);
 
   // Should find both real files
-  assert.ok(result.files.some((f) => f.includes('a.txt')), 'finds file in root dir');
-  assert.ok(result.files.some((f) => f.includes('sub.txt')), 'finds file in subdir');
+  assert.ok(
+    result.files.some((f) => f.includes('a.txt')),
+    'finds file in root dir'
+  );
+  assert.ok(
+    result.files.some((f) => f.includes('sub.txt')),
+    'finds file in subdir'
+  );
   // Should skip the symlink that creates the loop
-  assert.ok(result.skippedSymlinks.some((s) => s.includes('loop-back')), 'skips symlink that would create loop');
+  assert.ok(
+    result.skippedSymlinks.some((s) => s.includes('loop-back')),
+    'skips symlink that would create loop'
+  );
 
   fs.rmSync(tmp, { recursive: true });
 });
@@ -92,8 +109,14 @@ test('walkWithSymlinks handles normal directories without symlinks', () => {
 
   assert.equal(result.files.length, 2, 'finds both files');
   assert.equal(result.skippedSymlinks.length, 0, 'no symlinks skipped');
-  assert.ok(result.files.some((f) => f.includes('file1.txt')), 'finds file1.txt');
-  assert.ok(result.files.some((f) => f.includes('file2.txt')), 'finds file2.txt');
+  assert.ok(
+    result.files.some((f) => f.includes('file1.txt')),
+    'finds file1.txt'
+  );
+  assert.ok(
+    result.files.some((f) => f.includes('file2.txt')),
+    'finds file2.txt'
+  );
 
   fs.rmSync(tmp, { recursive: true });
 });

@@ -53,7 +53,9 @@ export async function search(query?: string): Promise<void> {
     return;
   }
   console.log(
-    kleur.bold(`\n  ${profiles.length} profile(s)${query ? ` matching "${query}"` : ''} (showing up to 30):\n`)
+    kleur.bold(
+      `\n  ${profiles.length} profile(s)${query ? ` matching "${query}"` : ''} (showing up to 30):\n`
+    )
   );
   for (const r of profiles) {
     const owner = (r.owner as { login?: string } | undefined)?.login ?? '?';

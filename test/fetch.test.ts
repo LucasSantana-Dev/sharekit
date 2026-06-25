@@ -116,11 +116,7 @@ test('parseUserRef: slash in username', () => {
 });
 
 test('parseUserRef: empty username', () => {
-  assert.throws(
-    () => parseUserRef(''),
-    /username cannot be empty/,
-    'empty string should throw'
-  );
+  assert.throws(() => parseUserRef(''), /username cannot be empty/, 'empty string should throw');
 
   assert.throws(
     () => parseUserRef('   '),
@@ -152,7 +148,10 @@ test('fetchProfile: path containment check prevents cache escape', () => {
   const resolvedDir = path.resolve(dir);
 
   // Normal paths should pass the containment check
-  assert.ok(resolvedDir.startsWith(resolvedCache + path.sep), 'normal cache path should be contained');
+  assert.ok(
+    resolvedDir.startsWith(resolvedCache + path.sep),
+    'normal cache path should be contained'
+  );
 });
 
 test('fetchProfile: malicious input rejected at parseUserRef level', () => {
