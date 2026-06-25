@@ -166,7 +166,10 @@ test('parseUserRef splits user and ref', () => {
   assert.equal(u2, 'alice', 'user@ref: user part');
   assert.equal(r2, 'v1.0', 'user@ref: ref part');
 
-  const { user: u3, ref: r3 } = parseUserRef('alice@a@b');
-  assert.equal(u3, 'alice@a', 'user@a@b: user part (takes last @)');
-  assert.equal(r3, 'b', 'user@a@b: ref is last segment');
+  // alice@a@b now throws because @ in username not allowed
+  assert.throws(
+    () => parseUserRef('alice@a@b'),
+    /username cannot contain '@'/,
+    'alice@a@b should throw — @ in username not allowed'
+  );
 });

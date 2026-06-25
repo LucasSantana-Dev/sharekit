@@ -2,6 +2,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { parse as parseToml } from 'smol-toml';
+import kleur from 'kleur';
 import { STATE, MAX_MANIFEST_BYTES } from './paths.js';
 
 export function parseUserRef(user: string): { user: string; ref?: string } {
@@ -26,8 +27,11 @@ export function parseUserRef(user: string): { user: string; ref?: string } {
   const ref = user.slice(atIndex + 1);
 
   // Validate userName
-  if (!userName || userName.trim() === '') {
+  if (!userName || userName.trim() === '' || /^@+$/.test(userName)) {
     throw new Error(`Invalid user reference '${user}': missing GitHub username before '@'`);
+  }
+  if (userName.includes('@')) {
+    throw new Error(`Invalid user reference '${user}': username cannot contain '@'`);
   }
   if (userName.includes('..')) {
     throw new Error(`Invalid user '${userName}': username cannot contain '..'`);
@@ -61,7 +65,8 @@ export function fetchProfile(
   // Defense-in-depth: verify cache path doesn't escape cacheRoot
   const resolvedCache = path.resolve(cacheRoot);
   const resolvedDir = path.resolve(dir);
-  if (!resolvedDir.startsWith(resolvedCache + path.sep)) {
+  const rel = path.relative(resolvedCache, resolvedDir);
+  if (!rel || rel.startsWith('..') || path.isAbsolute(rel)) {
     throw new Error(`Invalid profile path: cache escape detected for '${cacheKey}'`);
   }
 
@@ -71,7 +76,15 @@ export function fetchProfile(
     // the pull harmlessly fails and we fall back to the cached copy.
     try {
       execFileSync('git', ['-C', dir, 'pull', '--ff-only'], { stdio: 'pipe', timeout: 30_000 });
-    } catch {
+    } catch (e) {
+      // Check if the cache dir is corrupted
+      try {
+        execFileSync('git', ['rev-parse', '--git-dir'], { cwd: dir });
+      } catch {
+        // Cache dir is corrupt — clean it up
+        fs.rmSync(dir, { recursive: true, force: true });
+        console.log(`Profile cache corrupted — cleaned up, retry to re-clone`);
+      }
       // ponytail: refresh is best-effort — offline / no-remote / detached HEAD falls back to the cached copy
     }
     return dir;
@@ -93,6 +106,17 @@ export function fetchProfile(
       });
     }
   } catch (e) {
+    // Check if the cache dir is corrupted and clean it up
+    if (fs.existsSync(dir)) {
+      try {
+        execFileSync('git', ['rev-parse', '--git-dir'], { cwd: dir });
+      } catch {
+        // Cache dir is corrupt — clean it up
+        fs.rmSync(dir, { recursive: true, force: true });
+        console.log(`Profile cache corrupted — cleaned up, retry to re-clone`);
+      }
+    }
+
     if ((e as { code?: string }).code === 'ENOENT') {
       throw new Error('git not found — install git to use sharekit (https://git-scm.com)');
     }
@@ -135,9 +159,18 @@ export function readManifest(profileDir: string): {
     throw new Error(`Invalid sharekit.toml: ${(e as Error).message}`);
   }
   const profile = (parsed.profile ?? {}) as Record<string, string>;
+  const version = profile.version;
+
+  // Warn if version is not semver format
+  if (version && !/^\d+\.\d+\.\d+/.test(version)) {
+    console.warn(
+      kleur.yellow(`Warning: profile version "${version}" is not semver — treating as-is`)
+    );
+  }
+
   return {
     name: profile.name ?? 'unknown',
-    version: profile.version,
+    version,
     description: profile.description,
   };
 }

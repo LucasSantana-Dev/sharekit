@@ -125,11 +125,33 @@ test('parseUserRef: empty username', () => {
   );
 });
 
-test('parseUserRef: multiple @ signs', () => {
-  // Last @ is the separator; everything before is the username
-  const result = parseUserRef('user@domain@v1.0');
-  assert.equal(result.user, 'user@domain');
-  assert.equal(result.ref, 'v1.0');
+test('parseUserRef: multiple @ signs — rejected (@ not allowed in username)', () => {
+  // Multiple @ is no longer allowed: usernames cannot contain @ to prevent confusion
+  assert.throws(
+    () => parseUserRef('user@domain@v1.0'),
+    /username cannot contain '@'/,
+    'user@domain@v1.0 should throw — userName="user@domain" contains @'
+  );
+});
+
+test('parseUserRef: @@ and user@@ref edge cases', () => {
+  assert.throws(
+    () => parseUserRef('@@'),
+    /missing GitHub username before '@'/,
+    '@@ should throw with missing username message'
+  );
+
+  assert.throws(
+    () => parseUserRef('user@@ref'),
+    /username cannot contain '@'/,
+    'user@@ref should throw — userName would be "user@" which contains @'
+  );
+
+  assert.throws(
+    () => parseUserRef('a@b@ref'),
+    /username cannot contain '@'/,
+    'a@b@ref should throw — splits on last @ giving userName="a@b" which contains @'
+  );
 });
 
 test('fetchProfile: path containment check prevents cache escape', () => {
