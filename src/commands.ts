@@ -132,8 +132,7 @@ export function updateApply(
   printPlan(files, manifest);
 
   const todo = files.filter(
-    (f) =>
-      (additive ? f.status === 'new' : f.status !== 'same') && !isExecutable(f, includeHooks)
+    (f) => (additive ? f.status === 'new' : f.status !== 'same') && !isExecutable(f, includeHooks)
   );
   if (!todo.length) {
     console.log(kleur.dim(additive ? '\n  No new files to add.\n' : '\n  Already up to date.\n'));
@@ -201,8 +200,7 @@ export async function update(
     printPlan(files, manifest);
 
     const todo = files.filter(
-      (f) =>
-        (additive ? f.status === 'new' : f.status !== 'same') && !isExecutable(f, includeHooks)
+      (f) => (additive ? f.status === 'new' : f.status !== 'same') && !isExecutable(f, includeHooks)
     );
     if (!todo.length)
       return void console.log(

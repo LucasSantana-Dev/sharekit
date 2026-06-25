@@ -140,7 +140,7 @@ test('main: no command shows usage (help)', async () => {
 
   const result = await run();
   assert.ok(result.output.some((line) => line.includes('sharekit')));
-  assert.ok(result.output.some((line) => line.includes('v0.4.0')));
+  assert.ok(result.output.some((line) => line.includes('v0.5.0')));
 });
 
 test('main: -h flag shows usage', async () => {
@@ -167,7 +167,7 @@ test('main: -V flag shows version', async () => {
   });
 
   const result = await run();
-  assert.ok(result.output.some((line) => line.includes('0.4.0')));
+  assert.ok(result.output.some((line) => line.includes('0.5.0')));
 });
 
 test('main: --version flag shows version', async () => {
@@ -176,7 +176,7 @@ test('main: --version flag shows version', async () => {
   });
 
   const result = await run();
-  assert.ok(result.output.some((line) => line.includes('0.4.0')));
+  assert.ok(result.output.some((line) => line.includes('0.5.0')));
 });
 
 test('main: list command dispatches', async () => {
