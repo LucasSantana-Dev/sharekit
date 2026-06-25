@@ -106,3 +106,29 @@ test("init creates placeholder CLAUDE.md if source doesn't have one", () => {
 
   fs.rmSync(tmp, { recursive: true });
 });
+
+test('init escapes username with special characters in TOML', () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'sk-init-escape-'));
+  const sourceRoot = path.join(tmp, 'source');
+  const profileDir = path.join(tmp, 'sharekit-profile');
+
+  fs.mkdirSync(sourceRoot);
+
+  init(profileDir, [], sourceRoot);
+
+  // Verify sharekit.toml was created and is valid TOML
+  const tomlPath = path.join(profileDir, 'sharekit.toml');
+  assert(fs.existsSync(tomlPath));
+  const tomlContent = fs.readFileSync(tomlPath, 'utf8');
+
+  // Parse TOML and verify it's valid (would throw if not)
+  const toml = parseToml(tomlContent) as {
+    profile: { name: string; version: string };
+  };
+
+  // The profile name should match the current user
+  assert.equal(toml.profile.name, os.userInfo().username);
+  assert.equal(toml.profile.version, '0.1.0');
+
+  fs.rmSync(tmp, { recursive: true });
+});

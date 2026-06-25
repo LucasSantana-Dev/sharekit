@@ -53,7 +53,7 @@ test('scanForSecrets detects ENV secret with API_KEY key', () => {
 });
 
 test('scanForSecrets detects bearer token', () => {
-  const content = 'Bearer eyJ' + 'a'.repeat(32);
+  const content = 'Bearer eyJx.y.z';
   const findings = scanForSecrets(content);
   assert(findings.length > 0);
   assert.equal(findings[0].rule, 'Bearer Token');
@@ -287,7 +287,7 @@ test('scanForSecrets assigns high severity to AWS access key', () => {
 });
 
 test('scanForSecrets assigns high severity to bearer token', () => {
-  const content = 'Authorization: Bearer eyJ' + 'a'.repeat(32);
+  const content = 'Authorization: Bearer eyJx.y.z';
   const findings = scanForSecrets(content);
   assert(findings.length > 0);
   assert.equal(findings[0].severity, 'high');

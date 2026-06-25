@@ -1,0 +1,5 @@
+version: 2
+paths-ignore:
+  # These files intentionally contain credential-like patterns for detection/testing
+  - "test/scan.test.ts"
+  - "src/scanner.ts"
