@@ -76,3 +76,35 @@ test('search excludes archived repos from results', async () => {
 
   assert.match(capturedUrl, /archived%3Afalse/, 'query includes URL-encoded archived:false');
 });
+
+test('search surfaces rate limit 403 with reset time and GITHUB_TOKEN hint', async () => {
+  const realFetch = globalThis.fetch;
+
+  // mock GitHub API rate limit response
+  const resetTimestamp = Math.floor(Date.now() / 1000) + 3600; // 1 hour from now
+  globalThis.fetch = (async () =>
+    new Response('Forbidden', {
+      status: 403,
+      headers: {
+        'X-RateLimit-Remaining': '0',
+        'X-RateLimit-Reset': resetTimestamp.toString(),
+      },
+    })) as typeof fetch;
+
+  try {
+    await assert.rejects(
+      async () => search(),
+      (err) => {
+        const message = (err as Error).message;
+        return (
+          message.includes('rate limit') &&
+          message.includes('GITHUB_TOKEN') &&
+          message.includes('resets at')
+        );
+      },
+      'throws error mentioning rate limit, GITHUB_TOKEN, and reset time'
+    );
+  } finally {
+    globalThis.fetch = realFetch;
+  }
+});
