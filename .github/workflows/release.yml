@@ -1,16 +1,23 @@
 name: Release
 
-# Publishes to npm via OIDC trusted publishing when a v* tag is pushed.
-# No stored token: GitHub mints a short-lived OIDC credential that npm trusts,
-# and provenance is attached automatically.
+# Publishes to npm + PyPI via OIDC trusted publishing when a v* tag is pushed.
+# No stored tokens: GitHub mints short-lived OIDC credentials each registry trusts.
 #
-# ONE-TIME SETUP on npmjs.com (required before this can publish):
-#   Package @lucassantana/sharekit -> Settings -> Trusted Publisher ->
-#   GitHub Actions, with:
+# ONE-TIME SETUP — npm (required before first npm publish):
+#   npmjs.com → @lucassantana/sharekit → Settings → Trusted Publisher → GitHub Actions
 #     Organization/user:  LucasSantana-Dev
 #     Repository:         sharekit
 #     Workflow filename:  release.yml
 #   Docs: https://docs.npmjs.com/trusted-publishers
+#
+# ONE-TIME SETUP — PyPI (required before first pip publish):
+#   pypi.org → Publishing → Add a pending publisher
+#     PyPI project name:  sharekit
+#     Owner:              LucasSantana-Dev
+#     Repository:         sharekit
+#     Workflow filename:  release.yml
+#     Environment:        (leave blank)
+#   Docs: https://docs.pypi.org/trusted-publishers/adding-a-publisher/
 
 on:
   push:
@@ -18,7 +25,7 @@ on:
       - v*
 
 permissions:
-  id-token: write # mint the OIDC token npm exchanges for publish auth
+  id-token: write # OIDC tokens for npm + PyPI trusted publishing
   contents: write # create GitHub Release and upload binary assets
 
 jobs:
@@ -34,6 +41,23 @@ jobs:
       - run: npm ci
       - run: npm run build
       - run: npm publish
+
+  publish-pip:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Build distribution
+        run: |
+          pip install build
+          python -m build
+        working-directory: sharekit-pip
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: sharekit-pip/dist/
 
   release:
     runs-on: ubuntu-latest
@@ -71,6 +95,12 @@ jobs:
             **Via npm:**
             ```bash
             npm install -g @lucassantana/sharekit
+            ```
+
+            **Via pip:**
+            ```bash
+            pip install sharekit
+            pipx install sharekit
             ```
 
             **Via Homebrew:** Coming soon
