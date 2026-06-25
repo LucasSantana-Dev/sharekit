@@ -20,10 +20,14 @@ export const ROOTS: Record<string, string> = {
 export type Dirs = { home: string; state: string };
 export const DEFAULT_DIRS: Dirs = { home: HOME, state: STATE };
 
-export const tildify = (p: string) => {
-  if (!p.startsWith(HOME)) return p;
-  // Normalize separators to forward slashes for cross-platform display
-  return '~' + p.slice(HOME.length).split(path.sep).join('/');
+export const tildify = (p: string, maxLen?: number) => {
+  const result = p.startsWith(HOME) ? '~' + p.slice(HOME.length).split(path.sep).join('/') : p;
+  if (maxLen && result.length > maxLen && p.startsWith(HOME)) {
+    const half = Math.floor((maxLen - 3) / 2);
+    const end = result.length - (maxLen - 3 - half);
+    return result.slice(0, half) + '...' + result.slice(end);
+  }
+  return result;
 };
 
 // copy a file, preserving its mode (e.g. a skill's executable toggle.sh)
@@ -41,8 +45,16 @@ export interface WalkResult {
 export function walkWithSymlinks(dir: string): WalkResult {
   const files: string[] = [];
   const skippedSymlinks: string[] = [];
+  const visited = new Set<string>();
 
   const traverse = (currentDir: string) => {
+    const realDir = fs.realpathSync(currentDir);
+    if (visited.has(realDir)) {
+      console.warn(`  Warning: symlink loop detected at ${currentDir} — skipping`);
+      return;
+    }
+    visited.add(realDir);
+
     for (const e of fs.readdirSync(currentDir, { withFileTypes: true })) {
       const p = path.join(currentDir, e.name);
       if (e.isSymbolicLink()) {
