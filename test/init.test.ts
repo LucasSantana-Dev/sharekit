@@ -146,7 +146,7 @@ test('init scaffolds opencode/ and gjc/ directories with placeholder configs', (
   assert(fs.existsSync(path.join(profileDir, 'opencode')));
   assert(fs.existsSync(path.join(profileDir, 'opencode', 'config.json')));
   const opencodeContent = fs.readFileSync(path.join(profileDir, 'opencode', 'config.json'), 'utf8');
-  assert(opencodeContent.includes('opencode configuration'));
+  assert.doesNotThrow(() => JSON.parse(opencodeContent), 'placeholder config.json is valid JSON');
 
   // Verify gjc/ was created with placeholder
   assert(fs.existsSync(path.join(profileDir, 'gjc')));

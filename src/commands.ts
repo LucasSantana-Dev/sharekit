@@ -738,7 +738,7 @@ description = "My AI coding setup"
   const sourceOpencodeDir = path.join(sourceRoot, '.config', 'opencode');
   let opencodeFound = false;
   if (fs.existsSync(sourceOpencodeDir)) {
-    for (const file of fs.readdirSync(sourceOpencodeDir)) {
+    for (const file of fs.readdirSync(sourceOpencodeDir).sort()) {
       const filePath = path.join(sourceOpencodeDir, file);
       const stat = fs.statSync(filePath);
       if (stat.isFile()) {
@@ -754,7 +754,7 @@ description = "My AI coding setup"
     }
   }
   if (!opencodeFound) {
-    fs.writeFileSync(path.join(destOpencode, 'config.json'), '// opencode configuration\n');
+    fs.writeFileSync(path.join(destOpencode, 'config.json'), '{}\n');
     console.log(
       kleur.green(`  + ${tildify(path.join(destOpencode, 'config.json'))} (placeholder)`)
     );
@@ -766,7 +766,7 @@ description = "My AI coding setup"
   const sourceGjcDir = path.join(sourceRoot, '.gjc');
   let gjcFound = false;
   if (fs.existsSync(sourceGjcDir)) {
-    for (const file of fs.readdirSync(sourceGjcDir)) {
+    for (const file of fs.readdirSync(sourceGjcDir).sort()) {
       const filePath = path.join(sourceGjcDir, file);
       const stat = fs.statSync(filePath);
       if (stat.isFile()) {
