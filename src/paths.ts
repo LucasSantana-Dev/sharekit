@@ -9,12 +9,20 @@ export const STATE = path.join(HOME, '.sharekit');
 // Typical manifests are a few KB; 512 KB is a generous cap that catches obvious abuses.
 export const MAX_MANIFEST_BYTES = 512 * 1024; // 512 KB
 
-// profile/<tool>/** mirrors into these roots — one rule, not a filename allowlist
-export const ROOTS: Record<string, string> = {
-  claude: path.join(HOME, '.claude'),
-  cursor: path.join(HOME, '.cursor'),
-  shared: HOME,
-};
+// profile/<tool>/** mirrors into these roots — one rule, not a filename allowlist.
+// rootsFor is the single source of truth: ROOTS is just rootsFor(HOME), and the
+// CLI builds rootsFor(dirs.home) so injected test homes are honoured.
+export function rootsFor(home: string): Record<string, string> {
+  return {
+    claude: path.join(home, '.claude'),
+    cursor: path.join(home, '.cursor'),
+    opencode: path.join(home, '.config', 'opencode'),
+    gjc: path.join(home, '.gjc'),
+    shared: home,
+  };
+}
+
+export const ROOTS: Record<string, string> = rootsFor(HOME);
 
 // injectable so backup/restore can target a temp dir in tests (default: real ~/.sharekit + $HOME)
 export type Dirs = { home: string; state: string };

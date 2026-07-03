@@ -81,6 +81,8 @@ sharekit-profile/
 ├── sharekit.toml
 ├── claude/           (→ ~/.claude/)
 ├── cursor/           (→ ~/.cursor/)
+├── opencode/         (→ ~/.config/opencode/)
+├── gjc/              (→ ~/.gjc/)
 └── shared/           (→ ~/)
 ```
 
@@ -93,7 +95,7 @@ version = "1.0"
 description = "Claude + Cursor config with custom skills"
 ```
 
-Subdirectories mirror into their corresponding roots: files in `claude/` go to `~/.claude/`, files in `cursor/` to `~/.cursor/`, and files in `shared/` to `~/`.
+Subdirectories mirror into their corresponding roots: files in `claude/` go to `~/.claude/`, files in `cursor/` to `~/.cursor/`, files in `opencode/` to `~/.config/opencode/`, files in `gjc/` to `~/.gjc/`, and files in `shared/` to `~/`.
 
 Run `sharekit init [skill...]` to scaffold a profile from your `~/.claude` — copies your `CLAUDE.md` and any named skills into a ready-to-push `sharekit-profile/`.
 

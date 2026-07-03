@@ -9,7 +9,7 @@ import { plan, printPlan, isExecutable, applyProfile } from './plan.js';
 import { restoreBackup, listBackups, restoreBackupToStamp, parseApplied } from './backup.js';
 import { recordInstall, readInstalled, list, isImmutableRef } from './state.js';
 import { scanForSecrets, printAndGateFindings, type Finding } from './scanner.js';
-import { walk, tildify, Dirs, DEFAULT_DIRS, cp, ROOTS } from './paths.js';
+import { walk, tildify, Dirs, DEFAULT_DIRS, cp, rootsFor } from './paths.js';
 
 export interface InstallOpts {
   includeHooks?: boolean;
@@ -123,11 +123,7 @@ export function updateApply(
   const manifest = readManifest(dir);
 
   // Compute roots relative to injected home for testability
-  const roots: Record<string, string> = {
-    claude: path.join(dirs.home, '.claude'),
-    cursor: path.join(dirs.home, '.cursor'),
-    shared: dirs.home,
-  };
+  const roots = rootsFor(dirs.home);
   const files = plan(dir, roots);
   printPlan(files, manifest);
 
@@ -191,11 +187,7 @@ export async function update(
     const manifest = readManifest(fetchDir);
 
     // Compute roots relative to injected home for testability
-    const roots: Record<string, string> = {
-      claude: path.join(dirs.home, '.claude'),
-      cursor: path.join(dirs.home, '.cursor'),
-      shared: dirs.home,
-    };
+    const roots = rootsFor(dirs.home);
     const files = plan(fetchDir, roots);
     printPlan(files, manifest);
 
