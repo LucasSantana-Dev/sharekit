@@ -15,6 +15,22 @@ export interface PlanFile {
   status: Status;
 }
 
+// Denylist of executable-on-load dotfiles in shared/ that bypass shell gate
+// These files are sourced/executed on every shell startup and pose an RCE risk
+export const DANGEROUS_SHARED_DOTFILES = new Set([
+  '.zshrc',
+  '.zshenv',
+  '.zprofile',
+  '.zlogin',
+  '.bashrc',
+  '.bash_profile',
+  '.bash_login',
+  '.profile',
+  '.bash_logout',
+  '.xinitrc',
+  '.xprofile',
+]);
+
 // Track skipped symlinks for the current plan
 let currentPlanSkippedSymlinks: string[] = [];
 
@@ -57,10 +73,27 @@ function classify(src: string, dest: string): Status {
 
 // ponytail: settings.json carries hooks (arbitrary shell). v1 never auto-installs it.
 //           add `--include-hooks` when someone actually asks.
-export const isExecutable = (f: PlanFile, includeHooks = false) =>
-  !includeHooks && f.tool === 'claude' && path.basename(f.dest) === 'settings.json';
+// shared/ dotfiles (.zshrc, .bashrc, etc.) are sourced on shell startup → RCE on install.
+//           add `--include-dotfiles` when someone explicitly requests.
+export const isExecutable = (f: PlanFile, includeHooks = false, includeDotfiles = false) => {
+  if (!includeHooks && f.tool === 'claude' && path.basename(f.dest) === 'settings.json') {
+    return true;
+  }
+  if (
+    !includeDotfiles &&
+    f.tool === 'shared' &&
+    DANGEROUS_SHARED_DOTFILES.has(path.basename(f.dest))
+  ) {
+    return true;
+  }
+  return false;
+};
 
-export function printPlan(files: PlanFile[], manifest: ReturnType<typeof readManifest>): void {
+export function printPlan(
+  files: PlanFile[],
+  manifest: ReturnType<typeof readManifest>,
+  includeDotfiles = false
+): void {
   console.log(
     kleur.bold(`Profile: ${manifest.name}${manifest.version ? ' v' + manifest.version : ''}`)
   );
@@ -75,16 +108,22 @@ export function printPlan(files: PlanFile[], manifest: ReturnType<typeof readMan
   show('changed', '~ changed', kleur.yellow);
   const same = files.filter((f) => f.status === 'same').length;
   if (same) console.log(kleur.dim(`\n  = ${same} unchanged`));
-  if (files.some((f) => isExecutable(f)))
+  if (files.some((f) => isExecutable(f, false, includeDotfiles)))
     console.log(
       kleur.yellow(`\n  ⚠  settings.json present — contains hooks; skipped. Merge manually.`)
     );
+  if (files.some((f) => isExecutable(f, true, false) && f.tool === 'shared'))
+    console.log(
+      kleur.yellow(
+        `\n  ⚠  shared/ contains executable dotfiles (.zshrc, .bashrc, etc.); skipped for security. Use --include-dotfiles to merge.`
+      )
+    );
 }
 
-function write(files: PlanFile[], includeHooks = false): number {
+function write(files: PlanFile[], includeHooks = false, includeDotfiles = false): number {
   let n = 0;
   for (const f of files) {
-    if (f.status === 'same' || isExecutable(f, includeHooks)) continue;
+    if (f.status === 'same' || isExecutable(f, includeHooks, includeDotfiles)) continue;
     fs.mkdirSync(path.dirname(f.dest), { recursive: true });
     cp(f.src, f.dest);
     n++;
@@ -97,10 +136,13 @@ export function writeAtomic(
   backupDir: string,
   user: string,
   includeHooks = false,
-  dirs: Dirs = DEFAULT_DIRS
+  dirs: Dirs = DEFAULT_DIRS,
+  includeDotfiles = false
 ): number {
   let n = 0;
-  const applied = files.filter((f) => f.status !== 'same' && !isExecutable(f, includeHooks));
+  const applied = files.filter(
+    (f) => f.status !== 'same' && !isExecutable(f, includeHooks, includeDotfiles)
+  );
 
   try {
     for (const f of applied) {
@@ -127,11 +169,14 @@ export function backup(
   files: PlanFile[],
   user: string,
   includeHooks = false,
-  dirs: Dirs = DEFAULT_DIRS
+  dirs: Dirs = DEFAULT_DIRS,
+  includeDotfiles = false
 ): string {
   const stamp = new Date().toISOString().replace(/[:.]/g, '-');
   const dir = path.join(dirs.state, 'backups', `${user}-${stamp}`);
-  const applied = files.filter((f) => f.status !== 'same' && !isExecutable(f, includeHooks));
+  const applied = files.filter(
+    (f) => f.status !== 'same' && !isExecutable(f, includeHooks, includeDotfiles)
+  );
   fs.mkdirSync(dir, { recursive: true });
   for (const f of applied.filter((f) => f.status === 'changed')) {
     const t = path.join(dir, path.relative(dirs.home, f.dest));
@@ -168,17 +213,18 @@ export function applyProfile(
   user: string,
   includeHooks = false,
   dirs: Dirs = DEFAULT_DIRS,
-  dryRun = false
+  dryRun = false,
+  includeDotfiles = false
 ): { backupDir: string; filesWritten: number } {
   if (dryRun) {
     // In dry-run, just count files without writing anything
     const filesWritten = files.filter(
-      (f) => f.status !== 'same' && !isExecutable(f, includeHooks)
+      (f) => f.status !== 'same' && !isExecutable(f, includeHooks, includeDotfiles)
     ).length;
     return { backupDir: '', filesWritten };
   }
-  const backupDir = backup(files, user, includeHooks, dirs);
-  const filesWritten = writeAtomic(files, backupDir, user, includeHooks, dirs);
+  const backupDir = backup(files, user, includeHooks, dirs, includeDotfiles);
+  const filesWritten = writeAtomic(files, backupDir, user, includeHooks, dirs, includeDotfiles);
   pruneBackups(user, dirs.state);
   return { backupDir, filesWritten };
 }

@@ -77,13 +77,29 @@ Update only works on HEAD-tracked profiles. Pinned refs are skipped.
 
 ### Hooks & Safety
 
-Settings files (`.claude/settings.json`) that define hooks are **flagged but not installed by default**—hooks run shell commands and require explicit trust. After reviewing a profile in `preview`, install hooks with:
+Sharekit gates two types of executable files by default: hooks in `.claude/settings.json` and shell startup files in `shared/`. Both are **flagged but not installed by default** because they run commands under your account and require explicit trust.
+
+#### Hooks in `settings.json`
+
+Settings files (`.claude/settings.json`) may define hooks that run shell commands. After reviewing a profile in `preview`, install hooks with:
 
 ```bash
 npx @lucassantana/sharekit install <github-user> --include-hooks
 ```
 
 You'll get a second confirmation before the settings file is written.
+
+#### Executable dotfiles in `shared/`
+
+Shell startup files in `shared/` like `.zshrc`, `.bashrc`, `.profile`, `.xinitrc` and similar files are **automatically skipped for security** — these are sourced on every shell startup and could execute arbitrary code when you open a terminal. Review the profile in `preview`, then optionally include them:
+
+```bash
+npx @lucassantana/sharekit install <github-user> --include-dotfiles
+```
+
+You'll get a second confirmation before dotfiles are written.
+
+Both flags also work with `update` and are independent—you can install hooks without dotfiles, dotfiles without hooks, or both.
 
 ---
 

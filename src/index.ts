@@ -33,6 +33,7 @@ const USAGE = `${kleur.bold('sharekit')} v${VERSION} — share your AI coding se
                                 --force              exit 0 even if high-severity findings detected
   ${kleur.cyan('install')}    <user>[@<ref>] [opts]  fetch, preview, apply a profile
                                 --include-hooks      also install settings.json with shell hooks
+                                --include-dotfiles   also install executable shared/ dotfiles
                                 --yes                auto-approve prompts
                                 --dry-run            show changes without writing files
   ${kleur.cyan('preview')}    <user>[@<ref>]         show changes, apply nothing
@@ -42,6 +43,7 @@ const USAGE = `${kleur.bold('sharekit')} v${VERSION} — share your AI coding se
                                 --yes                auto-approve prompts
                                 --dry-run            show changes without writing files
                                 --include-hooks      also apply settings.json with shell hooks
+                                --include-dotfiles   also apply executable shared/ dotfiles
                                 --additive           only add new files; preserve local edits
   ${kleur.cyan('rollback')}   <user> [opts]          restore the last backup
                                 --yes                auto-approve prompts
@@ -106,6 +108,7 @@ export async function main(argv = process.argv.slice(2)) {
     if (flags.includes('--yes')) opts.yes = true;
     if (flags.includes('--dry-run')) opts.dryRun = true;
     if (flags.includes('--include-hooks')) opts.includeHooks = true;
+    if (flags.includes('--include-dotfiles')) opts.includeDotfiles = true;
     if (flags.includes('--additive')) opts.additive = true;
     await update(user, opts);
     return;
@@ -287,6 +290,9 @@ export async function main(argv = process.argv.slice(2)) {
   }
   if (cmd === 'install' && flags.includes('--include-hooks')) {
     opts.includeHooks = true;
+  }
+  if (cmd === 'install' && flags.includes('--include-dotfiles')) {
+    opts.includeDotfiles = true;
   }
 
   await fn(arg, opts);
