@@ -10,6 +10,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Profile support for `opencode/` (→ `~/.config/opencode/`) and `gjc/` (→ `~/.gjc/`) directories, mirrored alongside `claude/`, `cursor/`, and `shared/`.
+- `--include-dotfiles` flag for `install`/`update`: executable-on-load dotfiles in `shared/` (`.zshrc`, `.bashrc`, and 9 others) are now skipped by default and flagged in preview — same trust model as `--include-hooks` (#145).
+- `install` now errors on profiles containing no tool directories instead of silently applying nothing (#151).
+- `npm run bump -- X.Y.Z` — atomically updates package.json, `src/index.ts` VERSION, and sharekit-pip/pyproject.toml (#146).
+- `init` scaffolds `opencode/` and `gjc/` directories, copying a config from the source machine when present (#150).
+- Usage errors now explain that `<user>` is a GitHub username hosting a `sharekit-profile` repo, with an example (#152).
+
+### Fixed
+
+- PID lock is now actually acquired by `install`/`update`/`rollback`/`uninstall` (was dead code); liveness check uses portable `process.kill(pid, 0)` (#148).
+- Secret scanner Google API key pattern widened from exactly 35 to 30–40 chars (#153).
+
+### Security
+
+- Release workflow validates the git tag against all three version sources before any publish job runs (#147).
+- Third-party GitHub Actions pinned to commit SHAs; dependabot now tracks the `github-actions` ecosystem (#149).
 
 ## [0.5.0] - 2026-06-25
 
