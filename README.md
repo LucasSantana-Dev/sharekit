@@ -58,6 +58,8 @@ sharekit copies files from a profile into your local environment:
 
 - **`claude/`** → `~/.claude/` — CLAUDE.md, skills, settings, hooks, standards
 - **`cursor/`** → `~/.cursor/` — Cursor IDE configuration
+- **`opencode/`** → `~/.config/opencode/` — OpenCode configuration
+- **`gjc/`** → `~/.gjc/` — gajae-code configuration
 - **`shared/`** → `~/` — Root dotfiles and shared config
 
 Files are copied as-is (TOML, text, binary). Use `preview` to spot conflicts before applying.
@@ -122,6 +124,8 @@ sharekit-profile/
 │   └── standards/
 ├── cursor/           (→ ~/.cursor/)
 │   └── settings.json
+├── opencode/         (→ ~/.config/opencode/)
+├── gjc/              (→ ~/.gjc/)
 └── shared/           (→ ~/)
     └── .cursorrules
 ```
@@ -135,7 +139,7 @@ version = "1.0.0"
 description = "Claude Code + Cursor config with custom skills and standards"
 ```
 
-Subdirectories automatically mirror to their targets. Files in `claude/` → `~/.claude/`, etc.
+Subdirectories automatically mirror to their targets: `claude/` → `~/.claude/`, `cursor/` → `~/.cursor/`, `opencode/` → `~/.config/opencode/`, `gjc/` → `~/.gjc/`, `shared/` → `~/`.
 
 ### Scaffold from Your Config
 

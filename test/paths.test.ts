@@ -3,7 +3,20 @@ import assert from 'node:assert/strict';
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { tildify, walkWithSymlinks, HOME } from '../src/paths.ts';
+import { tildify, walkWithSymlinks, rootsFor, ROOTS, HOME } from '../src/paths.ts';
+
+test('rootsFor maps each tool to its home-relative root', () => {
+  const roots = rootsFor('/home/test-user');
+  assert.equal(roots.claude, path.join('/home/test-user', '.claude'));
+  assert.equal(roots.cursor, path.join('/home/test-user', '.cursor'));
+  assert.equal(roots.opencode, path.join('/home/test-user', '.config', 'opencode'));
+  assert.equal(roots.gjc, path.join('/home/test-user', '.gjc'));
+  assert.equal(roots.shared, '/home/test-user');
+});
+
+test('ROOTS is rootsFor(HOME)', () => {
+  assert.deepEqual(ROOTS, rootsFor(HOME));
+});
 
 test('tildify with no maxLen returns full home-relative path', () => {
   const shortPath = path.join(HOME, '.claude', 'CLAUDE.md');
