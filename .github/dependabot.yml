@@ -1,0 +1,25 @@
+version: 2
+updates:
+  # npm dependencies
+  - package-ecosystem: npm
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+      time: "10:00"
+
+  # Python dependencies in sharekit-pip
+  - package-ecosystem: pip
+    directory: "/sharekit-pip"
+    schedule:
+      interval: weekly
+      day: monday
+      time: "10:15"
+
+  # GitHub Actions
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+      time: "10:30"
