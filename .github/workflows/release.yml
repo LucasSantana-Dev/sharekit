@@ -28,7 +28,39 @@ permissions:
   contents: write # create GitHub Release and upload binary assets
 
 jobs:
+  validate-version:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate tag matches all version sources
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+
+          # Check package.json
+          PKG_VERSION=$(jq -r .version package.json)
+          if [ "$PKG_VERSION" != "$VERSION" ]; then
+            echo "❌ package.json version mismatch: $PKG_VERSION != $VERSION"
+            exit 1
+          fi
+
+          # Check src/index.ts
+          TS_VERSION=$(grep -oP "const VERSION = '\K[^']+" src/index.ts)
+          if [ "$TS_VERSION" != "$VERSION" ]; then
+            echo "❌ src/index.ts VERSION mismatch: $TS_VERSION != $VERSION"
+            exit 1
+          fi
+
+          # Check sharekit-pip/pyproject.toml
+          PY_VERSION=$(grep -oP 'version = "\K[^"]+' sharekit-pip/pyproject.toml)
+          if [ "$PY_VERSION" != "$VERSION" ]; then
+            echo "❌ sharekit-pip/pyproject.toml version mismatch: $PY_VERSION != $VERSION"
+            exit 1
+          fi
+
+          echo "✓ All versions match: $VERSION"
+
   publish:
+    needs: validate-version
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -42,6 +74,7 @@ jobs:
       - run: npm publish
 
   publish-pip:
+    needs: validate-version
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -54,15 +87,16 @@ jobs:
           python -m build
         working-directory: sharekit-pip
       - name: Publish to PyPI
-        uses: pypa/gh-action-pypi-publish@release/v1
+        uses: pypa/gh-action-pypi-publish@cef221092ed1bacb1cc03d23a2d87d1d172e277b # v1.14.0
         with:
           packages-dir: sharekit-pip/dist/
 
   release:
+    needs: validate-version
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: oven-sh/setup-bun@v2
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
       - run: npm ci
       - name: Build binaries
         run: |
@@ -73,7 +107,7 @@ jobs:
           bun build --compile --target=bun-darwin-arm64 src/index.ts --outfile=dist/sharekit-macos-arm64
           bun build --compile --target=bun-windows-x64  src/index.ts --outfile=dist/sharekit-windows-x64.exe
       - name: Create GitHub Release with binaries
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2
         with:
           files: |
             dist/sharekit-linux-x64

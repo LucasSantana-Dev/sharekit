@@ -30,7 +30,8 @@
     "dev": "tsx src/index.ts",
     "test": "node --import tsx --test test/*.test.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "format:check": "prettier --check \"src/**/*.ts\" \"test/**/*.ts\"",
+    "format:check": "prettier --check \"src/**/*.ts\" \"test/**/*.ts\" \"scripts/**/*.mjs\"",
+    "bump": "node scripts/bump-version.mjs",
     "prepublishOnly": "npm run build"
   },
   "dependencies": {
