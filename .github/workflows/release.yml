@@ -140,8 +140,8 @@ jobs:
             - [Linux x64](https://github.com/LucasSantana-Dev/sharekit/releases/download/${{ github.ref_name }}/sharekit-linux-x64)
             - [Linux ARM64](https://github.com/LucasSantana-Dev/sharekit/releases/download/${{ github.ref_name }}/sharekit-linux-arm64)
             - [Windows x64](https://github.com/LucasSantana-Dev/sharekit/releases/download/${{ github.ref_name }}/sharekit-windows-x64.exe)
-          env:
-            GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   release-brew:
     needs: release # binaries must be uploaded before we can SHA them
