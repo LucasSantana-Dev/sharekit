@@ -104,16 +104,23 @@ export function acquireLock(lockPath: string = LOCK_FILE): void {
       const existingPid = fs.readFileSync(lockPath, 'utf8').trim();
       try {
         fs.statSync(`/proc/${existingPid}`);
-        console.error(
-          `Another sharekit operation is running (PID ${existingPid}). Try again in a moment.`
+        throw new Error(
+          `another sharekit process is running (PID ${existingPid}) — retry after it finishes, or delete ${lockPath} if stale`
         );
-        process.exit(1);
-      } catch {
+      } catch (e) {
+        // If /proc/<pid> doesn't exist, the process is dead — clean up stale lock
+        if (e instanceof Error && e.message.includes('another sharekit process')) {
+          throw e; // Re-throw the "process still running" error
+        }
         try {
           fs.unlinkSync(lockPath);
         } catch {}
       }
-    } catch {
+    } catch (e) {
+      // If reading the lock file itself fails, try to clean it up
+      if (e instanceof Error && e.message.includes('another sharekit process')) {
+        throw e; // Re-throw the "process still running" error
+      }
       try {
         fs.unlinkSync(lockPath);
       } catch {}

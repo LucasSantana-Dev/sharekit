@@ -7,7 +7,14 @@ import kleur from 'kleur';
 import { parseUserRef, fetchProfile, readManifest } from './fetch.js';
 import { plan, printPlan, isExecutable, applyProfile } from './plan.js';
 import { restoreBackup, listBackups, restoreBackupToStamp, parseApplied } from './backup.js';
-import { recordInstall, readInstalled, list, isImmutableRef } from './state.js';
+import {
+  recordInstall,
+  readInstalled,
+  list,
+  isImmutableRef,
+  acquireLock,
+  releaseLock,
+} from './state.js';
 import { scanForSecrets, printAndGateFindings, type Finding } from './scanner.js';
 import { walk, tildify, Dirs, DEFAULT_DIRS, cp, rootsFor } from './paths.js';
 
@@ -158,6 +165,8 @@ export async function update(
   opts?: InstallOpts,
   dirs: Dirs = DEFAULT_DIRS
 ): Promise<void> {
+  const lockPath = path.join(dirs.state, '.lock');
+  acquireLock(lockPath);
   try {
     const includeHooks = opts?.includeHooks ?? false;
     const yes = opts?.yes ?? false;
@@ -248,10 +257,13 @@ export async function update(
     );
     console.log(kleur.dim(`  Undo: sharekit rollback ${user}\n`));
   } finally {
+    releaseLock(lockPath);
   }
 }
 
 export async function install(user: string, opts?: InstallOpts): Promise<void> {
+  const lockPath = path.join(DEFAULT_DIRS.state, '.lock');
+  acquireLock(lockPath);
   try {
     const includeHooks = opts?.includeHooks ?? false;
     const { user: userName, ref: userRef } = parseUserRef(user);
@@ -316,6 +328,7 @@ export async function install(user: string, opts?: InstallOpts): Promise<void> {
     }
     console.log();
   } finally {
+    releaseLock(lockPath);
   }
 }
 
@@ -366,68 +379,74 @@ export async function inspect(user: string): Promise<void> {
 export async function rollback(user: string, opts?: InstallOpts): Promise<void> {
   const HOME = os.homedir();
   const STATE = path.join(HOME, '.sharekit');
+  const lockPath = path.join(STATE, '.lock');
 
-  const yes = opts?.yes ?? false;
-  const dryRun = opts?.dryRun ?? false;
-
-  const root = path.join(STATE, 'backups');
-  const last = fs.existsSync(root)
-    ? fs
-        .readdirSync(root)
-        .filter((e) => e.startsWith(user + '-'))
-        .sort()
-        .pop()
-    : undefined;
-  if (!last) return void console.log(kleur.yellow(`No backup for ${user}.`));
-
-  const dir = path.join(root, last);
-
-  // Read and parse applied.json with safe error handling
-  let applied: { dest: string; status: string }[];
-  const appliedPath = path.join(dir, 'applied.json');
+  acquireLock(lockPath);
   try {
-    const rawData = fs.readFileSync(appliedPath, 'utf8');
-    applied = parseApplied(rawData);
-  } catch (error) {
-    const msg = error instanceof Error ? error.message : String(error);
-    throw new Error(`Backup data is corrupt or unreadable: ${msg}`);
-  }
+    const yes = opts?.yes ?? false;
+    const dryRun = opts?.dryRun ?? false;
 
-  let versionStr = '';
-  const metadataPath = path.join(dir, 'metadata.json');
-  if (fs.existsSync(metadataPath)) {
+    const root = path.join(STATE, 'backups');
+    const last = fs.existsSync(root)
+      ? fs
+          .readdirSync(root)
+          .filter((e) => e.startsWith(user + '-'))
+          .sort()
+          .pop()
+      : undefined;
+    if (!last) return void console.log(kleur.yellow(`No backup for ${user}.`));
+
+    const dir = path.join(root, last);
+
+    // Read and parse applied.json with safe error handling
+    let applied: { dest: string; status: string }[];
+    const appliedPath = path.join(dir, 'applied.json');
     try {
-      const metadata = JSON.parse(fs.readFileSync(metadataPath, 'utf8'));
-      if (metadata.sourceVersion) versionStr = ` (v${metadata.sourceVersion})`;
-    } catch {
-      // If metadata can't be read, just continue without version info
+      const rawData = fs.readFileSync(appliedPath, 'utf8');
+      applied = parseApplied(rawData);
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : String(error);
+      throw new Error(`Backup data is corrupt or unreadable: ${msg}`);
     }
-  }
 
-  console.log(kleur.bold(`\n  Rollback ${user}${versionStr}  (${applied.length} file(s))\n`));
-  if (!(await confirm('Restore?', yes))) return void console.log(kleur.dim('\n  Aborted.\n'));
+    let versionStr = '';
+    const metadataPath = path.join(dir, 'metadata.json');
+    if (fs.existsSync(metadataPath)) {
+      try {
+        const metadata = JSON.parse(fs.readFileSync(metadataPath, 'utf8'));
+        if (metadata.sourceVersion) versionStr = ` (v${metadata.sourceVersion})`;
+      } catch {
+        // If metadata can't be read, just continue without version info
+      }
+    }
 
-  if (dryRun) {
-    console.log(kleur.cyan(`\n  (dry-run — no files restored)`));
-    console.log(kleur.green(`\n  ✓ Would restore ${applied.length} file(s).`));
+    console.log(kleur.bold(`\n  Rollback ${user}${versionStr}  (${applied.length} file(s))\n`));
+    if (!(await confirm('Restore?', yes))) return void console.log(kleur.dim('\n  Aborted.\n'));
+
+    if (dryRun) {
+      console.log(kleur.cyan(`\n  (dry-run — no files restored)`));
+      console.log(kleur.green(`\n  ✓ Would restore ${applied.length} file(s).`));
+      console.log();
+      return;
+    }
+
+    const metadata = restoreBackup(user);
+    const summary = `${metadata.filesRestored} file(s) restored${
+      metadata.filesRemoved > 0 ? `, ${metadata.filesRemoved} removed` : ''
+    }`;
+    // Handle null sourceCommit (offline cache case)
+    let versionSuffix = '';
+    if (metadata.sourceCommit === null) {
+      versionSuffix = ' — from offline cache, exact version unknown';
+    } else if (metadata.sourceVersion) {
+      versionSuffix = ` (reverted to v${metadata.sourceVersion})`;
+    }
+
+    console.log(kleur.green(`\n  ✓ ${summary}${versionSuffix}`));
     console.log();
-    return;
+  } finally {
+    releaseLock(lockPath);
   }
-
-  const metadata = restoreBackup(user);
-  const summary = `${metadata.filesRestored} file(s) restored${
-    metadata.filesRemoved > 0 ? `, ${metadata.filesRemoved} removed` : ''
-  }`;
-  // Handle null sourceCommit (offline cache case)
-  let versionSuffix = '';
-  if (metadata.sourceCommit === null) {
-    versionSuffix = ' — from offline cache, exact version unknown';
-  } else if (metadata.sourceVersion) {
-    versionSuffix = ` (reverted to v${metadata.sourceVersion})`;
-  }
-
-  console.log(kleur.green(`\n  ✓ ${summary}${versionSuffix}`));
-  console.log();
 }
 
 export async function uninstall(
@@ -435,103 +454,111 @@ export async function uninstall(
   dirs: Dirs = DEFAULT_DIRS,
   force = false
 ): Promise<void> {
-  const installed = readInstalled(dirs);
-  const record = installed[user];
-
-  if (!record) {
-    throw new Error(`${user} is not installed.`);
-  }
-
-  // Find the latest backup for this user
-  const root = path.join(dirs.state, 'backups');
-  const last = fs.existsSync(root)
-    ? fs
-        .readdirSync(root)
-        .filter((e) => e.startsWith(user + '-'))
-        .sort()
-        .pop()
-    : undefined;
-
-  if (!last) {
-    throw new Error(`No backup found for ${user}. Cannot uninstall without restore information.`);
-  }
-
-  const backupDir = path.join(root, last);
-
-  // Read and parse applied.json with safe error handling
-  let applied: { dest: string; status: string }[];
-  const appliedPath = path.join(backupDir, 'applied.json');
+  const lockPath = path.join(dirs.state, '.lock');
+  acquireLock(lockPath);
   try {
-    const rawData = fs.readFileSync(appliedPath, 'utf8');
-    applied = parseApplied(rawData);
-  } catch (error) {
-    const msg = error instanceof Error ? error.message : String(error);
-    throw new Error(`Backup data is corrupt or unreadable: ${msg}`);
-  }
+    const installed = readInstalled(dirs);
+    const record = installed[user];
 
-  // Print what will be removed/restored
-  const toRemove = applied.filter((a) => a.status === 'new');
-  const toRestore = applied.filter((a) => a.status === 'changed');
-
-  console.log();
-  console.log(kleur.bold(`  Uninstall ${user}${record.version ? ` (v${record.version})` : ''}\n`));
-
-  if (toRemove.length > 0) {
-    console.log(kleur.red(`  - remove (${toRemove.length})`));
-    for (const a of toRemove) {
-      console.log(kleur.red(`    ${tildify(a.dest)}`));
-    }
-  }
-
-  if (toRestore.length > 0) {
-    console.log(kleur.yellow(`\n  ~ restore (${toRestore.length})`));
-    for (const a of toRestore) {
-      console.log(kleur.yellow(`    ${tildify(a.dest)}`));
-    }
-  }
-
-  console.log();
-  if (!force && !(await confirm(`Remove ${user}?`))) {
-    return void console.log(kleur.dim('\n  Aborted.\n'));
-  }
-
-  // Resolve home directory once for bounds checking
-  const resolvedHome = path.resolve(dirs.home);
-
-  // Execute the uninstall: reverse all changes
-  for (const a of applied) {
-    // Bounds-check: ensure dest is within dirs.home
-    const resolvedDest = path.resolve(a.dest);
-    if (!resolvedDest.startsWith(resolvedHome + path.sep)) {
-      console.warn(`Skipping out-of-bounds entry: ${a.dest}`);
-      continue;
+    if (!record) {
+      throw new Error(`${user} is not installed.`);
     }
 
-    if (a.status === 'new') {
-      // File was added by the profile — remove it
-      fs.rmSync(resolvedDest, { force: true });
-    } else if (a.status === 'changed') {
-      // File was changed — restore from backup
-      const src = path.join(backupDir, path.relative(resolvedHome, resolvedDest));
-      if (fs.existsSync(src)) {
-        fs.mkdirSync(path.dirname(resolvedDest), { recursive: true });
-        cp(src, resolvedDest);
+    // Find the latest backup for this user
+    const root = path.join(dirs.state, 'backups');
+    const last = fs.existsSync(root)
+      ? fs
+          .readdirSync(root)
+          .filter((e) => e.startsWith(user + '-'))
+          .sort()
+          .pop()
+      : undefined;
+
+    if (!last) {
+      throw new Error(`No backup found for ${user}. Cannot uninstall without restore information.`);
+    }
+
+    const backupDir = path.join(root, last);
+
+    // Read and parse applied.json with safe error handling
+    let applied: { dest: string; status: string }[];
+    const appliedPath = path.join(backupDir, 'applied.json');
+    try {
+      const rawData = fs.readFileSync(appliedPath, 'utf8');
+      applied = parseApplied(rawData);
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : String(error);
+      throw new Error(`Backup data is corrupt or unreadable: ${msg}`);
+    }
+
+    // Print what will be removed/restored
+    const toRemove = applied.filter((a) => a.status === 'new');
+    const toRestore = applied.filter((a) => a.status === 'changed');
+
+    console.log();
+    console.log(
+      kleur.bold(`  Uninstall ${user}${record.version ? ` (v${record.version})` : ''}\n`)
+    );
+
+    if (toRemove.length > 0) {
+      console.log(kleur.red(`  - remove (${toRemove.length})`));
+      for (const a of toRemove) {
+        console.log(kleur.red(`    ${tildify(a.dest)}`));
       }
     }
+
+    if (toRestore.length > 0) {
+      console.log(kleur.yellow(`\n  ~ restore (${toRestore.length})`));
+      for (const a of toRestore) {
+        console.log(kleur.yellow(`    ${tildify(a.dest)}`));
+      }
+    }
+
+    console.log();
+    if (!force && !(await confirm(`Remove ${user}?`))) {
+      return void console.log(kleur.dim('\n  Aborted.\n'));
+    }
+
+    // Resolve home directory once for bounds checking
+    const resolvedHome = path.resolve(dirs.home);
+
+    // Execute the uninstall: reverse all changes
+    for (const a of applied) {
+      // Bounds-check: ensure dest is within dirs.home
+      const resolvedDest = path.resolve(a.dest);
+      if (!resolvedDest.startsWith(resolvedHome + path.sep)) {
+        console.warn(`Skipping out-of-bounds entry: ${a.dest}`);
+        continue;
+      }
+
+      if (a.status === 'new') {
+        // File was added by the profile — remove it
+        fs.rmSync(resolvedDest, { force: true });
+      } else if (a.status === 'changed') {
+        // File was changed — restore from backup
+        const src = path.join(backupDir, path.relative(resolvedHome, resolvedDest));
+        if (fs.existsSync(src)) {
+          fs.mkdirSync(path.dirname(resolvedDest), { recursive: true });
+          cp(src, resolvedDest);
+        }
+      }
+    }
+
+    // Remove user from installed.json atomically (#122)
+    delete installed[user];
+    const stateFile = path.join(dirs.state, 'installed.json');
+    const tmp = stateFile + '.tmp';
+    fs.writeFileSync(tmp, JSON.stringify(installed, null, 2));
+    fs.renameSync(tmp, stateFile);
+
+    const summary = `${toRemove.length} file(s) removed${
+      toRestore.length > 0 ? `, ${toRestore.length} restored` : ''
+    }`;
+    console.log(kleur.green(`\n  ✓ Uninstalled ${user}. ${summary}`));
+    console.log();
+  } finally {
+    releaseLock(lockPath);
   }
-
-  // Remove user from installed.json atomically (#122)
-  delete installed[user];
-  const stateFile = path.join(dirs.state, 'installed.json');
-  const tmp = stateFile + '.tmp';
-  fs.writeFileSync(tmp, JSON.stringify(installed, null, 2));
-  fs.renameSync(tmp, stateFile);
-
-  const summary = `${toRemove.length} file(s) removed${
-    toRestore.length > 0 ? `, ${toRestore.length} restored` : ''
-  }`;
-  console.log(kleur.green(`\n  ✓ Uninstalled ${user}. ${summary}`));
-  console.log();
 }
 
 export async function scan(dir?: string, force = false): Promise<void> {

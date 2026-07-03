@@ -39,7 +39,14 @@ export {
 export type { BackupInfo, RestoreMetadata } from './backup.js';
 
 // From state.ts
-export { recordInstall, readInstalled, list, isImmutableRef } from './state.js';
+export {
+  recordInstall,
+  readInstalled,
+  list,
+  isImmutableRef,
+  acquireLock,
+  releaseLock,
+} from './state.js';
 export type { InstallRecord } from './state.js';
 
 // From commands.ts
