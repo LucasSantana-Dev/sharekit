@@ -22,7 +22,7 @@ export type { Finding } from './scanner.js';
 export { parseUserRef, fetchProfile, readManifest } from './fetch.js';
 
 // From plan.ts
-export { plan, printPlan, isExecutable, applyProfile } from './plan.js';
+export { plan, printPlan, isExecutable, applyProfile, DANGEROUS_SHARED_DOTFILES } from './plan.js';
 export type { Status, PlanFile } from './plan.js';
 
 // From backup.ts

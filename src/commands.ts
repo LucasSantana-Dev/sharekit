@@ -20,6 +20,7 @@ import { walk, tildify, Dirs, DEFAULT_DIRS, cp, rootsFor } from './paths.js';
 
 export interface InstallOpts {
   includeHooks?: boolean;
+  includeDotfiles?: boolean;
   yes?: boolean;
   dryRun?: boolean;
   additive?: boolean;
@@ -105,7 +106,8 @@ export function updateApply(
   user: string,
   includeHooks = false,
   dirs: Dirs = DEFAULT_DIRS,
-  additive = false
+  additive = false,
+  includeDotfiles = false
 ): { filesWritten: number; backupDir: string } {
   // Get the install record for this user
   const installed = readInstalled(dirs);
@@ -132,10 +134,12 @@ export function updateApply(
   // Compute roots relative to injected home for testability
   const roots = rootsFor(dirs.home);
   const files = plan(dir, roots);
-  printPlan(files, manifest);
+  printPlan(files, manifest, includeDotfiles);
 
   const todo = files.filter(
-    (f) => (additive ? f.status === 'new' : f.status !== 'same') && !isExecutable(f, includeHooks)
+    (f) =>
+      (additive ? f.status === 'new' : f.status !== 'same') &&
+      !isExecutable(f, includeHooks, includeDotfiles)
   );
   if (!todo.length) {
     console.log(kleur.dim(additive ? '\n  No new files to add.\n' : '\n  Already up to date.\n'));
@@ -143,7 +147,9 @@ export function updateApply(
   }
 
   if (additive) {
-    const skipped = files.filter((f) => f.status === 'changed' && !isExecutable(f, includeHooks));
+    const skipped = files.filter(
+      (f) => f.status === 'changed' && !isExecutable(f, includeHooks, includeDotfiles)
+    );
     if (skipped.length) {
       console.log(
         kleur.dim(`\n  = ${skipped.length} locally-modified file(s) preserved (additive mode)`)
@@ -151,7 +157,14 @@ export function updateApply(
     }
   }
 
-  const { backupDir, filesWritten } = applyProfile(todo, user, includeHooks, dirs);
+  const { backupDir, filesWritten } = applyProfile(
+    todo,
+    user,
+    includeHooks,
+    dirs,
+    false,
+    includeDotfiles
+  );
 
   // Update the install record with the new commit and timestamp
   recordInstall(user, dir, ref, manifest.version, dirs);
@@ -169,6 +182,7 @@ export async function update(
   acquireLock(lockPath);
   try {
     const includeHooks = opts?.includeHooks ?? false;
+    const includeDotfiles = opts?.includeDotfiles ?? false;
     const yes = opts?.yes ?? false;
     const dryRun = opts?.dryRun ?? false;
     const additive = opts?.additive ?? false;
@@ -198,10 +212,12 @@ export async function update(
     // Compute roots relative to injected home for testability
     const roots = rootsFor(dirs.home);
     const files = plan(fetchDir, roots);
-    printPlan(files, manifest);
+    printPlan(files, manifest, includeDotfiles);
 
     const todo = files.filter(
-      (f) => (additive ? f.status === 'new' : f.status !== 'same') && !isExecutable(f, includeHooks)
+      (f) =>
+        (additive ? f.status === 'new' : f.status !== 'same') &&
+        !isExecutable(f, includeHooks, includeDotfiles)
     );
     if (!todo.length)
       return void console.log(
@@ -209,7 +225,9 @@ export async function update(
       );
 
     if (additive) {
-      const skipped = files.filter((f) => f.status === 'changed' && !isExecutable(f, includeHooks));
+      const skipped = files.filter(
+        (f) => f.status === 'changed' && !isExecutable(f, includeHooks, includeDotfiles)
+      );
       if (skipped.length) {
         console.log(
           kleur.dim(`\n  = ${skipped.length} locally-modified file(s) preserved (additive mode)`)
@@ -218,7 +236,7 @@ export async function update(
     }
 
     // If hooks present and not explicitly included, warn
-    const hasHooks = files.some((f) => isExecutable(f, false));
+    const hasHooks = files.some((f) => isExecutable(f, false, true));
     if (hasHooks && !includeHooks) {
       console.log(
         kleur.yellow(`\n  ⚠  This profile's settings.json contains hooks that run shell commands.`)
@@ -230,6 +248,28 @@ export async function update(
       if (
         !(await confirm(
           `This profile's settings.json contains hooks that run shell commands. Update with it?`,
+          yes
+        ))
+      ) {
+        return void console.log(kleur.dim('\n  Aborted.\n'));
+      }
+    }
+
+    // If dangerous dotfiles present and not explicitly included, warn
+    const hasDotfiles = files.some((f) => isExecutable(f, true, false));
+    if (hasDotfiles && !includeDotfiles) {
+      console.log(
+        kleur.yellow(
+          `\n  ⚠  This profile contains executable dotfiles (.zshrc, .bashrc, etc.) that run on shell startup.`
+        )
+      );
+    }
+
+    // If dotfiles present and user wants to include them, ask for explicit confirm
+    if (hasDotfiles && includeDotfiles) {
+      if (
+        !(await confirm(
+          `This profile contains executable dotfiles that run on shell startup. Update with them?`,
           yes
         ))
       ) {
@@ -249,7 +289,13 @@ export async function update(
       return;
     }
 
-    const { backupDir, filesWritten } = updateApply(user, includeHooks, dirs, additive);
+    const { backupDir, filesWritten } = updateApply(
+      user,
+      includeHooks,
+      dirs,
+      additive,
+      includeDotfiles
+    );
 
     console.log(
       kleur.green(`\n  ✓ Updated ${filesWritten} file(s).`) +
@@ -266,6 +312,7 @@ export async function install(user: string, opts?: InstallOpts): Promise<void> {
   acquireLock(lockPath);
   try {
     const includeHooks = opts?.includeHooks ?? false;
+    const includeDotfiles = opts?.includeDotfiles ?? false;
     const { user: userName, ref: userRef } = parseUserRef(user);
     const yes = opts?.yes ?? false;
     const dryRun = opts?.dryRun ?? false;
@@ -274,13 +321,21 @@ export async function install(user: string, opts?: InstallOpts): Promise<void> {
     const manifest = readManifest(dir);
     const files = plan(dir);
     console.log();
-    printPlan(files, manifest);
+    printPlan(files, manifest, includeDotfiles);
 
-    const todo = files.filter((f) => f.status !== 'same' && !isExecutable(f, includeHooks));
+    // Issue #151: Warn if profile has no tool directories (nothing to install)
+    if (files.length === 0) {
+      console.log(kleur.yellow(`\n  ⚠  profile has no tool directories — nothing to install\n`));
+      process.exit(1);
+    }
+
+    const todo = files.filter(
+      (f) => f.status !== 'same' && !isExecutable(f, includeHooks, includeDotfiles)
+    );
     if (!todo.length) return void console.log(kleur.dim('\n  Already up to date.\n'));
 
     // If hooks present and not explicitly included, warn
-    const hasHooks = files.some((f) => isExecutable(f, false));
+    const hasHooks = files.some((f) => isExecutable(f, false, true));
     if (hasHooks && !includeHooks) {
       console.log(
         kleur.yellow(`\n  ⚠  This profile's settings.json contains hooks that run shell commands.`)
@@ -299,6 +354,28 @@ export async function install(user: string, opts?: InstallOpts): Promise<void> {
       }
     }
 
+    // If dangerous dotfiles present and not explicitly included, warn
+    const hasDotfiles = files.some((f) => isExecutable(f, true, false));
+    if (hasDotfiles && !includeDotfiles) {
+      console.log(
+        kleur.yellow(
+          `\n  ⚠  This profile contains executable dotfiles (.zshrc, .bashrc, etc.) that run on shell startup.`
+        )
+      );
+    }
+
+    // If dotfiles present and user wants to include them, ask for explicit confirm
+    if (hasDotfiles && includeDotfiles) {
+      if (
+        !(await confirm(
+          `This profile contains executable dotfiles that run on shell startup. Install them?`,
+          yes
+        ))
+      ) {
+        return void console.log(kleur.dim('\n  Aborted.\n'));
+      }
+    }
+
     if (!(await confirm(`Apply ${todo.length} change(s)?`, yes)))
       return void console.log(kleur.dim('\n  Aborted.\n'));
 
@@ -307,7 +384,8 @@ export async function install(user: string, opts?: InstallOpts): Promise<void> {
       userName,
       includeHooks,
       DEFAULT_DIRS,
-      dryRun
+      dryRun,
+      includeDotfiles
     );
 
     // Only record install if not a dry-run
