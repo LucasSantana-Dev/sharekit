@@ -248,6 +248,26 @@ test('scanForSecrets detects Google API keys (AIza format)', () => {
   assert.equal(findings[0].severity, 'high');
 });
 
+test('scanForSecrets detects Google API keys with 34 characters (boundary)', () => {
+  const content = 'google_key = AIza' + 'a'.repeat(34);
+  const findings = scanForSecrets(content);
+  assert(findings.length > 0);
+  assert.equal(findings[0].rule, 'Google API Key');
+});
+
+test('scanForSecrets detects Google API keys with 39 characters (boundary)', () => {
+  const content = 'google_key = AIza' + 'a'.repeat(39);
+  const findings = scanForSecrets(content);
+  assert(findings.length > 0);
+  assert.equal(findings[0].rule, 'Google API Key');
+});
+
+test('scanForSecrets does not detect Google API keys with 29 characters (below boundary)', () => {
+  const content = 'google_key = AIza' + 'a'.repeat(29);
+  const findings = scanForSecrets(content);
+  assert(findings.length === 0);
+});
+
 test('scanForSecrets detects home directory path leak', () => {
   const content = 'backup_dir = /Users/alice/.ssh/id_rsa';
   const findings = scanForSecrets(content);

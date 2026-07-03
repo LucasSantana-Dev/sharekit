@@ -132,3 +132,56 @@ test('init escapes username with special characters in TOML', () => {
 
   fs.rmSync(tmp, { recursive: true });
 });
+
+test('init scaffolds opencode/ and gjc/ directories with placeholder configs', () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'sk-init-roots-'));
+  const sourceRoot = path.join(tmp, 'source');
+  const profileDir = path.join(tmp, 'sharekit-profile');
+
+  fs.mkdirSync(sourceRoot);
+
+  init(profileDir, [], sourceRoot);
+
+  // Verify opencode/ was created with placeholder
+  assert(fs.existsSync(path.join(profileDir, 'opencode')));
+  assert(fs.existsSync(path.join(profileDir, 'opencode', 'config.json')));
+  const opencodeContent = fs.readFileSync(path.join(profileDir, 'opencode', 'config.json'), 'utf8');
+  assert(opencodeContent.includes('opencode configuration'));
+
+  // Verify gjc/ was created with placeholder
+  assert(fs.existsSync(path.join(profileDir, 'gjc')));
+  assert(fs.existsSync(path.join(profileDir, 'gjc', 'config.toml')));
+  const gjcContent = fs.readFileSync(path.join(profileDir, 'gjc', 'config.toml'), 'utf8');
+  assert(gjcContent.includes('gjc configuration'));
+
+  fs.rmSync(tmp, { recursive: true });
+});
+
+test('init copies opencode/ and gjc/ configs from source root if present', () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'sk-init-roots-src-'));
+  const sourceRoot = path.join(tmp, 'source');
+  const profileDir = path.join(tmp, 'sharekit-profile');
+
+  // Set up source with opencode and gjc configs
+  fs.mkdirSync(path.join(sourceRoot, '.config', 'opencode'), { recursive: true });
+  fs.mkdirSync(path.join(sourceRoot, '.gjc'), { recursive: true });
+  fs.writeFileSync(
+    path.join(sourceRoot, '.config', 'opencode', 'settings.json'),
+    '{"opencode": "settings"}'
+  );
+  fs.writeFileSync(path.join(sourceRoot, '.gjc', 'config.toml'), '[gjc]\nkey = "value"');
+
+  init(profileDir, [], sourceRoot);
+
+  // Verify configs were copied from source
+  assert.equal(
+    fs.readFileSync(path.join(profileDir, 'opencode', 'settings.json'), 'utf8'),
+    '{"opencode": "settings"}'
+  );
+  assert.equal(
+    fs.readFileSync(path.join(profileDir, 'gjc', 'config.toml'), 'utf8'),
+    '[gjc]\nkey = "value"'
+  );
+
+  fs.rmSync(tmp, { recursive: true });
+});

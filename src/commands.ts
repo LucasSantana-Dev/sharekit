@@ -67,7 +67,7 @@ export async function search(query?: string): Promise<void> {
       if (remaining === '0' && resetStr) {
         const resetTime = new Date(parseInt(resetStr) * 1000).toLocaleString();
         throw new Error(
-          `GitHub rate limit exceeded — resets at ${resetTime}. Set GITHUB_TOKEN env var for 5000 req/hr.`
+          `GitHub rate limit exceeded — resets at ${resetTime}. Set GITHUB_TOKEN for higher rate limits (5000/hr vs 60/hr unauthenticated).`
         );
       }
     }
@@ -732,13 +732,67 @@ description = "My AI coding setup"
     console.log(kleur.green(`  + ${tildify(destCursorRules)} (placeholder)`));
   }
 
-  // 4. Scaffold shared/ directory with .gitkeep
+  // 4. Scaffold opencode/ directory
+  const destOpencode = path.join(profileRoot, 'opencode');
+  fs.mkdirSync(destOpencode, { recursive: true });
+  const sourceOpencodeDir = path.join(sourceRoot, '.config', 'opencode');
+  let opencodeFound = false;
+  if (fs.existsSync(sourceOpencodeDir)) {
+    for (const file of fs.readdirSync(sourceOpencodeDir)) {
+      const filePath = path.join(sourceOpencodeDir, file);
+      const stat = fs.statSync(filePath);
+      if (stat.isFile()) {
+        const destFile = path.join(destOpencode, file);
+        cp(filePath, destFile);
+        console.log(kleur.green(`  + ${tildify(destFile)}`));
+        const content = fs.readFileSync(destFile, 'utf8');
+        const findings = scanForSecrets(content, tildify(destFile));
+        allFindings.push(...findings);
+        opencodeFound = true;
+        break; // Copy first small text config found
+      }
+    }
+  }
+  if (!opencodeFound) {
+    fs.writeFileSync(path.join(destOpencode, 'config.json'), '// opencode configuration\n');
+    console.log(
+      kleur.green(`  + ${tildify(path.join(destOpencode, 'config.json'))} (placeholder)`)
+    );
+  }
+
+  // 5. Scaffold gjc/ directory
+  const destGjc = path.join(profileRoot, 'gjc');
+  fs.mkdirSync(destGjc, { recursive: true });
+  const sourceGjcDir = path.join(sourceRoot, '.gjc');
+  let gjcFound = false;
+  if (fs.existsSync(sourceGjcDir)) {
+    for (const file of fs.readdirSync(sourceGjcDir)) {
+      const filePath = path.join(sourceGjcDir, file);
+      const stat = fs.statSync(filePath);
+      if (stat.isFile()) {
+        const destFile = path.join(destGjc, file);
+        cp(filePath, destFile);
+        console.log(kleur.green(`  + ${tildify(destFile)}`));
+        const content = fs.readFileSync(destFile, 'utf8');
+        const findings = scanForSecrets(content, tildify(destFile));
+        allFindings.push(...findings);
+        gjcFound = true;
+        break; // Copy first small text config found
+      }
+    }
+  }
+  if (!gjcFound) {
+    fs.writeFileSync(path.join(destGjc, 'config.toml'), '# gjc configuration\n');
+    console.log(kleur.green(`  + ${tildify(path.join(destGjc, 'config.toml'))} (placeholder)`));
+  }
+
+  // 6. Scaffold shared/ directory with .gitkeep
   const destShared = path.join(profileRoot, 'shared');
   fs.mkdirSync(destShared, { recursive: true });
   fs.writeFileSync(path.join(destShared, '.gitkeep'), '');
   console.log(kleur.green(`  + ${tildify(destShared)}/`));
 
-  // 5. Copy skills if specified
+  // 7. Copy skills if specified
   let skillCount = 0;
   for (const skillName of skillNames) {
     const sourceSkill = path.join(sourceRoot, '.claude', 'skills', skillName);

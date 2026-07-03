@@ -130,7 +130,7 @@ export function scanForSecrets(content: string, fileLabel?: string): Finding[] {
     }
 
     // Rule 6: Google API keys AIza format (HIGH)
-    const googleMatch = /AIza[0-9A-Za-z\-_]{35}/.exec(line);
+    const googleMatch = /AIza[0-9A-Za-z\-_]{30,40}/.exec(line);
     if (googleMatch) {
       const preview = truncatePreview(line, googleMatch.index, 5, 40);
       findings.push({

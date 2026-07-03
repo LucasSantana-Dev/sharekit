@@ -61,6 +61,11 @@ const USAGE = `${kleur.bold('sharekit')} v${VERSION} — share your AI coding se
 type CmdFn = (arg: string, opts?: InstallOpts) => Promise<void>;
 const cmds: Record<string, CmdFn> = { install, preview, inspect, rollback };
 
+function printUserHint(): void {
+  console.error(kleur.dim('  <user> is a GitHub username hosting a repo named "sharekit-profile"'));
+  console.error(kleur.dim('  example: sharekit install lucassantana'));
+}
+
 export async function main(argv = process.argv.slice(2)) {
   const [cmd, ...rest] = argv;
   if (!cmd || cmd === '-h' || cmd === '--help') return void console.log(USAGE);
@@ -102,6 +107,7 @@ export async function main(argv = process.argv.slice(2)) {
     const user = rest.find((x) => !x.startsWith('--'));
     if (!user) {
       console.error(kleur.red('usage: sharekit update <user>'));
+      printUserHint();
       process.exit(1);
     }
     const opts: InstallOpts = {};
@@ -153,6 +159,7 @@ export async function main(argv = process.argv.slice(2)) {
 
     if (!user) {
       console.error(kleur.red('usage: sharekit rollback <user> [--list] [--to <stamp>]'));
+      printUserHint();
       process.exit(1);
     }
 
@@ -258,6 +265,7 @@ export async function main(argv = process.argv.slice(2)) {
     const user = rest.find((x) => !x.startsWith('--'));
     if (!user) {
       console.error(kleur.red('usage: sharekit uninstall <user>'));
+      printUserHint();
       process.exit(1);
     }
     await uninstall(user, undefined, flags.includes('--yes') || flags.includes('--force'));
@@ -275,6 +283,7 @@ export async function main(argv = process.argv.slice(2)) {
   if (!arg) {
     const showRef = cmd === 'install' || cmd === 'preview' || cmd === 'inspect';
     console.error(kleur.red(`usage: sharekit ${cmd} <user>${showRef ? '[@<ref>]' : ''}`));
+    printUserHint();
     process.exit(1);
   }
 
