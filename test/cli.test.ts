@@ -1,6 +1,14 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import * as fs from 'node:fs';
+import * as path from 'node:path';
 import { main } from '../src/index.ts';
+
+// Single source of truth for the expected version — keeps these assertions
+// from drifting when `npm run bump` updates the real version sources.
+const PKG_VERSION: string = JSON.parse(
+  fs.readFileSync(path.join(import.meta.dirname, '..', 'package.json'), 'utf8')
+).version;
 
 function captureCLI(fn: () => Promise<void>) {
   const originalExit = process.exit;
@@ -140,7 +148,7 @@ test('main: no command shows usage (help)', async () => {
 
   const result = await run();
   assert.ok(result.output.some((line) => line.includes('sharekit')));
-  assert.ok(result.output.some((line) => line.includes('v0.5.0')));
+  assert.ok(result.output.some((line) => line.includes(`v${PKG_VERSION}`)));
 });
 
 test('main: -h flag shows usage', async () => {
@@ -167,7 +175,7 @@ test('main: -V flag shows version', async () => {
   });
 
   const result = await run();
-  assert.ok(result.output.some((line) => line.includes('0.5.0')));
+  assert.ok(result.output.some((line) => line.includes(PKG_VERSION)));
 });
 
 test('main: --version flag shows version', async () => {
@@ -176,7 +184,7 @@ test('main: --version flag shows version', async () => {
   });
 
   const result = await run();
-  assert.ok(result.output.some((line) => line.includes('0.5.0')));
+  assert.ok(result.output.some((line) => line.includes(PKG_VERSION)));
 });
 
 test('main: list command dispatches', async () => {
