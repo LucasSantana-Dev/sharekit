@@ -4,6 +4,7 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { plan } from '../src/sharekit.ts';
+import { rootsFor } from '../src/paths.ts';
 
 test('plan mirrors the tree and classifies new vs changed', () => {
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'sk-'));
@@ -53,5 +54,39 @@ test('plan: skips symlinks and does not include them in plan results', () => {
   assert.ok(files.includes('CLAUDE.md'));
   assert.ok(files.includes('real-file.txt'));
   assert.ok(!files.includes('linked-file.txt'));
+  fs.rmSync(tmp, { recursive: true });
+});
+
+test('plan: maps opencode/ and gjc/ to injected roots via rootsFor()', () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'sk-plan-roots-'));
+  const profile = path.join(tmp, 'profile');
+  const tmpHome = path.join(tmp, 'home');
+
+  // Create profile with opencode and gjc files
+  fs.mkdirSync(path.join(profile, 'opencode'), { recursive: true });
+  fs.mkdirSync(path.join(profile, 'gjc'), { recursive: true });
+  fs.writeFileSync(path.join(profile, 'opencode', 'settings.json'), '{"opencode": "settings"}');
+  fs.writeFileSync(path.join(profile, 'gjc', 'config.toml'), '[gjc]\nkey = "value"');
+
+  // Build roots for tmpHome (including new opencode and gjc mappings)
+  const roots = rootsFor(tmpHome);
+
+  // Ensure target directories exist so plan can compute status
+  fs.mkdirSync(path.dirname(roots.opencode), { recursive: true });
+  fs.mkdirSync(path.dirname(roots.gjc), { recursive: true });
+
+  const planResult = plan(profile, roots);
+  const byDest = Object.fromEntries(planResult.map((f) => [f.dest, f]));
+
+  // Verify opencode/settings.json maps to ~/.config/opencode/settings.json
+  const expectedOpencodeFile = path.join(tmpHome, '.config', 'opencode', 'settings.json');
+  assert.ok(byDest[expectedOpencodeFile], 'opencode file should be in plan');
+  assert.equal(byDest[expectedOpencodeFile].tool, 'opencode', 'tool should be opencode');
+
+  // Verify gjc/config.toml maps to ~/.gjc/config.toml
+  const expectedGjcFile = path.join(tmpHome, '.gjc', 'config.toml');
+  assert.ok(byDest[expectedGjcFile], 'gjc file should be in plan');
+  assert.equal(byDest[expectedGjcFile].tool, 'gjc', 'tool should be gjc');
+
   fs.rmSync(tmp, { recursive: true });
 });
