@@ -5,17 +5,16 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { acquireLock, releaseLock } from '../src/state.js';
 
-// Test 1: acquireLock against a live-PID lock file errors with clear message
-// Skip on systems without /proc (e.g., macOS)
+// Test 1: acquireLock throws when lock is held by a live process (portable across macOS/Linux)
 test('acquireLock throws when another process holds the lock', () => {
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'sk-lock-'));
   const lockPath = path.join(tmp, '.lock');
 
-  // Write the current process's PID to the lock file
+  // Write the current process's PID to the lock file (this process is definitely alive)
   fs.mkdirSync(path.dirname(lockPath), { recursive: true });
   fs.writeFileSync(lockPath, process.pid.toString());
 
-  // Try to acquire the same lock
+  // Try to acquire the same lock — should fail
   let errorThrown = false;
   let errorMessage = '';
   try {
@@ -25,22 +24,14 @@ test('acquireLock throws when another process holds the lock', () => {
     errorMessage = e instanceof Error ? e.message : String(e);
   }
 
-  // On systems with /proc (Linux), acquireLock should throw
-  // On systems without /proc (macOS), it will clean up the stale lock and succeed
-  if (fs.existsSync('/proc')) {
-    assert.ok(errorThrown, 'acquireLock should throw when lock is held by live process');
-    assert.ok(
-      errorMessage.includes('another sharekit process is running'),
-      'error should mention another process is running'
-    );
-    assert.ok(errorMessage.includes(process.pid.toString()), 'error should include the PID');
-    assert.ok(errorMessage.includes('retry'), 'error should suggest retrying');
-    assert.ok(errorMessage.includes('delete'), 'error should suggest deleting the lock file');
-  } else {
-    // On macOS (no /proc), the lock will be cleaned up as if stale and acquisition should succeed
-    assert.ok(!errorThrown, 'acquireLock should succeed on systems without /proc');
-    assert.ok(fs.existsSync(lockPath), 'lock file should exist after successful acquisition');
-  }
+  assert.ok(errorThrown, 'acquireLock should throw when lock is held by live process');
+  assert.ok(
+    errorMessage.includes('another sharekit process is running'),
+    'error should mention another process is running'
+  );
+  assert.ok(errorMessage.includes(process.pid.toString()), 'error should include the PID');
+  assert.ok(errorMessage.includes('retry'), 'error should suggest retrying');
+  assert.ok(errorMessage.includes('delete'), 'error should suggest deleting the lock file');
 
   // Cleanup
   fs.rmSync(tmp, { recursive: true, force: true });
@@ -115,6 +106,27 @@ test('acquireLock creates the lock directory if needed', () => {
 
   // Verify that the directory and file were created
   assert.ok(fs.existsSync(lockPath), 'lock file should be created');
+  const content = fs.readFileSync(lockPath, 'utf8').trim();
+  assert.equal(content, process.pid.toString(), 'lock file should contain current PID');
+
+  // Cleanup
+  fs.rmSync(tmp, { recursive: true, force: true });
+});
+
+// Test 6: acquireLock treats non-numeric PID as stale and cleans up
+test('acquireLock treats non-numeric lock content as stale', () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'sk-lock-'));
+  const lockPath = path.join(tmp, '.lock');
+
+  // Write non-numeric content (corrupted lock file)
+  fs.mkdirSync(path.dirname(lockPath), { recursive: true });
+  fs.writeFileSync(lockPath, 'corrupted-pid-data');
+
+  // Try to acquire the lock — should succeed (cleaning up corrupted lock)
+  acquireLock(lockPath);
+
+  // Verify that the lock file now contains the current process PID
+  assert.ok(fs.existsSync(lockPath), 'lock file should exist');
   const content = fs.readFileSync(lockPath, 'utf8').trim();
   assert.equal(content, process.pid.toString(), 'lock file should contain current PID');
 

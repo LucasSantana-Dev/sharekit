@@ -97,30 +97,45 @@ export function isImmutableRef(ref: string): boolean {
 
 const LOCK_FILE = path.join(DEFAULT_DIRS.state, '.lock');
 
+/**
+ * Portable cross-platform PID liveness check using process.kill(pid, 0).
+ * Signal 0 doesn't send a signal; it only checks if the process exists and is accessible.
+ * - EPERM: process exists but we don't own it (return true — alive)
+ * - ESRCH: process doesn't exist (return false — dead)
+ * - Other errors: treat as dead
+ */
+function isPidAlive(pidStr: string): boolean {
+  const pid = Number(pidStr);
+  if (!Number.isInteger(pid) || pid <= 0) return false;
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch (e) {
+    const code = (e as NodeJS.ErrnoException).code;
+    return code === 'EPERM'; // EPERM = alive but not owned by us; ESRCH = dead
+  }
+}
+
 export function acquireLock(lockPath: string = LOCK_FILE): void {
   const pid = process.pid.toString();
   if (fs.existsSync(lockPath)) {
     try {
       const existingPid = fs.readFileSync(lockPath, 'utf8').trim();
-      try {
-        fs.statSync(`/proc/${existingPid}`);
+      if (isPidAlive(existingPid)) {
         throw new Error(
           `another sharekit process is running (PID ${existingPid}) — retry after it finishes, or delete ${lockPath} if stale`
         );
-      } catch (e) {
-        // If /proc/<pid> doesn't exist, the process is dead — clean up stale lock
-        if (e instanceof Error && e.message.includes('another sharekit process')) {
-          throw e; // Re-throw the "process still running" error
-        }
-        try {
-          fs.unlinkSync(lockPath);
-        } catch {}
       }
+      // Process is dead — clean up stale lock
+      try {
+        fs.unlinkSync(lockPath);
+      } catch {}
     } catch (e) {
-      // If reading the lock file itself fails, try to clean it up
+      // If checking liveness or reading the lock file fails, check if it's our error
       if (e instanceof Error && e.message.includes('another sharekit process')) {
         throw e; // Re-throw the "process still running" error
       }
+      // Otherwise try to clean up the lock file
       try {
         fs.unlinkSync(lockPath);
       } catch {}
