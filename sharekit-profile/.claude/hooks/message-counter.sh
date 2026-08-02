@@ -7,13 +7,9 @@ set -euo pipefail
 COUNTER_FILE="$HOME/.claude/.session-msg-count"
 HANDOFF_BASE="$HOME/.claude/handoffs"
 
-count=0
-if [ -f "$COUNTER_FILE" ]; then
-  count=$(cat "$COUNTER_FILE" 2>/dev/null || echo 0)
-  count=$(( count + 0 ))
-fi
+count=$(cat "$COUNTER_FILE" 2>/dev/null | tr -dc '0-9'); count=${count:-0}
 count=$(( count + 1 ))
-echo "$count" > "$COUNTER_FILE"
+tmp="${COUNTER_FILE}.$$"; echo "$count" > "$tmp" && mv -f "$tmp" "$COUNTER_FILE"
 
 # Derive project identifier: prefer git remote slug, fallback to dirname
 get_project_id() {

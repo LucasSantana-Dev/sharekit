@@ -7,12 +7,21 @@ metadata:
   owner: global-agents
   tier: contextual
   canonical_source: ~/.claude/skills/session-bootstrap
+triggers:
+  - session start
+  - what's next
+  - load context
+  - start of day
 ---
 
 # Session Bootstrap
 
 The single command for "I just sat down, get me oriented and ready to work."
 Replaces the manual `/wake-up` → `/next-priority` → `/pr-snapshot` sequence.
+
+## Pair with standards
+
+- `standards/session-resume.md` — session-resume protocol that session-bootstrap orchestrates
 
 ## Auto-invocation triggers
 
@@ -64,20 +73,20 @@ Single one-page brief:
 SESSION BOOTSTRAP — <date>
 
 Where you left off (wake-up):
-  Last handoff: <path, age> [OK] DONE
-  Recent commits: <3 bullets> [OK] DONE
-  Recent decisions: <1-2 from memory> [OK] DONE
+  Last handoff: <path, age> ✅ DONE
+  Recent commits: <3 bullets> ✅ DONE
+  Recent decisions: <1-2 from memory> ✅ DONE
 
 Top priority (next-priority):
-  <ranked action with reason> [OK] DONE
+  <ranked action with reason> ✅ DONE
 
 PR queue (pr-snapshot):
-  ✓ #234 MERGE-ready    PR title [OK] DONE
-  ⏳ #235 awaiting review [OK] DONE
-  [WARN] #236 CI failing [OK] DONE
+  ✓ #234 MERGE-ready    PR title ✅ DONE
+  ⏳ #235 awaiting review ✅ DONE
+  ⚠️ #236 CI failing ✅ DONE
 
 Recommended first action:
-  <specific concrete action> [OK] DONE
+  <specific concrete action> ✅ DONE
   Suggested skill: </skill-name>
   Snapshot:              (none — bootstrap is orientation only)
   Open watch:            (none)

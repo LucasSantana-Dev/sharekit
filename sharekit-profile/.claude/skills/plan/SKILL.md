@@ -1,83 +1,80 @@
 ---
 name: plan
-description: |
-  Build a compact, validation-gated implementation plan when work is multi-phase, cross-file, risky, or ambiguous.
-  Use when: planning a rollout sequence, designing a phased migration, or when stakeholder alignment before coding reduces rework.
-  Phases → explicit validation gates + replanning triggers. Output to `.claude/plans/<topic>.md`.
-  Skip: trivial fixes (inline edit), bug hunts (→ tracer), exploration (→ explore).
-metadata:
-  tier: execution
-  owner: lucas
-  canonical_source: ~
+description: Create a structured implementation plan before starting complex work. Breaks work into small phases, each with exact file paths, a runnable verification command, a checkable done-condition, and replanning triggers, plus explicit goal and in/out-of-scope boundaries. Use when the user says "plan this", "create a plan", "break this down", "phase this work", or when a task has multiple phases or unknowns. Also use when the agent needs to think before acting on complex tasks.
 triggers:
   - create a plan
   - plan this
+  - what is the approach
   - draft a plan
   - design the rollout
   - phase this work
   - implementation strategy
-  - what is the approach
+metadata:
+  owner: global-agents
+  tier: contextual
+  canonical_source: ~/.agents/skills/plan
 ---
 
 # plan
 
-Build compact, validation-gated plans for multi-phase work. Use only when reducing pre-execution risk outweighs the cost of planning.
+Use planning only when it actually reduces risk.
 
 ## Steps
 
-**Step 1: Query existing decisions.** (DONE WHEN: checked for related prior plans/ADRs or no vault mounted)
+1. Read local guidance and active handoff.
+2. Pull only the context needed for the task.
+3. State goal, in-scope, and out-of-scope.
+4. Break work into short phases.
+5. Give each phase exact file paths (**Files Touched**) and a runnable **Verify** command — agents execute paths and commands, not prose.
+6. Write the plan to `.claude/plans/` or `.agents/plans/`.
 
-Run if External HD mounted:
-```bash
-mount | grep -q "/Volumes/External HD" && \
-  python3 ~/.claude/rag-index/query.py "scope of <topic> / rollout strategy for <topic>" --top 3 --scope handoffs --fast
-```
-Read `.claude/plans/` for current topic. If a conflicting plan exists, surface blocker and halt — don't replan.
+## Rules
 
-**Step 2: Read local guidance.** (DONE WHEN: CLAUDE.md, README.md, .claude/standards/ scanned for scope/constraints)
+- Keep phases small enough to finish without drifting.
+- Note what would cause replanning.
+- If work is already partly done, document the current state before planning the rest.
+- Prefer the provided plan template (`references/plan-template.md`).
+- Don't over-specify: too much detail buries priorities. File paths, scope, verification — then stop.
+- **AC contract (team/product work):** when a spec exists in `specs/`, every task must carry its requirement ID (`REQ-n`) and the EARS acceptance criteria (`AC-x.y`, GIVEN/WHEN/THEN) that prove it done — the AC-coverage gate (`hooks/check-ac-coverage.sh`) fails untraceable tasks. Acceptance criteria map 1:1 to eval tasks where an eval suite exists.
+- **Spec-anchored:** extend the existing spec for a feature rather than creating a new one (`specs/<feature>/`; template at `specs/_template/`). The spec directory, not personal memory, is the cross-operator source of truth.
 
-Scan: `.claude/CLAUDE.md` (storage policy, parallel rules, hard constraints), `.claude/plans/` (active work), `.agents/memory/` (session state).
+## Extend vs new plan
 
-**Step 3: Clarify ambiguities.** (DONE WHEN: ≥1 material unknowns resolved or explicitly flagged as out-of-scope)
+Before writing, scan `.claude/plans/` and `.agents/plans/`:
 
-List unknowns in the request: scope boundaries, stakeholders, success criteria, constraints, blockers. Resolve each or mark `flagged — confirm with user`. **Stop here if ≥1 material ambiguity cannot be resolved — do NOT plan over a guess.** Surface the blocker and halt.
+- Existing plan covers same scope AND ≤30 days old → **extend** (append phases, edit status header, keep history).
+- Same scope but >30 days old → new plan; mark old as **superseded**.
+- Different scope → new plan.
 
-**Step 4: Draft scope, phases, validation.** (DONE WHEN: goal + in/out-of-scope stated; ≥2 phases with per-phase completion criteria listed)
+When extending, update the status header to reflect partial completion (e.g. "Phases 1-5 done; Phases 6-8 added 2026-05-14").
 
-- **Goal:** 1-sentence outcome.
-- **In-scope:** files/services touched, decisions to make, deliverables.
-- **Out-of-scope:** what won't happen, related work deferred.
-- **Phases:** each phase ≤ 1–2 days of work; each ends with a testable done-condition ("all tests passing", not "ready").
-- **Replanning triggers:** what would signal scope creep or failure.
+## Parallel execution
 
-**Step 5: Critic gate — challenge the draft before writing it.** (DONE WHEN: critic verdict returned AND every critical issue resolved or explicitly accepted; recorded under a `## Critic notes` subsection in the plan)
+If the plan's tasks will fan out to ≥2 parallel agents, the executor is `/parallel-phases` and it ingests a task-level schema (`### T1` blocks with specialist/model/scope_in/scope_out/depends_on/acceptance — see `parallel-phases/references/plan-format.md`). Write sequential plans with this skill's template; write fan-out plans directly in that schema.
 
-After the draft exists but BEFORE Step 6, dispatch **ONE read-only `Explore` agentType subagent** (never edits — it can only return findings) to challenge the plan with these seed questions:
+## No big-bang rewrite gate
 
-> "Challenge this plan: (1) Which phase has a completion criterion that could pass while the real work is unfinished? (2) What dependency or affected file is unstated? (3) What is the most likely reason this plan needs replanning, and is that trigger captured?"
+When the task scope is a rewrite (replacing an existing module, service, or significant subsystem), add an explicit Phase 0 before all implementation phases:
 
-- **Bounded:** at most **2** revise→re-challenge iterations. If critical issues remain unresolved after 2, **proceed-or-escalate** — write the plan with the open issues recorded under `## Critic notes` and surface them to the user (do not loop further; see the Stuck protocol).
-- If the critic finds only minor concerns → log them under `## Critic notes` and proceed.
-- Output location: append the critic's verdict + any accepted-risk items to a `## Critic notes` subsection of the plan file written in Step 6.
+**Phase 0 — Prototype gate (1 hour max)**
+- Implement the first incremental unit only
+- Validate: does it expose >3 friction points? Does it require >2 temporary shims?
+- If yes → stop, invoke `/research-and-decide` to evaluate whether big-bang is justified
+- If no → continue with incremental plan
 
-(This replaces a self-review with an independent maker≠checker challenge — a confident plan is not a correct one.)
+Do not skip Phase 0 for perceived urgency. The gate exists because "incremental is feasible" is an assumption, not a fact.
 
-**Step 6: Write to disk.** (DONE WHEN: `.claude/plans/<topic>.md` or `.agents/plans/<topic>.md` written, INCLUDING the `## Critic notes` subsection from Step 5; commit not required)
+## Skip plan if
 
-Use template at `references/plan-template.md`. Include: goal, scope, phases (with per-phase validation + replanning triggers), dependencies, current state (if partially done).
+- ≤2 files touched AND edit is obvious from the request → just do it, no plan
+- Pure investigation / "where is X" → dispatch the `Explore` agent
+- Bug root-cause hunt → dispatch the `tracer` agent
+- Open-ended ideation → use `brainstorming`
+- Plan needs visual review (diagrams, mockups, annotated code) → use `/visual-plan`
+- Strategic/product planning needing a user interview → dispatch the `planner` agent
 
-## Stop conditions (halt & surface blocker — do not proceed to next step)
+## Worked example — extend
 
-- **External HD unmounted:** RAG unavailable; proceed with Step 2 only (local guidance).
-- **Material ambiguity unresolved:** surface ambiguity, halt before Step 4.
-- **Plan already exists & unchanged:** surface "plan exists at <path>" — validate user intent to replan before restarting.
-
-## Auto-chain
-
-After writing: pair with `/ship` if merge/release is the next phase. If plan uncovers architectural gaps, queue `/research-and-decide` (critic review) before phasing further.
-
-## Cross-references
-
-- Template: `references/plan-template.md`
-- Scope gate design: `standards/decision-discipline.md §2`
-- Validation anatomy: `standards/testing.md §1` (done-condition patterns)
+User: "add WoL panel + tabs to dashboard."
+Existing: `homepage-customization-2026-05-13.md` (5 phases, 1 day old).
+Action: append Phase 6-8 to that file; do NOT create a second plan. Update header to note the extension date.

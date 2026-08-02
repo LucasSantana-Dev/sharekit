@@ -1,7 +1,7 @@
 ---
 name: deep-auditor
 description: Composite health audit that runs test-health, config-drift-detect, hook-effectiveness, security-audit, mcp-audit, plugin-audit, and socket-audit in parallel, reconciles into severity-ranked findings, cross-checks against prior decisions via RAG, and produces a prioritized remediation plan. Use for "is this project healthy", before releases, or weekly per active repo.
-model: claude-opus-4-8
+model: claude-sonnet-4-6
 level: 3
 ---
 
@@ -53,7 +53,7 @@ level: 3
     ## Phase 2.5 — Memory cross-check (mandatory before any AUTO_FIX tag)
     Mount guard first:
     ```bash
-    mount | grep -q "/Volumes/External HD" || {
+    mount | grep -q "${DEV_ROOT}" || {
       echo "BLOCKED: External HD unmounted — all findings downgraded to NEEDS_REVIEW"
       exit 0
     }

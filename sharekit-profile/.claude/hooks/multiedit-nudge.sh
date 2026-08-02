@@ -25,8 +25,7 @@ last=""
 
 if [[ "$last" == "$FILE" ]]; then
 	# Increment same-file counter
-	count=0
-	[[ -f "$SAME_FILE_COUNT" ]] && count=$(<"$SAME_FILE_COUNT")
+	count=$(cat "$SAME_FILE_COUNT" 2>/dev/null | tr -dc '0-9'); count=${count:-0}
 	count=$((count + 1))
 	echo "$count" >"$SAME_FILE_COUNT"
 

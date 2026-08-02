@@ -1,22 +1,25 @@
 ---
 name: dispatch
-description: |
-  Parallelize independent evidence-gathering or audit work by splitting into ≥2 concurrent agent tracks; reconcile results into single verdict + action. Use when (1) sub-tasks are cleanly separable with no output deps, (2) each would block progress if sequential, (3) running serially wastes turns. Examples: multi-repo scans, concurrent CI/lint/test audits, N-package dependency sweeps, parallel PR review passes, docs standards comparison. Skip when tasks depend on prior output — use loop or plan instead.
+description: "Parallelize independent evidence-gathering or audit work into ≥2 concurrent agent tracks; reconcile into a single verdict and action. Also dispatches named agent-box task scripts or ad-hoc prompts to remote <homelab> infrastructure over SSH. Use when sub-tasks are cleanly separable with no output dependencies and running serially wastes turns. Examples: multi-repo scans, concurrent CI/lint/test audits, N-package dependency sweeps. Skip when tasks depend on prior output."
 triggers:
   - dispatch
   - parallelize this
   - investigate in parallel
   - run N scans in parallel
   - concurrent audits
+  - run agent task
+  - remote claude
+  - agent-box script
+argument-hint: '[task] or [prompt]'
 metadata:
-  owner: Lucas Santana
+  owner: global-agents
   tier: execution
   canonical_source: null
 ---
 
 # dispatch
 
-Split independent work into ≥2 concurrent agent tracks.
+Split independent work into ≥2 concurrent agent tracks, or invoke a remote agent-box task/prompt.
 
 ## Preamble — RAG pre-flight
 
@@ -40,6 +43,7 @@ graphify query "dispatch <task-domain> agent plan" --budget 300
 - Dependency audits (N packages in one sweep)
 - Multiple PR review passes (independent review lenses)
 - Standards or docs comparison (independent sources)
+- Remote agent-box task invocations (see Remote Agent Dispatch below)
 
 ## Workflow
 
@@ -75,6 +79,51 @@ Collect all track outputs. For each disagreement, apply the resolution rule you 
 
 **Done when:** you have one verdict, no open contradictions, one next action.
 
+## Remote Agent Dispatch
+
+Invoke any agent-box task script from this Mac session, or run an ad-hoc claude prompt on agent-box.
+
+### Usage
+
+```
+/dispatch <task>
+/dispatch <project-a>-health
+/dispatch "check if <project-a> CI is green right now"
+```
+
+### Named tasks
+
+See [references/remote-tasks.md](references/remote-tasks.md) for the complete task alias table.
+
+### Execution flow
+
+1. If `<task>` matches a named alias (see references/remote-tasks.md), run the mapped script directly on <homelab>. Substitute before execution: `HOST` = the configured homelab SSH alias (from `~/.ssh/config`), `SCRIPT` = the script filename from the alias table:
+   ```bash
+   HOST=<homelab>   # homelab SSH alias from ~/.ssh/config
+   SCRIPT=<script>  # script filename mapped in references/remote-tasks.md
+   ssh "$HOST" "${HOMELAB_ROOT}/scripts/agent-tasks/$SCRIPT"
+   ```
+   **Done when:** script executes and output is streamed; execution exits cleanly.
+
+2. If `<task>` is a free-form prompt, dispatch to agent-box via claude -p:
+   ```bash
+   ssh agent-box "
+     source /etc/profile.d/agent-env.sh
+     unset ANTHROPIC_API_KEY CLAUDE_API_KEY
+     claude -p '<task>' --dangerously-skip-permissions --allowedTools 'Bash,Read' 2>&1
+   "
+   ```
+   **Done when:** prompt executes on agent-box; output captured and streamed to terminal.
+
+3. Summarize findings to terminal once all dispatched work completes.
+   **Done when:** summary captured and relayed to the user; no pending output.
+
+### Notes for remote dispatch
+
+- Always unset ANTHROPIC_API_KEY and CLAUDE_API_KEY inside the agent-box SSH session.
+- Task scripts source agent-env.sh themselves; no need to pass secrets.
+- For free-form prompts, add context about which repo to operate in if not obvious.
+
 ## Common Rationalizations
 
 | Rationalization | Reality |
@@ -89,6 +138,7 @@ Collect all track outputs. For each disagreement, apply the resolution rule you 
 - **Dependency discovered:** if any track discovers it needs output from another track → halt, surface blocker, re-plan. Do not run tracks sequentially to "recover."
 - **Sequential fallback:** running one track then the next is a dispatch violation → re-dispatch as parallel or use `loop`/`plan` instead.
 - **Worktree collision:** two tracks writing the same repo without worktrees → halt, re-dispatch with worktrees.
+- **No parallelizable tracks:** if no ≥2 independent work units exist (and the task is not a remote agent-box invocation) → surface "BLOCKED: No parallelizable tracks identified." Halt; continue sequentially or refocus scope.
 
 ## Cross-references
 

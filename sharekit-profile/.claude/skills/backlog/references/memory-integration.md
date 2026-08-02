@@ -7,11 +7,25 @@ The RAG pre-flight is the first thing `/backlog` does. It checks for prior work 
 ### Mount guard (always run first)
 
 ```bash
-mount | grep -q "${EXTERNAL_HD}" || {
-  echo "WARN: external drive unmounted — RAG/vault unreachable; falling back to local discovery only"
+mount | grep -q "${DEV_ROOT}" || {
+  echo "WARN: External HD unmounted — RAG/vault unreachable; falling back to local discovery only"
   export RAG_AVAILABLE=false
 }
 ```
+
+### Skip-if-fresh gate (Phase 0b)
+
+After loading the prior snapshot, if it is **< 14 days old**, surface a choice before running Phase 1:
+
+```
+Phase 0 — Cache hit: prior snapshot from <date> (<N> days ago).
+  Run fresh discovery, or reuse this snapshot?
+  Reply "fresh" to re-run Phase 1, or "reuse" to skip to Phase 2.
+```
+
+Block until response. If user says "reuse": inject prior snapshot findings into Phase 2 directly, mark `Discover: (skipped: reused cache from <date>)` in reconcile, and proceed to rank/propose. If "fresh" (or no snapshot exists): run Phase 1 normally.
+
+---
 
 ### Deferred item persistence
 
@@ -41,6 +55,54 @@ python3 ~/.claude/rag-index/query.py "backlog $(basename $(pwd)) deferred_items"
 
 ---
 
+## Approval history loading (Phase 0e)
+
+Load the per-category approval/rejection history to compute category penalty weights for Phase 2.
+
+**Save approval history in Phase 8b** (append to memory snapshot):
+```json
+{
+  "approval_history": [
+    {
+      "run": "backlog_sharekit_2026-06-10",
+      "date": "2026-06-10",
+      "decisions": {
+        "docs":      {"proposed": 3, "approved": 0},
+        "test":      {"proposed": 2, "approved": 1},
+        "security":  {"proposed": 1, "approved": 1},
+        "refactor":  {"proposed": 4, "approved": 2}
+      }
+    }
+  ]
+}
+```
+
+**Load approval history in Phase 0e:**
+```bash
+python3 ~/.claude/rag-index/query.py "backlog $(basename $(pwd)) approval_history" \
+  --top 3 --scope memory --format json 2>/dev/null \
+  | jq '[.results[].approval_history // []] | add // []'
+```
+
+**Compute category penalties from history:**
+For each category, across all loaded runs:
+```
+rejection_rate = total_rejected / total_proposed   (if total_proposed >= 2)
+penalty_per_run = 0.3 × rejection_rate  (applied as urgency penalty in Phase 2)
+```
+
+Surface the result in Phase 0 output:
+```
+Phase 0e — Approval history: 3 prior runs loaded
+  docs:     3/3 rejected (100%) → −0.9 urgency penalty (capped)
+  refactor: 2/6 rejected (33%) → no penalty (below 60% threshold)
+  security: 0/2 rejected (0%)  → no penalty
+```
+
+If no history found: output `Approval history: none found` and proceed with no penalties.
+
+---
+
 ## Pre-run memory check (Phase 2.5 pattern)
 
 Before running `/backlog`, check existing backlog snapshots for the active repo:
@@ -67,7 +129,7 @@ If the snapshot is >14 days old, re-run `/backlog` to refresh.
 
 Every `/backlog` run saves a project-scoped memory snapshot:
 
-**Path:** `~/.claude/projects/*/memory/backlog_<repo-slug>_<YYYY-MM-DD>.md`
+**Path:** `~/.claude/projects/-Users-<github-user>/memory/backlog_<repo-slug>_<YYYY-MM-DD>.md`
 
 **Metadata:**
 ```yaml
@@ -76,10 +138,12 @@ description: /backlog run output for <repo> on <date>. <N> issues created, top f
 ```
 
 **Contents:**
-- Top 5 findings by ROI
+- Top 5 findings by ROI (including `value_score` and `value_justification`)
+- Per-category approval/rejection decisions for this run (feeds Phase 0e next run)
 - List of created issue URLs
 - Board URL
 - Plan file path
+- Budget used (if sprint mode active)
 - "Why" clause (for use by `/next-priority` and `/recall`)
 - "How to apply" clause (stale after 14 days)
 
@@ -87,7 +151,7 @@ description: /backlog run output for <repo> on <date>. <N> issues created, top f
 
 ## Pointer in MEMORY.md
 
-On first `/backlog` run per repo, append a one-line pointer to `~/.claude/projects/*/memory/MEMORY.md`:
+On first `/backlog` run per repo, append a one-line pointer to `~/.claude/projects/-Users-<github-user>/memory/MEMORY.md`:
 
 ```markdown
 - [Backlog: <repo>](memory/backlog_<repo-slug>_<date>.md) — created <date>
@@ -110,7 +174,7 @@ See `~/.claude/standards/memory-system.md` for:
 Before any RAG query or memory write:
 
 ```bash
-mount | grep -q "${EXTERNAL_HD}" || { echo "BLOCKED: external drive unmounted — RAG/vault unreachable"; exit 1; }
+mount | grep -q "${DEV_ROOT}" || { echo "BLOCKED: External HD unmounted — RAG/vault unreachable"; exit 1; }
 ```
 
 If unmounted, backlog cannot save snapshots or query memory. Fall back to grep + local discovery only.

@@ -1,9 +1,17 @@
 ---
 name: codebase-memory
-description: Use the codebase knowledge graph for structural code queries. Triggers on: explore the codebase, understand the architecture, what functions exist, show me the structure, who calls this function, what does X call, trace the call chain, find callers of, show dependencies, impact analysis, dead code, unused functions, high fan-out, refactor candidates, code quality audit, graph query syntax, Cypher query examples, edge types, how to use search_graph.
+description: >-
+  Use the codebase knowledge graph for structural code queries. Triggers on: explore the codebase, understand the architecture, what functions exist, show me the structure, who calls this function, what does X call, trace the call chain, find callers of, show dependencies, impact analysis, dead code, unused functions, high fan-out, refactor candidates, code quality audit, graph query syntax, Cypher query examples, edge types, how to use search_graph.
+triggers:
+  - codebase memory
+  - explore codebase
+  - code structure
+  - graph query
 ---
 
 # Codebase Memory — Knowledge Graph Tools
+
+Backed by the `codebase-memory` MCP server (`~/.local/bin/codebase-memory-mcp`, stdio). The server indexes codebases into a persistent tree-sitter AST knowledge graph (158 languages, sub-ms queries). Index a project before querying — see Workflow below.
 
 Graph tools return precise structural results in ~500 tokens vs ~80K for grep.
 
@@ -23,9 +31,10 @@ Graph tools return precise structural results in ~500 tokens vs ~80K for grep.
 
 ## Exploration Workflow
 1. `list_projects` — check if project is indexed
-2. `get_graph_schema` — understand node/edge types
-3. `search_graph(label="Function", name_pattern=".*Pattern.*")` — find code
-4. `get_code_snippet(qualified_name="project.path.FuncName")` — read source
+2. If not indexed: `index_repository(path="<repo>")` then `index_status` — one-time, milliseconds for average repos
+3. `get_graph_schema` — understand node/edge types
+4. `search_graph(label="Function", name_pattern=".*Pattern.*")` — find code
+5. `get_code_snippet(qualified_name="project.path.FuncName")` — read source
 
 ## Tracing Workflow
 1. `search_graph(name_pattern=".*FuncName.*")` — discover exact name

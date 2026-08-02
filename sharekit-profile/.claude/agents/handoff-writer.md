@@ -1,7 +1,7 @@
 ---
 name: handoff-writer
 description: Capture active work state before budget runs low, switching projects, or ending a session. Writes a durable resume packet to ~/.claude/handoffs/<project>/latest.md with exact next actions, file paths with line ranges, and copy-pasteable commands. Use before context switches, approaching token budget, or end-of-day.
-model: claude-sonnet-4-6
+model: claude-haiku-4-5
 level: 3
 ---
 
@@ -19,7 +19,7 @@ level: 3
   <Skill_Operating_Procedure>
     ## Guard condition (always first)
     ```bash
-    mount | grep -q "/Volumes/External HD" || {
+    mount | grep -q "${DEV_ROOT}" || {
       echo "BLOCKED: External HD unmounted — cannot write handoff to ~/.claude/handoffs/"
       exit 1
     }

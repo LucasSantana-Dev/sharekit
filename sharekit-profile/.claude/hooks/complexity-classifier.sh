@@ -80,7 +80,7 @@ low)
 	MSG=$(
 		cat <<'MSG'
 [AUTO] LOW complexity. Keep response concise.
-- Agent tool calls: pass model="claude-haiku-4-5-20251001"
+- Agent tool calls: pass model="haiku"
 - Skip extended reasoning
 - One-paragraph max unless detail is explicitly requested
 MSG
@@ -90,7 +90,7 @@ medium)
 	MSG=$(
 		cat <<'MSG'
 [AUTO] MEDIUM complexity.
-- Agent tool calls: model="claude-haiku-4-5-20251001" for search/lookup, model="claude-sonnet-4-6" for multi-file edits or analysis
+- Agent tool calls: model="haiku" for search/lookup, model="sonnet" for multi-file edits or analysis
 MSG
 	)
 	;;
@@ -98,7 +98,7 @@ high)
 	MSG=$(
 		cat <<'MSG'
 [AUTO] HIGH complexity. Be thorough.
-- Agent tool calls: pass model="claude-sonnet-4-6"
+- Agent tool calls: pass model="sonnet"
 - Use /think if this involves a tricky debugging step or design decision
 - Verify your reasoning before committing to a solution
 MSG
@@ -109,8 +109,8 @@ critical)
 		cat <<'MSG'
 [AUTO] CRITICAL complexity detected (security / architecture / production / migration).
 - Use /think before making consequential decisions
-- Agent tool calls: pass model="claude-opus-4-7"
-- Consider /model claude-opus-4-7 for this session if doing sustained security or architecture work
+- Agent tool calls: pass model="fable" (falls back to model="opus" if Fable unavailable/degraded) — per ADR-0049
+- Consider /model fable for this session if doing sustained security or architecture work
 - Flag any irreversible actions before executing them
 - Verify assumptions against actual code, not memory
 MSG

@@ -7,6 +7,15 @@
 #
 # Composites take precedence over individual skills (composite-first principle in
 # ~/.claude/standards/skill-auto-invoke.md).
+#
+# PRUNED 2026-07-09 (21d usage audit + T2 critic gate): removed 17 zero-use match
+# branches (dep-sweep, repo-bootstrap, feature-from-zero, fix-the-suite, security-sweep,
+# mcp-care, onboard-new-repo, refactor-pipeline, session-bootstrap, sentry, sonar-check,
+# orphan-hunt, generate-tests, changelog-update, prisma-migrate, naming-consistency,
+# coupling-map, scope-and-execute). Skills stay invocable via explicit /name — only the
+# auto-hint is gone. DELIBERATELY KEPT despite zero use: incident-response + debug-deep
+# (emergency paths — asymmetric cost of a missed prod-incident route vs 2 branches of
+# token noise). 14-day false-negative watch; restore any branch from git if misses show.
 set -uo pipefail
 command -v jq &>/dev/null || exit 0
 
@@ -22,7 +31,7 @@ except Exception:
 
 # Skip very short or very long prompts (signal too noisy)
 LEN=${#PROMPT}
-[ "$LEN" -lt 12 ] && exit 0
+[ "$LEN" -lt 7 ] && exit 0  # was 12; "ship it" (7 chars) is a real routable prompt (E5 data)
 [ "$LEN" -gt 4000 ] && exit 0
 
 # Lowercase for matching
@@ -55,12 +64,6 @@ match_composite() {
     return 0
   fi
 
-  # DEP SWEEP (bot PRs piled up)
-  if echo "$P" | grep -qE 'dependabot|renovate|pre-commit-ci|bot prs|dep(endency)? (queue|updates|bumps)|update (the )?deps|clean up bot'; then
-    echo "dep-sweep|bot-pr-queue intent"
-    return 0
-  fi
-
   # INCIDENT POST-MORTEM (Phase 3 of incident-response)
   if echo "$P" | grep -qE 'postmortem|post-mortem|incident review|what did we learn|incident write-?up|write up (the )?incident'; then
     echo "incident-response|postmortem intent (Phase 3)"
@@ -73,12 +76,6 @@ match_composite() {
     return 0
   fi
 
-  # REPO BOOTSTRAP (set up release-branch workflow on a fresh/under-configured repo)
-  if echo "$P" | grep -qE 'bootstrap (this |the )?repo|set up (the |a )?release(-| )branch|new repo setup|configure release workflow|make this repo work with /pr-to-release|init.{0,15}release(-| )workflow'; then
-    echo "repo-bootstrap|repo-setup intent"
-    return 0
-  fi
-
   # VERIFY-BEFORE-DONE (must come before merge/ship intents — "is this ready to merge" is a readiness CHECK, not a merge action)
   if echo "$P" | grep -qE 'is this ready (to|for) (ship|merge|release)|can i (ship|merge|release) (this|now|it|yet)|verify (everything |all gates )?before (ship|merge|done|release)|double[- ]check before (ship|merge|release)|pre-?ship check|pre-?merge check'; then
     echo "verify-before-done|pre-ship-verification intent"
@@ -86,7 +83,7 @@ match_composite() {
   fi
 
   # MERGE PR — branches on presence of `release` branch on origin
-  if echo "$P" | grep -qE 'merge this|merge the pr|ship this pr|ready to merge|can i merge|open (a )?pr|land this'; then
+  if echo "$P" | grep -qE 'merge this|merge the pr\b|ship this pr\b|ready to merge|can i merge|open (a )?pr\b|land this'; then
     # If we're in a repo with a `release` branch on origin, prefer pr-to-release.
     # Cheap probe: 1s timeout, swallow all errors. Falls back to merge-confidently.
     if command -v git &>/dev/null && \
@@ -98,43 +95,9 @@ match_composite() {
     return 0
   fi
 
-  # GREENFIELD MEGA-COMPOSITE (scope > 2 days)
-  if echo "$P" | grep -qE 'build .{0,30}feature .{0,30}(from scratch|end[- ]to[- ]end|from zero)|implement .{0,30}feature .{0,30}end[- ]to[- ]end|greenfield'; then
-    echo "feature-from-zero|greenfield-feature intent"
-    return 0
-  fi
-
-  # TEST SUITE PROBLEMS
-  if echo "$P" | grep -qE 'test suite.{0,40}(bad|bloated|slow|too many|broken)|too many tests|tests are slow|cleanup .{0,20}tests|prune .{0,20}tests|fix .{0,20}suite'; then
-    echo "fix-the-suite|test-suite-fix intent"
-    return 0
-  fi
-
-  # SEO + A11Y AUDIT — REMOVED 2026-06-10 (skill does not exist)
-  # Previous route: (seo|accessibility|a11y).{0,40}(audit|check|review)|audit (my |the )?(site|website)|pre-launch (check|audit)
-  # Reason: seo-a11y-audit skill not found in ~/.claude/skills/
-
-  # SECURITY AUDIT
-  if echo "$P" | grep -qE 'security (audit|sweep|review|check)|check for vulns|is .{0,20}safe to (deploy|ship)|vulnerability scan'; then
-    echo "security-sweep|security-audit intent"
-    return 0
-  fi
-
   # WHOLE-PROJECT HEALTH
   if echo "$P" | grep -qE '(audit|health check) (this |the |my )?(repo|project|codebase)|is (this |the )?(repo|project) healthy|tech debt review'; then
     echo "audit-deep|project-health intent"
-    return 0
-  fi
-
-  # MCP LIFECYCLE
-  if echo "$P" | grep -qE 'mcp .{0,20}(audit|broken|failing|review)|claude mcp list|fix mcp|mcp servers'; then
-    echo "mcp-care|mcp-lifecycle intent"
-    return 0
-  fi
-
-  # ONBOARDING NEW REPO
-  if echo "$P" | grep -qE '(just )?cloned|new repo|unfamiliar (repo|codebase)|what is (this|the) (repo|codebase)|onboard'; then
-    echo "onboard-new-repo|first-touch-repo intent"
     return 0
   fi
 
@@ -144,20 +107,14 @@ match_composite() {
     return 0
   fi
 
-  # REFACTORING (cross-module / large)
-  if echo "$P" | grep -qE 'refactor .{0,30}(module|across|whole|entire)|restructure|extract .{0,30}(into|module)|consolidate|reorganize'; then
-    echo "refactor-pipeline|cross-module-refactor intent"
-    return 0
-  fi
-
   # UI BUILD (new page/screen/component)
-  if echo "$P" | grep -qE 'build.{0,40}(page|screen|component|dashboard|form|modal|layout|landing|ui)|design and (implement|build|code)|create.{0,30}(page|screen|component|ui)|new ui surface|implement.{0,30}(ui|page|screen|component)'; then
-    echo "design-build|ui-build intent"
+  if echo "$P" | grep -qE 'build.{0,40}(page|screen|component|dashboard|form|modal|layout|landing|ui)|design and (implement|build|code)|create.{0,30}(page|screen|component|ui)|new ui surface|implement.{0,30}(ui|page|screen|component)|redesign .{0,60}(site|website|frontend|\.com)|improve .{0,40}ui(/ux)?|\bui/ux\b'; then
+    echo "repaint|ui-build intent (repaint is the frontend entry point)"
     return 0
   fi
 
   # RESEARCH/DECISION
-  if echo "$P" | grep -qE 'should (we|i) use|x or y|evaluate (using|adopting|switching)|is .{0,30} worth (adopting|using|switching)|library choice|framework choice'; then
+  if echo "$P" | grep -qE 'should (we|i) use|x or y|evaluate (using|adopting|switching)|is .{0,30} worth (adopting|using|switching)|library choice|framework choice|research and decide'; then
     echo "research-and-decide|decision-evaluation intent"
     return 0
   fi
@@ -168,9 +125,10 @@ match_composite() {
     return 0
   fi
 
-  # SESSION BOOTSTRAP (start-of-day, catch-up)
-  if echo "$P" | grep -qE 'where are we|what.{0,20}next|catch me up|good morning|just (got here|woke up)|whats? (the )?status'; then
-    echo "session-bootstrap|session-startup-brief intent"
+  # NEXT PRIORITY — "what's next" is the operator's dominant real phrasing for this
+  # skill (6x in E5 train split), NOT session-bootstrap. Must precede it.
+  if echo "$P" | grep -qE "what'?s next\b|what should i (work on|do)( next| now)?\b|continue with the next step"; then
+    echo "next-priority|whats-next intent (real-usage)"
     return 0
   fi
 
@@ -219,7 +177,7 @@ match_composite() {
   # CODE REVIEW (individual skill — senior-QA reviewer). High-precision: must name
   # code/diff/pr/module as the review target so it never shadows "audit the repo"
   # (audit-deep), "review the plan/design" (not code), or merge/verify intents above.
-  if echo "$P" | grep -qE '\bcode[- ]?review\b|review (this|my|the|these) (code|change|changes|diff|pr|pull request|module|file|files|function|class|component)|(can|could|would) you review (this|my|the)|critique (this|my|the) (code|change|changes|diff|module)|look over (this|my|the) (code|change|changes|diff)|review my (code|changes|work|diff)'; then
+  if echo "$P" | grep -qE '\bcode[- ]?review\b|review (this|my|the|these) (code|change|changes|diff|pr|pull request|module|file|files|function|class|component)|(can|could|would) you review (this|my|the)|critique (this|my|the) (code|change|changes|diff|module)|look over (this|my|the) (code|change|changes|diff)|review my (code|changes|work|diff)|review .{0,25}(open )?(prs\b|pull requests)'; then
     echo "code-review|code-review intent"
     return 0
   fi
@@ -228,54 +186,14 @@ match_composite() {
   #    composite matchers and BEFORE the broad scope-and-execute / parallel-phases
   #    catch-alls below, so a composite always wins when both could fit. ──
 
-  # SENTRY — read-only prod-error inspection (NOT the incident-response skill)
-  if echo "$P" | grep -qE 'check sentry|sentry (issue|issues|error|errors|event|events)|(summari[sz]e|show|pull|inspect|look at) [a-z ]{0,20}sentry|recent (prod|production) errors'; then
-    echo "sentry|sentry-inspection intent"; return 0
-  fi
-
-  # SONARCLOUD preflight
-  if echo "$P" | grep -qE 'sonar ?cloud|sonar (gate|scan|check|issues|hotspots|coverage)|quality gate (fail|status|check|red)'; then
-    echo "sonar-check|sonar-preflight intent"; return 0
-  fi
-
-  # DEAD CODE / ORPHANS
-  if echo "$P" | grep -qE 'dead code|unused (file|files|export|exports|code|deps|dependencies)|orphan(ed)? (file|files|code|module)|find orphans'; then
-    echo "orphan-hunt|dead-code-scan intent"; return 0
-  fi
-
-  # TEST GENERATION (write tests for specific code)
-  if echo "$P" | grep -qE 'write (unit |integration |e2e )?tests? for|add tests? for|generate tests?|cover [a-z ]{0,20}with tests'; then
-    echo "generate-tests|test-generation intent"; return 0
-  fi
-
   # ADR / DECISION RECORD
   if echo "$P" | grep -qE 'write (an |the )?adr|create (an |the )?adr|document (this|the|our) decision|record (this|the|our) decision|capture [a-z ]{0,15}decision|architecture decision record'; then
     echo "adr-write|adr-capture intent"; return 0
   fi
 
-  # CHANGELOG
-  if echo "$P" | grep -qE 'update (the )?changelog|changelog entry|add [a-z ]{0,15}changelog'; then
-    echo "changelog-update|changelog intent"; return 0
-  fi
-
-  # PRISMA MIGRATION
-  if echo "$P" | grep -qE 'prisma migrat|create (a )?migration|new (db |database |schema )?migration|generate (a )?migration|migrate the (schema|db|database)'; then
-    echo "prisma-migrate|prisma-migration intent"; return 0
-  fi
-
   # PERFORMANCE
   if echo "$P" | grep -qE 'performance audit|profile (this|the)[a-z ]{0,20}(code|function|endpoint|query|route)|find [a-z ]{0,15}(bottleneck|hot path)|why is [a-z ]{0,20}slow|optimi[sz]e [a-z ]{0,15}performance'; then
     echo "performance-audit|performance intent"; return 0
-  fi
-
-  # NAMING CONSISTENCY
-  if echo "$P" | grep -qE 'naming (consistency|convention)|inconsistent (naming|names)|standardi[sz]e [a-z ]{0,15}(names|naming)'; then
-    echo "naming-consistency|naming intent"; return 0
-  fi
-
-  # COUPLING / DEPENDENCY MAP
-  if echo "$P" | grep -qE 'coupling (map|graph|analysis)|module (dependency|dependencies) (map|graph)|what depends on|dependency graph'; then
-    echo "coupling-map|coupling intent"; return 0
   fi
 
   # CONFIG DRIFT
@@ -294,14 +212,37 @@ match_composite() {
     return 0
   fi
 
-  # OPEN-ENDED FEATURE WORK / SCOPE-AND-EXECUTE
-  if echo "$P" | grep -qE 'fix the .{0,30}(area|module|module|feature|code)|implement .{0,30}(end[- ]to[- ]end)|build out|finish (the|this) (feature|module)|tackle .{0,30}(area|module)'; then
-    echo "scope-and-execute|open-ended-scope intent"
+  # --- FREQUENT-SKILL HINTS (2026-07-02 E5 refresh — patterns derived from 69 real
+  # train-split prompts in rag-index experiments/e5-skill-router; test split held out) ---
+  if echo "$P" | grep -qE '^ *ship it *$|commit and ship|\bship (this|it)\b'; then
+    echo "ship|ship intent (real-usage)"
+    return 0
+  fi
+  if echo "$P" | grep -qE 'run the app(lication)?\b.{0,20}\b(dev|local)'; then
+    echo "run|run-app intent (real-usage)"
+    return 0
+  fi
+  if echo "$P" | grep -qE '\bscope (it|this)\b'; then
+    echo "plan|scope-request intent (real-usage)"
+    return 0
+  fi
+  if echo "$P" | grep -qE '\bbacklog\b'; then
+    echo "backlog|backlog intent (real-usage)"
     return 0
   fi
 
   return 1
 }
+
+# Explicit /skill-name mentioned in prose (strongest signal — user named the skill).
+# Verify the dir exists in the canonical catalog; skip URL/path lookalikes via the
+# leading-space-or-start anchor. (2026-07-02 E5 refresh.)
+slashref=$(printf '%s' "$P" | grep -oE '(^|[[:space:]])/[a-z][a-z0-9-]{2,40}\b' | head -1 | tr -d ' /')
+if [ -n "$slashref" ] && [ -d "$HOME/.claude/skills/$slashref" ]; then
+  jq -n --arg c "$slashref" \
+    '{"systemMessage": (" Skill match: /\($c) — explicitly named in the prompt. Invoke the /\($c) skill.")}'
+  exit 0
+fi
 
 result=$(match_composite)
 [ -z "$result" ] && exit 0
@@ -317,7 +258,7 @@ case "$composite" in
       '{"systemMessage": (" Skill match: /\($c) — \($r). Invoke the /\($c) skill (senior-QA reviewer). Default = chat report; only post to a PR with an explicit --pr N --comment.")}'
     exit 0
     ;;
-  sentry|sonar-check|orphan-hunt|generate-tests|adr-write|changelog-update|prisma-migrate|performance-audit|naming-consistency|coupling-map|config-drift-detect|handoff)
+  adr-write|performance-audit|config-drift-detect|handoff|next-priority|ship|repaint|run|plan|backlog)
     jq -n --arg c "$composite" --arg r "$reason" \
       '{"systemMessage": (" Skill match: /\($c) — \($r). Invoke the /\($c) skill.")}'
     exit 0

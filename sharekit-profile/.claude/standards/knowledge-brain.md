@@ -30,7 +30,7 @@ never silent**:
 
 ```bash
 BRAIN="${DEV_ROOT}/knowledge-brain"
-if ! mount | grep -q "/Volumes/External HD" || [ ! -d "$BRAIN/.git" ]; then
+if ! mount | grep -q "${DEV_ROOT}" || [ ! -d "$BRAIN/.git" ]; then
   echo "BLOCKED: External HD not mounted — knowledge-brain ($BRAIN) unreachable." >&2
   echo "Surface to the user and STOP; do not write, delete, or recall against the brain." >&2
   exit 0   # in a hook; in a skill, surface the blocker as output and halt the phase

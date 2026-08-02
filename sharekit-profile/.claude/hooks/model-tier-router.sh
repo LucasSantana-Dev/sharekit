@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 # model-tier-router.sh — suggest /model sonnet for routine prompts and
-# /model opus for depth-requiring prompts, per ADR
-# 2026-05-13-model-tier-strategy.md.
+# /model fable for depth-requiring prompts, per ADR-0049
+# (fable-apex-tiering-inversion — Fable is apex, Opus is fallback).
 #
 # Heuristic (hooks can't change the model — only advise):
 #   - Detect current session model from latest assistant turn in JSONL.
 #   - Classify the incoming prompt as DEPTH or ROUTINE.
-#   - If DEPTH AND on sonnet/haiku → suggest /model opus.
-#   - If ROUTINE AND on opus → suggest /model sonnet.
+#   - If DEPTH AND not already on fable → suggest /model fable.
+#   - If ROUTINE AND on fable/opus → suggest /model sonnet.
 #   - Fire at most once per direction per session (state file).
 #
 # DEPTH triggers (matches composites + critic-style work):
@@ -57,6 +57,7 @@ for line in reversed(lines[-400:]):
         continue
     if d.get("type") == "assistant":
         m = (d.get("message", {}).get("model") or "").lower()
+        if "fable" in m:  print("fable");  break
         if "opus" in m:   print("opus");   break
         if "haiku" in m:  print("haiku");  break
         if "sonnet" in m: print("sonnet"); break
@@ -77,11 +78,11 @@ FIRED=""
 [ -f "$STATE_FILE" ] && FIRED=$(cat "$STATE_FILE")
 
 ADVICE=""
-if [ "$CATEGORY" = "depth" ] && [ "$CURRENT_MODEL" != "opus" ] && ! echo "$FIRED" | grep -q "depth-up"; then
-  ADVICE=" Depth-requiring prompt detected on **$CURRENT_MODEL**. Per ADR 2026-05-13-model-tier-strategy, consider \`/model claude-opus-4-7\` for this work (composite skills, architecture, critic, ADRs). Fires once per session."
+if [ "$CATEGORY" = "depth" ] && [ "$CURRENT_MODEL" != "fable" ] && ! echo "$FIRED" | grep -q "depth-up"; then
+  ADVICE=" Depth-requiring prompt detected on **$CURRENT_MODEL**. Per ADR-0049 (Fable-apex tiering), consider \`/model fable\` for this work (composite skills, architecture, critic, ADRs) — Opus is the fallback, not first choice. Fires once per session."
   FIRED="$FIRED depth-up"
-elif [ "$CATEGORY" = "routine" ] && [ "$CURRENT_MODEL" = "opus" ] && ! echo "$FIRED" | grep -q "routine-down"; then
-  ADVICE=" Routine prompt on **opus**. Per ADR 2026-05-13-model-tier-strategy, the Opus/Sonnet split projects ~75% cost reduction. Consider \`/model claude-sonnet-4-6\` for glue/CI/PR work — composites will still escalate to Opus as needed via Agent. Fires once per session."
+elif [ "$CATEGORY" = "routine" ] && { [ "$CURRENT_MODEL" = "opus" ] || [ "$CURRENT_MODEL" = "fable" ]; } && ! echo "$FIRED" | grep -q "routine-down"; then
+  ADVICE=" Routine prompt on **$CURRENT_MODEL**. Per ADR-0049, apex-tier cache reads apply for the whole session — gate on task difficulty. Consider \`/model sonnet\` for glue/CI/PR work — composites will still escalate as needed via Agent. Fires once per session."
   FIRED="$FIRED routine-down"
 fi
 

@@ -1,6 +1,6 @@
 # Artifact Frontmatter Schema
 
-Ported from compozy's markdown-artifact pattern ([[external_repo_eval_compozy_2026-06-18]]):
+Ported from compozy's markdown-artifact pattern:
 workflow artifacts (ADRs, plans, specs, reviews, decisions) carry a consistent YAML
 frontmatter so their **status is queryable** — "all blocked artifacts", "all
 deferred ADRs", "everything superseded by ADR-0023" — by grepping frontmatter
@@ -52,7 +52,7 @@ needs a revisit" sweeps. A `blockers:` non-empty with `status != blocked` is a f
 
 ## Migration (body-style → frontmatter)
 
-Some artifacts (homelab `docs/adr/*` use `**Status:** Accepted` in the body; plans
+Some artifacts (<homelab> `docs/adr/*` use `**Status:** Accepted` in the body; plans
 use ad-hoc text headers) predate this schema. They still read fine; migrate them to
 frontmatter opportunistically when you next touch them so they become queryable.
 New artifacts use frontmatter from the start. Don't do a big-bang migration — the

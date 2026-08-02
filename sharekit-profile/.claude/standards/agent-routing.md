@@ -55,6 +55,10 @@ Stay in the main context (don't dispatch) when:
 
 If a user request matches a hard trigger and you start executing inline anyway, stop after the first unit, re-dispatch the rest as parallel `Agent()` calls, and surface the correction. Sequential execution of independently-parallelizable work violates the CLAUDE.md hard rule.
 
+## Model tier enforcement (ADR-0049)
+
+Every agent definition in `~/.claude/agents/*.md` frontmatter MUST set an explicit `model:` field — no agent inherits a model implicitly. This is the primary lever for model-tier cost control (subagent dispatch is the one place a model choice can be set programmatically; the main-session model can only be changed via `/model`, never by a hook). Tier per CLAUDE.md's Model tiering section: Fable (apex — architecture/critic-of-critical/consequential ADRs), Opus (fallback — composite orchestration entrypoints, standard critic, routine ADR writing), Sonnet (execution — default), Haiku (mechanical — lookups, formatting, transcription). When dispatching `Agent()`/`Workflow() agent()` calls, prefer omitting the `model` override so the call inherits the agent definition's frontmatter tier; only pass an explicit override for a genuine one-off exception, and note why.
+
 ## Active agents (post-2026-05-02 consolidation)
 
 - **Planning**: `planner` (interview-driven), `critic` (multi-perspective review). Use `critic` for architecture/code-quality second opinions.

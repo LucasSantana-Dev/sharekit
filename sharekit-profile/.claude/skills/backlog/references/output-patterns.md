@@ -96,7 +96,7 @@ If no findings, write `.claude/backlog/<date>-empty.md` with just header and "no
 
 ## Memory Snapshot Format
 
-Written to `~/.claude/projects/*/memory/backlog_<repo-slug>_<YYYY-MM-DD>.md`.
+Written to `~/.claude/projects/-Users-<github-user>/memory/backlog_<repo-slug>_<YYYY-MM-DD>.md`.
 
 ```markdown
 ---
@@ -135,7 +135,7 @@ BACKLOG — <owner>/<repo>
   Plan:       .claude/backlog/<YYYY-MM-DD>.md
   Issues:     <list of #N URLs | (failed: <reason>)>
   Board:      <board URL with N cards added | (skipped: <reason>)>
-  Snapshot:   ~/.claude/projects/*/memory/backlog_<repo>_<date>.md
+  Snapshot:   ~/.claude/projects/-Users-<github-user>/memory/backlog_<repo>_<date>.md
   Queued:     /next-priority
   Open watch: <future-dated follow-up for any feature with ramp/cleanup date | (none)>
 ```

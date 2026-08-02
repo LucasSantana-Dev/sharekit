@@ -1,7 +1,7 @@
 ---
 name: refactor-orchestrator
 description: Orchestrate end-to-end refactors across 6 phases: RAG pre-flight (prior context + protected scopes), plan with rollback, critic scope gate, parallel 3-agent execution (architect/builder/reviewer), two-stage review (spec+quality), test cleanup, ADR capture, sync. Use for scope >5 files, cross-module boundaries, or audit-flagged structural issues. Composite — orchestrates agents, does not implement changes itself. Requires explicit critic gate before execution begins.
-model: claude-opus-4-8
+model: claude-sonnet-4-6
 level: 3
 ---
 
@@ -19,7 +19,7 @@ level: 3
   <Skill_Operating_Procedure>
     ## Phase 0 — RAG pre-flight (always first)
 
-    Mount guard: `mount | grep -q "/Volumes/External HD" || echo "WARN: RAG unreachable — proceeding with local discovery only"`
+    Mount guard: `mount | grep -q "${DEV_ROOT}" || echo "WARN: RAG unreachable — proceeding with local discovery only"`
 
     Query RAG for prior refactor context:
     `python3 ~/.claude/rag-index/query.py "refactor $(basename $(pwd)) prior plan ADR module boundaries" --top 3 --scope memory --format json`

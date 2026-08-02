@@ -15,6 +15,12 @@ Apply the 5-step **when ANY of:**
 - Asserting something the compiler / types / tests can't verify (e.g., "this
   Dexie `update()` will set the record" — see past gotchas in MEMORY.md where
   contract review would have caught the bug)
+- **Acting on a subagent's numeric or usage claim** ("unused", "strict superset",
+  "N tokens", "zero calls") — re-verify with ONE direct command before acting.
+  Recurred 3×: ADR-0041 haiku "superset" refuted by git diff; 2026-07-09 MCP
+  "unused" refuted by transcript grep (meta-ads 6 + trello 31 sessions);
+  2026-07-09 fixed-cost agent invented sizes. Agents guess from proxies;
+  a 10-second direct check beats a wrong decision.
 
 **Skip when:**
 

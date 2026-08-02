@@ -1,7 +1,7 @@
 ---
 name: architect
 description: Audit and improve codebase architecture in one orchestrated workflow. Chains coupling analysis → orphan hunt → deepening opportunities → domain sharpening → critic gate → ADR recording. Read-only analysis; does not implement changes. Use when planning a refactor, evaluating architectural health, or audit-deep flagged structural debt.
-model: claude-opus-4-8
+model: claude-fable-5
 level: 3
 ---
 
@@ -20,7 +20,7 @@ level: 3
     ## Phase 0 — RAG pre-flight (always first)
     Check External HD mounted:
     ```bash
-    mount | grep -q "/Volumes/External HD" || export RAG_AVAILABLE=false
+    mount | grep -q "${DEV_ROOT}" || export RAG_AVAILABLE=false
     ```
     Query prior architecture assessments:
     ```bash

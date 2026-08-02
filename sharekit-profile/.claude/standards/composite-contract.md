@@ -59,7 +59,7 @@ The reconciliation block lives in a markdown code fence and has three parts:
 
 1. **Header line** (mandatory)
    - Format: `<COMPOSITE-NAME-UPPERCASE> — <subject>`
-   - Example: `HOTFIX — Lucky v2.10.0 → v2.10.1`
+   - Example: `HOTFIX — <project-a> v2.10.0 → v2.10.1`
    - Subject must uniquely identify what was operated on (repo, feature, bug,
      etc.). No empty subjects.
 
@@ -85,11 +85,11 @@ The reconciliation block lives in a markdown code fence and has three parts:
    - **Successful phase**: `Phase name: <one-line summary>`
 
 3. **Status tokens** (mandatory, appended to each phase result)
-   - `[OK] DONE` — phase completed successfully
-   - `[WIP] BLOCKED` — phase hit a blocker; composite may continue or halt per
+   - `✅ DONE` — phase completed successfully
+   - `🚧 BLOCKED` — phase hit a blocker; composite may continue or halt per
      Stop conditions
-   - `[BLOCKED] DECLINED` — precondition unmet; phase skipped intentionally
-   - `[WARN] DONE_WITH_CONCERNS` — phase completed but produced warnings / partial
+   - `🚫 DECLINED` — precondition unmet; phase skipped intentionally
+   - `⚠️ DONE_WITH_CONCERNS` — phase completed but produced warnings / partial
      outcomes
    - Token placement: END of the line (after the summary), never at start of
      prose paragraph
@@ -107,9 +107,9 @@ The reconciliation block lives in a markdown code fence and has three parts:
 
 ```
 COMPOSITE NAME — <subject>
-  Phase 1:         <result summary> [OK] DONE
-  Phase 2:         <result summary> [OK] DONE
-  Phase N:         (skipped: <reason>) [BLOCKED] DECLINED
+  Phase 1:         <result summary> ✅ DONE
+  Phase 2:         <result summary> ✅ DONE
+  Phase N:         (skipped: <reason>) 🚫 DECLINED
   Snapshot:        ~/.claude/handoffs/latest.md
   Open watch:      check <condition> in <timeframe>
 ```
@@ -121,8 +121,8 @@ COMPOSITE NAME — <subject>
 
 | Phase | Summary | Status |
 | ----- | ------- | ------ |
-| Phase 1 | <result> | [OK] DONE |
-| Phase 2 | <result> | [OK] DONE |
+| Phase 1 | <result> | ✅ DONE |
+| Phase 2 | <result> | ✅ DONE |
 
   Snapshot:        ~/.claude/projects/repo/memory/task.md
   Open watch:      (none)
@@ -133,7 +133,7 @@ COMPOSITE NAME — <subject>
 A properly formatted reconciliation block enables these operations:
 - Extract composite name from header via regex `^([A-Z][A-Z\s]+) — `
 - Parse phase results via `^\s*[\w\s]+:\s` for key:value or `^|` for table
-- Extract status tokens via regex `([OK]|[WIP]|[BLOCKED]|[WARN])\s*[A-Z_]+` at end of line
+- Extract status tokens via regex `(✅|🚧|🚫|⚠️)\s*[A-Z_]+` at end of line
 - Locate snapshot path via grep `^Snapshot:`, extract path or parse "(none)"
 - Locate future obligations via grep `^Open watch:`, extract condition or "(none)"
 
@@ -211,80 +211,8 @@ Deletion only happens when:
 - AND a replacement covers every documented trigger phrase
 - AND a deletion ADR is written under `~/.claude/projects/<project>/adr/`
 
-## Audit list of existing composite reconciliation blocks (2026-05-15)
+## Migration tracking
 
-**Status:** 28 composites audited. **NONE match the new canonical standard** as
-of this audit. All 28 templates predate the stricter specification and require
-migration in a separate wave. See "Migration guidance" below.
-
-The issues are systematic:
-- **Missing status tokens** (28/28) — templates use key:value or table format
-  but no `[OK]/[WIP]/[BLOCKED]/[WARN]` tokens
-- **Missing Snapshot: / Open watch:** (27/28) — only `parallel-phases` has
-  neither; the rest lack both
-- **Prose vs. structured format** (6 prose, 9 mixed table+key:val) — not aligned
-  to the binary choice (Option A or Option B)
-
-### Breakdown by format
-
-**Key:value only** (12 composites, can migrate directly to Option A + tokens):
-- audit-deep, dep-sweep, design-build, fix-the-suite, hotfix,
-  knowledge-loop, mcp-care, merge-confidently,
-  onboard-new-repo, security-sweep, seo-a11y-audit,
-  ship-it
-  *(incident-followup + production-incident merged into the non-composite `incident-response` skill 2026-06-06 — no longer composites)*
-
-**Table only** (1 composite, keep table, add tokens + metadata):
-- parallel-phases
-
-**Mixed table + key:value** (9 composites, consolidate to one format + tokens):
-- backlog, branch-hygiene, hotfix (see note), release-cut,
-  repo-bootstrap, verify-before-done
-  *(note: hotfix appears in both lists; manually verify)*
-
-**Prose only** (6 composites, convert to Option A key:value + tokens):
-- debug-deep, feature-from-zero, refactor-pipeline, research-and-decide,
-  scope-and-execute, session-bootstrap
-
-**Missing header line** (2 composites):
-- pr-to-release (no header), repo-bootstrap (no header)
-
-### Migration guidance
-
-Consolidation is NOT part of this task. The audit list above is provided for
-the next wave (`composite-contract-migration-WAVE2`). Priority order:
-1. Add status tokens to all 28 (boilerplate, low risk)
-2. Add Snapshot: and Open watch: to all 28
-3. Resolve mixed format (9 composites) → pick one per composite
-4. Convert prose (6 composites) → key:value
-5. Add/fix header lines (2 composites)
-
-### Index by skill name
-
-| Skill | Format | Issues | Migrate to |
-| ----- | ------ | ------ | ---------- |
-| audit-deep | KEY:VALUE | tokens, metadata | Option A + [OK]/[WIP]/[BLOCKED]/[WARN] |
-| backlog | MIXED | tokens, metadata, format | KEY:VALUE + [OK]/[WIP]/[BLOCKED]/[WARN] |
-| branch-hygiene | MIXED | tokens, metadata, format | KEY:VALUE + [OK]/[WIP]/[BLOCKED]/[WARN] |
-| debug-deep | PROSE | header, tokens, metadata | KEY:VALUE + [OK]/[WIP]/[BLOCKED]/[WARN] |
-| dep-sweep | KEY:VALUE | tokens, metadata | Option A + [OK]/[WIP]/[BLOCKED]/[WARN] |
-| design-build | KEY:VALUE | tokens, metadata | Option A + [OK]/[WIP]/[BLOCKED]/[WARN] |
-| feature-from-zero | PROSE | tokens, metadata | KEY:VALUE + [OK]/[WIP]/[BLOCKED]/[WARN] |
-| fix-the-suite | KEY:VALUE | tokens, metadata | Option A + [OK]/[WIP]/[BLOCKED]/[WARN] |
-| hotfix | MIXED | tokens, metadata, format | KEY:VALUE + [OK]/[WIP]/[BLOCKED]/[WARN] |
-| knowledge-loop | KEY:VALUE | tokens, metadata | Option A + [OK]/[WIP]/[BLOCKED]/[WARN] |
-| mcp-care | KEY:VALUE | tokens, metadata | Option A + [OK]/[WIP]/[BLOCKED]/[WARN] |
-| merge-confidently | KEY:VALUE | tokens, metadata | Option A + [OK]/[WIP]/[BLOCKED]/[WARN] |
-| onboard-new-repo | KEY:VALUE | tokens, metadata | Option A + [OK]/[WIP]/[BLOCKED]/[WARN] |
-| parallel-phases | TABLE | tokens | Option B + [OK]/[WIP]/[BLOCKED]/[WARN] |
-| pr-to-release | MIXED | header, tokens, metadata, format | KEY:VALUE + [OK]/[WIP]/[BLOCKED]/[WARN] |
-| refactor-pipeline | PROSE | tokens, metadata | KEY:VALUE + [OK]/[WIP]/[BLOCKED]/[WARN] |
-| release-cut | MIXED | tokens, metadata, format | KEY:VALUE + [OK]/[WIP]/[BLOCKED]/[WARN] |
-| repo-bootstrap | MIXED | header, tokens, metadata, format | KEY:VALUE + [OK]/[WIP]/[BLOCKED]/[WARN] |
-| research-and-decide | PROSE | tokens, metadata | KEY:VALUE + [OK]/[WIP]/[BLOCKED]/[WARN] |
-| scope-and-execute | PROSE | tokens, metadata | KEY:VALUE + [OK]/[WIP]/[BLOCKED]/[WARN] |
-| security-sweep | KEY:VALUE | tokens, metadata | Option A + [OK]/[WIP]/[BLOCKED]/[WARN] |
-| seo-a11y-audit | KEY:VALUE | tokens, metadata | Option A + [OK]/[WIP]/[BLOCKED]/[WARN] |
-| session-bootstrap | PROSE | tokens, metadata | KEY:VALUE + [OK]/[WIP]/[BLOCKED]/[WARN] |
-| ship-it | KEY:VALUE | tokens, metadata | Option A + [OK]/[WIP]/[BLOCKED]/[WARN] |
-| verify-before-done | MIXED | tokens, metadata, format | TABLE + [OK]/[WIP]/[BLOCKED]/[WARN] |
+The audit list of existing composites and their WAVE2 migration status lives in
+[archive/composite-contract-migration-wave2.md](archive/composite-contract-migration-wave2.md)
+— transitional tracking, not canonical contract material.

@@ -28,7 +28,7 @@ if [[ -z "$SESSION_ID" ]]; then
 	for count_file in /tmp/claude-turn-count-*.txt; do
 		[[ -f "$count_file" ]] || continue
 		sid=$(basename "$count_file" .txt | sed 's/^claude-turn-count-//')
-		count=$(<"$count_file")
+		count=$(cat "$count_file" 2>/dev/null | tr -dc '0-9'); count=${count:-0}
 		reset_session "$sid" "$count"
 	done
 	exit 0
@@ -60,8 +60,7 @@ EOF
 	[[ -z "$COUNT" ]] && COUNT=0
 else
 	# JSONL not available yet — fall back to cached turn count
-	COUNT=0
-	[[ -f "/tmp/claude-turn-count-${SESSION_ID}.txt" ]] && COUNT=$(<"/tmp/claude-turn-count-${SESSION_ID}.txt")
+	COUNT=$(cat "/tmp/claude-turn-count-${SESSION_ID}.txt" 2>/dev/null | tr -dc '0-9'); COUNT=${COUNT:-0}
 fi
 
 reset_session "$SESSION_ID" "$COUNT"

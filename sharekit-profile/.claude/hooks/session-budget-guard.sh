@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 set -uo pipefail
 
 # PostToolUse hook: session context-health nudge (USAGE-PLAN aware).
@@ -22,8 +22,13 @@ SESSION_ID=$(jq -r '.session_id // empty' 2>/dev/null || echo "")
 
 CACHE_CALLS="/tmp/claude-ctxnudge-calls-${SESSION_ID}.txt"
 RECOMPUTE_INTERVAL=25
-[[ -f "$CACHE_CALLS" ]] || echo "0" > "$CACHE_CALLS"
-CALL_COUNT=$(( $(<"$CACHE_CALLS") + 1 )); echo "$CALL_COUNT" > "$CACHE_CALLS"
+# Concurrent PostToolUse invocations (parallel subagents) race this counter: a reader can
+# catch the file mid-truncate and feed garbage/empty into arithmetic. Sanitize the read and
+# write via mv (atomic) so a partial state is never observable. Occasional lost increments
+# are fine — the counter only paces an advisory nudge.
+COUNT=$(cat "$CACHE_CALLS" 2>/dev/null | tr -dc '0-9'); COUNT=${COUNT:-0}
+CALL_COUNT=$(( COUNT + 1 ))
+TMP_CALLS="${CACHE_CALLS}.$$"; echo "$CALL_COUNT" > "$TMP_CALLS" && mv -f "$TMP_CALLS" "$CACHE_CALLS"
 (( CALL_COUNT % RECOMPUTE_INTERVAL != 0 )) && exit 0
 
 JSONL=$(find ~/.claude/projects -name "${SESSION_ID}.jsonl" 2>/dev/null | head -1)

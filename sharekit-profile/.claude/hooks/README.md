@@ -60,7 +60,7 @@ Moved to `archive/` 2026-05-03:
 
 - All hook scripts must start with `#!/usr/bin/env bash` + `set -euo pipefail` (or `set -uo pipefail` if they intentionally tolerate command failures, like `statusline.sh`).
 - Hooks called from `shared.json` use `${CLAUDE_DIR}/hooks/<name>.sh` — apply_settings expands the placeholder.
-- Hooks must exit 0 unless they intend to block the tool (PreToolUse exit 1 = block).
+- Hooks must exit 0 unless they intend to block the tool. PreToolUse exit-code protocol: `0` = allow, `2` = block/deny (stderr shown to the model), other non-zero = non-blocking error. Blocking hooks here use `exit 2` (see `block-secret-reads.sh`, `protect-files.sh`).
 - Hooks must read stdin if they need the tool payload — Claude Code pipes a JSON envelope.
 - For PostToolUse failure-logging, the payload field for stderr varies by tool — fall through `tool_response.error // .stderr // .stdout // "unknown"`.
 

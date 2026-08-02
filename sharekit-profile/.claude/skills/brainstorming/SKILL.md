@@ -7,20 +7,12 @@ metadata:
   owner: global-agents
   tier: ephemeral
   canonical_source: ~/.agents/skills/brainstorming
+triggers:
+  - brainstorm
+  - idea exploration
+  - design direction
+  - rough concepts
 ---
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 # Brainstorming Ideas Into Designs
 

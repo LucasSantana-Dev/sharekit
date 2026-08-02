@@ -1,31 +1,32 @@
 ---
-name: rag-drift
+name: adt-rag-drift
 description: Detect and fix stale chunks (files that changed or were deleted since last indexing)
 triggers:
   - rag drift
   - stale chunks
   - rag outdated
   - drift detection
+invocation_type: internal
 ---
 
 # RAG Drift
 
 **Drift** occurs when the index contains chunks from files that have been deleted or modified since indexing. The retrieval system silently returns outdated or orphaned content without error. Detect and fix drift before it degrades quality.
 
-> **Preflight — mount guard** (`standards/knowledge-brain.md` §1): the RAG embedder cache + the brain vault live on the External HD. If `/Volumes/External HD` is unmounted, `query.py`/`build.py` fail and the symlinked memory files read as missing — which looks exactly like "drift". **Do not delete chunks on an unmounted drive**: an absent file during an unmount means *unknown*, not *deleted* (this caused a wrong chunk-deletion 2026-06-18). Check: `mount | grep "/Volumes/External HD"`.
-
 ## What is drift?
 
-Two types of drift corrupt the index:
-
-| Type | Cause | Effect | Fix |
-|------|-------|--------|-----|
-| **Missing** | File deleted (chunks remain indexed) | Retrieval returns orphaned chunks pointing to nonexistent files | Delete chunks from DB or full rebuild |
-| **Modified** | File changed (chunks show old content, sha mismatch) | Queries return stale snippets; content differs from current source | Incremental reindex the modified files |
+Two types of drift corrupt the index: see `references/drift-types.md` for details.
 
 Drift is **silent.** Retrieval still works, but returns wrong or outdated info.
 
 ## Detect drift
+
+**BLOCKED if External HD unmounted** — report.py embedder cache unreachable; query local sqlite instead.
+
+**Check stale count:** Read the drift summary to determine action:
+- <5 stale chunks: normal churn; can wait for next full rebuild
+- 5–20 chunks: fix incrementally today
+- >20 chunks: full rebuild recommended (faster than 20+ incremental ops)
 
 Run the report script:
 
@@ -40,21 +41,9 @@ Read the drift summary:
 cat ~/.claude/rag-index/weekly.md | grep -A 30 "Stale chunks"
 ```
 
-Example output:
-```
-Stale chunks by type:
-- Missing (deleted): 3 chunks
-  ~/.claude/old-skill/SKILL.md (deleted 2024-12-15)
-  
-- Modified (sha mismatch): 12 chunks
-  ~/.claude/standards/old-auth.md (last indexed 2024-12-10, modified 2024-12-18)
-  /Volumes/External\ HD/Desenvolvimento/forgekit/src/utils.ts (last indexed 2024-12-15, modified 2024-12-16)
-```
+See `references/report-examples.md` for example output.
 
-**Drift thresholds:**
-- <5 stale chunks: normal churn; can wait for next full rebuild
-- 5–20 chunks: fix incrementally today
-- >20 chunks: full rebuild recommended (faster than 20+ incremental ops)
+**Done when:** report shows stale count and recommended action based on thresholds above.
 
 ## Fix missing chunks (deleted files)
 
@@ -90,6 +79,8 @@ sqlite3 ~/.claude/rag-index/index.sqlite \
   "DELETE FROM chunks WHERE path = '~/.claude/old-skill/SKILL.md';"
 ```
 
+**Done when:** sqlite confirms 0 chunks for that path (query returns no rows).
+
 ## Fix modified chunks (updated files)
 
 Files that exist but have changed since indexing need incremental reindex:
@@ -103,6 +94,8 @@ The incremental reindex will:
 1. Delete old chunks from that file
 2. Re-embed and insert new chunks with current content
 3. Leave all other chunks untouched
+
+**Done when:** re-run report shows stale count returned to baseline or <5.
 
 ## Auto-drift detection
 

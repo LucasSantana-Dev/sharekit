@@ -1,128 +1,78 @@
 ---
 name: recall
-description: Semantic lookup across 4 connected knowledge sources (RAG, knowledge-brain vault, claude-mem, Serena). Answers "what did we decide", "did we hit this before", "where is X defined". Use instead of grep for fuzzy, cross-file, reasoning, or symbol-level queries.
+description: One-shot semantic lookup against the local RAG index — answers "what did we decide about X", "where did we hit this bug before", "is there a memory note for Y" in a single MCP call. Backed by the rag_query MCP tool over ~21k chunks (memory, plans, handoffs, skills, standards, repo docs, changelogs, specs, code, commits, transcripts) across curated repos. Auto-scopes to current repo. Use instead of grep when the question is fuzzy, cross-file, or about prior reasoning. Skip for pure navigation.
 triggers:
   - recall
   - have we seen this before
-  - did we decide about
-  - where was this decided
-  - is there a note on
-mcp_servers: [rag-index, claude-mem, serena]
+  - did we decide
+  - prior context on
+  - what did we learn about
+  - is there a memory note for
 ---
 
 # recall
 
-## Pre-flight: Mount check
+Single-shot RAG lookup. Don't over-fetch.
 
-**Before querying RAG or knowledge-brain vault, verify External HD is mounted:**
+**Mount guard:** `[ -d "${DEV_ROOT}/rag-index" ] || echo WARNING: RAG degraded` - directory reachability, not `mount` output parsing (matches the canonical guard in `claude/skills/knowledge-loop/references/mount-guard.sh`: `mount` only lists actual mount points, never nested paths, so grepping its output false-positives as "unmounted" even when the drive is present; it also escapes spaces in mount-point paths on Linux, which a naive grep won't decode). The index lives on the external drive; an unmounted drive silently degrades recall. See `standards/knowledge-brain.md §1`.
 
-```bash
-mount | grep -q "/Volumes/External HD" || \
-  { echo "BLOCKED: External HD unmounted — RAG/vault unreachable. Degrading to claude-mem + grep."; }
-```
+## How
 
-If unmounted: `rag_query` (embedder cache on External HD) and `search_knowledge` fail. Fall back to Source 2 (claude-mem FTS5) + shell grep. Degrade explicitly; do not return empty results.
-
----
-
-## Four retrieval sources, each best for different query shapes
-
-## Source 1 — RAG index (`rag_query`)
-
-Hybrid BM25 + cosine + RRF over the full indexed corpus. Best for fuzzy, cross-file, or "why was this written this way" questions.
+Call the MCP tool directly:
 
 ```
 rag_query(query="<natural-language question>", top=5)
 ```
 
-Key args:
-- `scope_types` — narrow to `["memory","handoffs"]` for written-down decisions, `["commit"]` for recent ships, `["claude-mem"]` for observation notes only via RAG.
-- `scope_repos` — `["all"]` ignores cwd auto-scope; `["Lucky"]` forces a repo.
-- `top` — 3–5 for fast lookup, up to 8 for thorough cross-source coverage.
+**Done when:** top results answer your question in 1–2 chunks. If not, narrow the query or increase `top` (up to 8).
 
-## Source 2 — claude-mem (`mcp__plugin_claude-mem_mcp-search__search`)
+Optional args:
+- `top` (1–20, default 5) — more isn't always better; reranker quality drops past 8.
+- `scope_types` — narrow to e.g. `["memory", "handoffs"]` for "what did I write down" queries, or `["commit"]` for "what did we ship lately on X".
+- `scope_repos` — pass `["all"]` to ignore cwd auto-scope; pass `["<project-a>"]` etc. to force a specific repo.
 
-Direct FTS5 search over the full observation graph (not just what's in RAG). Best for "show me the exact note about X" or when you need the full observation body, not a 500-char snippet.
+## Failure modes
 
-```
-mcp__plugin_claude-mem_mcp-search__search(query="<keywords>", limit=5)
-mcp__plugin_claude-mem_mcp-search__get_observations(project="Lucky", limit=10)
-mcp__plugin_claude-mem_mcp-search__timeline(days=7)
-```
+- **Unmounted external drive** — if the drive drops mid-session, the RAG index becomes stale or inaccessible. Mount guard (above) catches this; surface "WARNING: RAG degraded" and skip the query or fall back to grep.
+- **Stale index** — if memory or code changed recently and the reindex hook hasn't run (2–5 minute lag typical), you may miss the latest decisions or commits. Fallback: ask directly ("what did we just decide") or grep recent files / `git log`.
+- **Low-quality rerank** — if you ask a vague question ("fix this") without context, the reranker may return false positives. Be specific ("why did we choose D1 for Progress Tracker storage").
 
-Use when:
-- You need the full observation text (RAG snippets are capped at 500 chars).
-- The query is project-scoped (`project=` filter).
-- You want a timeline of what was recorded recently.
+## Anatomy of results
 
-## Source 3 — Serena LSP (`mcp__serena__find_symbol`, `mcp__serena__find_implementations`)
+A `rag_query()` result includes:
 
-Symbol-level navigation with call-graph awareness. Best for "where is this function defined / who calls it".
-
-```
-mcp__serena__find_symbol(name="functionName")
-mcp__serena__find_implementations(name="InterfaceName")
-mcp__serena__find_referencing_symbols(name="symbolName")
-```
-
-Use when:
-- You need the exact definition location (RAG lags; Serena is live).
-- You want to trace call chains or find all implementors.
-- You're about to refactor and need impact analysis.
-
-## Source 4 — knowledge-brain vault (`search_knowledge`) — preferred for decisions/memory
-
-Centralized cross-project vault (ADR-0029/0030 "One Brain") at `${DEV_ROOT}/knowledge-brain/` — all memories (symlinked) + per-project graph snapshots under `graphs/`. Best for **cross-project decision/memory recall**.
-
-```
-search_knowledge(query="<natural-language question>", top=5)
+```json
+{
+  "results": [
+    {
+      "text": "<chunk content>",
+      "source": {
+        "type": "memory" | "handoff" | "plan" | "commit" | "code" | "readme",
+        "repo": "<project-a>" | "<homelab>" | "...",
+        "path": "..."
+      },
+      "score": 0.87  // reranker confidence; >0.8 usually relevant
+    }
+  ]
+}
 ```
 
-`search_knowledge` (rag-index MCP — **live since 2026-06-21**, completes ADR-0029 Phase 2) is a vault-scoped semantic search over the knowledge layer only — `memory, standards, plans, handoffs, adrs`; **no code or git commits**; **cross-project** (no cwd auto-scoping). Prefer it over raw `rag_query` for "what did we decide / is there a note on X / did we hit this before". For cross-project graph lookups, read `graphs/<project>/graph.json` directly.
+Typical scores: relevant = 0.75+; weak relevance = 0.50–0.75; noise = <0.50. Higher `top` → more noise. See `standards/skill-patterns.md §completion-criteria` for "Done when" discipline.
 
-> If `search_knowledge` isn't listed as an available tool, the running rag-index MCP server predates 2026-06-21 — restart the session to reload it.
+## When recall beats grep
 
-> **Mount guard** (`standards/knowledge-brain.md` §1): the vault **and the RAG embedder cache** are on the External HD. If it's unmounted, Source 4 is unreachable AND Source 1 (`rag_query`) can't load the embedder — recall degrades to claude-mem (Source 2) + grep only. Check `mount | grep "/Volumes/External HD"`; if absent, say so plainly rather than returning empty/misleading results.
+- "Why is this written this way" — answers live in memory/plans/commits, not the file.
+- Cross-repo questions ("is this pattern used elsewhere") — index covers 5 repos.
+- Past-incident lookup — `feedback_*.md` memory files surface here, not in repo grep.
+- Onboarding into an unfamiliar area — gets 5 best chunks across all source types in one call.
 
-## Auto-route decision table
+## When grep / serena beats recall
 
-Pick the source that matches your question shape. When uncertain, run the top 2 sources in parallel (one message).
-
-| Question type | Best source | Fallback |
-|---|---|---|
-| "What did we decide about X (any project)" | `search_knowledge` (vault-scoped) | RAG scope=memory |
-| "Did we hit this bug before" | `search_knowledge` + claude-mem in parallel | RAG all-types |
-| "Why was this written this way" | RAG scope=["memory","commit"] | claude-mem full text |
-| "Is there a note on X" | `search_knowledge` first | claude-mem full text |
-| "Where is function X defined" | Serena `find_symbol` | RAG scope=code |
-| "Who calls this function" | Serena `find_referencing_symbols` | RAG (if Serena cold start) |
-| "What did we ship recently" | RAG scope=["commit"] | `git log` |
-| "Project-scoped observations on [repo]" | claude-mem `get_observations(project="[repo]")` | RAG scope=["claude-mem"] |
-
-## Parallel fan-out pattern
-
-For broad "what do we know about X" questions, run all three in parallel:
-
-```
-# In one message: 3 parallel tool calls
-rag_query(query="X", top=5)
-mcp__plugin_claude-mem_mcp-search__search(query="X", limit=5)
-mcp__serena__find_symbol(name="X")  # if X might be a symbol
-```
-
-## Output format (reconciliation block)
-
-When returning results, always include:
-
-1. **Source used** — which tool(s) ran (e.g., "search_knowledge" or "RAG + claude-mem parallel")
-2. **Hit count** — number of relevant results returned (e.g., "3 hits from search_knowledge, top hit: 0.92 relevance")
-3. **Quality signal** — confidence (exact match, strong semantics, weak/speculative) or absence signal
-4. **No-hits case** — if all sources returned empty: state explicitly ("No results in any source"), suggest narrowing query or pivoting to Serena (if symbol-shaped) or manual grep
-
-**Example:** "search_knowledge returned 2 hits (0.88, 0.76 relevance) on 'memory-system-consolidation'; top hit: ADR-0030 Phase 2. claude-mem search returned 0 — likely not observed, or ingestion lag."
+- "Where is `function X` defined" — `mcp__serena__find_symbol` or `grep` is faster + exact.
+- Single-file scoped edits — open the file.
+- Recent state ("did this change today") — `git log` / `git diff` is authoritative; the index lags by minutes-to-hours depending on whether the post-edit reindex hook ran.
 
 ## Pair with
 
 - `context-pack` when one query isn't enough and you need a multi-source bundle.
-- `dispatch` when the question fans into multiple parallel sub-investigations.
-- For live symbol navigation: pair Serena results with `refactor-pipeline` (impact analysis before changes).
+- `dispatch` when the question fans into multiple parallel investigations.

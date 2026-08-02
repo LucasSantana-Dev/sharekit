@@ -42,6 +42,32 @@ behavior, surface it instead of applying.
 13. **Reference naming convention** — `references/workflow.md`, `output-patterns.md`,
     `schemas.md`, etc.; no duplication with SKILL.md.
 
+## Model-Independence Gate (deterministic floor)
+
+The 13 points above lift quality but require a *capable reviewer* to verify — a weaker model
+grading them may pass a broken skill. Beneath them sits a deterministic floor that holds
+**regardless of which model is involved**, because a script enforces it, not judgment:
+
+| Check | Severity | Enforced by |
+|---|---|---|
+| Frontmatter parses as valid YAML | **HARD** (won't load) | `hooks/skill-quality-gate.sh` (PostToolUse, exit 2 blocks) |
+| Frontmatter present (`---` block) | **HARD** | same |
+| Code-fence parity (no unclosed ```` ``` ````) | **HARD** | same |
+| `name` matches dir (or intentional `adt-*`/`plugin-*` namespace) | SOFT | same (warn) |
+| Size / Done-when / Stop-conditions / workflow structure | SOFT | same (warn) |
+
+- **On edit**, the hook blocks a structurally-broken SKILL.md from being saved — a weak model
+  *cannot* ship one even if it doesn't notice the breakage. `SKILL_GATE_BYPASS=1` for intentional WIP.
+- **Across the catalog**, `scripts/harness-skill-scorecard.py` runs the same checks over every
+  skill and emits `structural_score_pct` — the harness's first objective, model-independent quality
+  number. Re-run after any batch change to prove a delta (baseline 2026-06-26: 85.4% → 100% after
+  the invalid-YAML + frontmatter sweep). Use it as a regression gate: a PR that lowers the score
+  introduced broken skills.
+
+This is point 7 of the model-independence research (component eval gates / regression baselines) —
+the structural gate is *why* skill quality no longer depends on the reviewing model noticing the
+defect. The 13 points are the ceiling; this gate is the floor that never drops.
+
 ## Verified RAG / knowledge invocation patterns
 
 Canonical reference: `~/.claude/skills/recall/SKILL.md`. Skills should point to it
@@ -70,7 +96,7 @@ graphify query "<codebase question>" --budget 500
 
 **Mount guard (required before brain/RAG reliance — knowledge-brain.md §1):**
 ```bash
-mount | grep -q "/Volumes/External HD" || { echo "BLOCKED: External HD unmounted — RAG/vault unreachable"; }
+mount | grep -q "${DEV_ROOT}" || { echo "BLOCKED: External HD unmounted — RAG/vault unreachable"; }
 ```
 If unmounted: `rag_query` (embedder cache on External HD) and `search_knowledge`
 degrade; say so plainly, fall back to claude-mem + grep, do not return empty/misleading.
@@ -84,8 +110,11 @@ sequential dispatch of independent work.
 
 ## How to apply (implementer)
 
+Copy-pasteable templates for every pattern below live in
+`standards/skill-patterns.md` (cite by anchor, don't re-explain).
+
 1. Run the 13-point checklist (yes/no).
-2. For each "no", apply the fix; for RAG steps paste the exact pattern above.
+2. For each "no", apply the fix from `skill-patterns.md §<pattern>`; for RAG steps paste the exact pattern above.
 3. Replace inline duplicated rules with `standards/<file>.md §N` pointers.
 4. Move bulk > ~150 lines to `references/`.
 5. Confirm behavior/contract unchanged (esp. composite phase chains).

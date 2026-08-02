@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.1] - 2026-08-02
+
+### Changed
+
+- Bundled `sharekit-profile/` content refreshed from source (first sync since 2026-06-24): skill catalog pruned from ~103 to 47 folders via consolidation (retired/archived skills removed, e.g. duplicate frontend-UI skills merged into `repaint`), hooks/standards/agents updated to current state. No CLI code changes.
+
 ## [0.6.0] - 2026-07-03
 
 ### Added

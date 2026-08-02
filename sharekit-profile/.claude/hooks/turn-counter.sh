@@ -19,11 +19,11 @@ TURN_CACHE="/tmp/claude-turn-count-${SESSION_ID}.txt"
 RESET_FILE="/tmp/claude-turn-reset-${SESSION_ID}.txt"
 CHECK_INTERVAL=10
 
-# Increment call counter
-calls=0
-[[ -f "$CALL_CACHE" ]] && calls=$(<"$CALL_CACHE")
+# Increment call counter (sanitized read + atomic write: concurrent PostToolUse invocations
+# from parallel subagents can catch the file mid-truncate and feed garbage into arithmetic)
+calls=$(cat "$CALL_CACHE" 2>/dev/null | tr -dc '0-9'); calls=${calls:-0}
 calls=$((calls + 1))
-echo "$calls" >"$CALL_CACHE"
+tmp="${CALL_CACHE}.$$"; echo "$calls" >"$tmp" && mv -f "$tmp" "$CALL_CACHE"
 
 # Only recount turns every CHECK_INTERVAL tool calls
 if ((calls % CHECK_INTERVAL != 0)); then
@@ -33,7 +33,7 @@ if ((calls % CHECK_INTERVAL != 0)); then
 	if [[ -f "$RESET_FILE" && "$RESET_FILE" -nt "$TURN_CACHE" ]]; then
 		exit 0
 	fi
-	turn_count=$(<"$TURN_CACHE")
+	turn_count=$(cat "$TURN_CACHE" 2>/dev/null | tr -dc '0-9')
 else
 	# Find JSONL and count assistant turns
 	JSONL=$(find "$HOME/.claude/projects" -name "${SESSION_ID}.jsonl" 2>/dev/null | head -1)
@@ -67,8 +67,7 @@ fi
 turn_count=${turn_count:-0}
 
 # Subtract post-compact baseline so /compact resets the counter
-baseline=0
-[[ -f "$RESET_FILE" ]] && baseline=$(<"$RESET_FILE")
+baseline=$(cat "$RESET_FILE" 2>/dev/null | tr -dc '0-9'); baseline=${baseline:-0}
 effective_count=$((turn_count - baseline))
 [[ $effective_count -lt 0 ]] && effective_count=0
 
@@ -78,8 +77,7 @@ turn_count=$effective_count
 # Auto-save handoff periodically (informational only — autocompact at 90% handles compaction)
 # Trigger handoff at 300 turns since last compact, and once more at 800.
 HANDOFF_LOCK="/tmp/claude-handoff-triggered-${SESSION_ID}.txt"
-last_handoff=0
-[[ -f "$HANDOFF_LOCK" ]] && last_handoff=$(<"$HANDOFF_LOCK")
+last_handoff=$(cat "$HANDOFF_LOCK" 2>/dev/null | tr -dc '0-9'); last_handoff=${last_handoff:-0}
 
 if ((turn_count >= 300 && turn_count - last_handoff >= 500)); then
 	echo "$turn_count" >"$HANDOFF_LOCK"
@@ -90,8 +88,7 @@ fi
 # Informational nudges — fire ONCE per band, never repeat.
 # Autocompact (CLAUDE_AUTOCOMPACT_PCT_OVERRIDE=90) handles actual compaction; this is just visibility.
 WARN_LAST_FILE="/tmp/claude-warn-last-${SESSION_ID}.txt"
-last_warned=0
-[[ -f "$WARN_LAST_FILE" ]] && last_warned=$(<"$WARN_LAST_FILE")
+last_warned=$(cat "$WARN_LAST_FILE" 2>/dev/null | tr -dc '0-9'); last_warned=${last_warned:-0}
 
 # Bands: 500 (info), 1000 (long-session reminder). Above 1000, silent.
 if ((turn_count >= 1000 && last_warned < 1000)); then

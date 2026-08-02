@@ -31,7 +31,8 @@ done
 MSG=$(printf ' Memory index growing — consider pruning\n\n%b\nIndex loads on every session start. When it exceeds 40 entries, run `/memory-prune` to archive stale notes (PR merged, file moved, gotcha patched). Fires once/day per project.' "$ALERTS")
 
 # Emit with additionalContext directive to agent to act (run /memory-prune before other work)
-PRUNE_FLAG="/tmp/claude-memory-prune-session-$(date -u +%s | cut -d. -f1 | tail -c 5)"
+STATE_DIR="$HOME/.claude/.state"; mkdir -p "$STATE_DIR"
+PRUNE_FLAG="$STATE_DIR/memory-prune-$(date -u +%Y%m%d)"   # date-keyed: once/day, collision-free (was /tmp + weak 4-digit id)
 if [ ! -f "$PRUNE_FLAG" ]; then
   touch "$PRUNE_FLAG"
   jq -n --arg m "$MSG" '{

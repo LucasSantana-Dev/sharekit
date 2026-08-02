@@ -1,6 +1,6 @@
 ---
 name: memory-prune
-description: Audit project memory files for stale entries — items where the cited PR is merged, the cited bug is fixed, the cited file/function no longer exists, or the gotcha was patched out of the codebase. Proposes archival or deletion per entry. Read-only by default; prompts before any change. Use periodically (monthly) or when memory recall starts surfacing entries that contradict current code. Pair with `sync-memories` (write fresh notes) and `adt-rag-drift` (which handles the RAG index, not the memory files themselves).
+description: Audit project memory files for stale entries — when cited PRs merge, bugs fix, or files disappear. Proposes archival or deletion per entry. Read-only by default; prompts before changing. Use periodically (monthly) or when memory recall contradicts current code. Pairs with sync-memories (fresh notes) and adt-rag-drift (RAG index handling).
 triggers:
   - prune memory
   - audit memory
@@ -18,8 +18,6 @@ metadata:
 Project memory files at `~/.claude/projects/<encoded-cwd>/memory/*.md` accumulate `feedback_*` and `project_*` notes faster than they decay. Entries cite PRs that have merged, branches that have been deleted, gotchas that have been patched. Future sessions follow them as if they were still current and waste effort re-discovering they're not.
 
 This skill audits the memory dir, classifies each entry, and proposes archival.
-
-> **Preflight — mount guard** (`standards/knowledge-brain.md` §1): memory files are symlinked into the **brain vault on the External HD**. If `/Volumes/External HD` is unmounted, the dir reads as empty/missing — **never archive or delete on that**: absent-during-unmount means *unknown*, not *stale* (a stale check deleted valid RAG chunks 2026-06-18). Hard-stop and surface if `mount | grep "/Volumes/External HD"` is empty.
 
 ## When NOT to run
 
@@ -171,7 +169,7 @@ Next:
 - `adt-rag-drift` — handles the RAG index drift; this skill handles the memory **files**.
 - `rag-curate` — fix weak retrievals exposed when stale entries are pruned and the new query surface widens.
 
-## Examples of stale entries (Lucky project)
+## Examples of stale entries (<project-a> project)
 
 These were the kind of entries this skill catches:
 

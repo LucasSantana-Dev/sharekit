@@ -1,23 +1,23 @@
 ---
 name: three-man-team
-description: |
-  Parallel Architect→Builder→Reviewer pattern for complex features, big PRs, and multi-phase tasks.
-  Dispatches 3 agents in parallel: Architect (Opus) writes detailed plan with phases + acceptance criteria;
-  Builder (Sonnet) implements and stages changes; Reviewer (Sonnet) validates against plan + runs tests.
-  Reduces 6+ sequential turns to 1 parallel dispatch for ≥3-phase work. Use when (1) task flagged CRITICAL,
-  (2) feature estimated >2 hours, (3) multi-phase changes crossing >5 files requiring pre-build architecture review.
+description: "Parallel Architect→Builder→Reviewer pattern for complex multi-phase tasks. Dispatches 3 agents: Architect (Opus) reads codebase and writes a plan with phases; Builder (Sonnet) implements from plan and stages changes; Reviewer (Sonnet) validates diff and runs tests. Cuts turnaround on 3+ phase features and big PRs from 6+ turns to 1-turn dispatch. Use when phases justify the overhead; when CRITICAL-flagged; or for large PRs touching >5 files."
+tags:
+- parallel-dispatch
+- architecture
+- implementation
+- code-review
+- multi-phase
+platforms:
+- Claude
 metadata:
   owner: global-agents
-  tier: execution
-  model: opus (architect), sonnet (builder/reviewer)
+  tier: orchestration
+  canonical_source: ~/.agents/skills/three-man-team
 triggers:
-  - three man team
-  - architect builder reviewer
-  - parallel build and review
-  - complex feature
+  - parallel team
+  - three person team
   - big pr
-  - critical complexity
-
+  - multi phase
 ---
 
 ## When to Use
@@ -44,7 +44,7 @@ Three agents run in parallel, each with a specific role:
 ### Agent 1: Architect (model: opus)
 - **Input**: task description, codebase context, current branch state
 - **Job**: 
-  - Read the relevant codebase modules and understand dependencies
+  - Read the relevant codebase modules and map module interdependencies; identify breaking-change risks and flag hidden coupling
   - Identify phases, boundaries, and architectural decisions
   - Write a structured plan to `~/.claude/plans/<task>.md`
 - **Output**: `~/.claude/plans/<task>.md` with:
@@ -76,31 +76,15 @@ Three agents run in parallel, each with a specific role:
 
 ---
 
-## Example: Dispatch Pattern
+## Stop Conditions
 
-```bash
-# Invoke three agents in parallel (pseudo-code; actual tool call will depend on your agent platform)
+**Stop if:** Architect plan missing or unparseable → surface `BLOCKED: Architect plan not readable at ~/.claude/plans/<task>.md. Missing: valid plan file with phases, boundaries, and acceptance criteria. Next: verify Architect completed; re-run if needed before dispatching Builder and Reviewer.`
 
-agent dispatch \
-  --name architect \
-  --model opus \
-  --prompt "Read the Lucky Discord bot codebase and write a plan for shipping /guild-config command. Details in task. Output to ~/.claude/plans/guild-config.md" \
-  --task "Implement /guild-config command: allow server admins to set music genre filters, auto-disconnect timeout, and DJ role. 3 phases: (1) schema design, (2) command implementation, (3) integration tests."
+---
 
-agent dispatch \
-  --name builder \
-  --model sonnet \
-  --prompt "Based on the Architect's plan at ~/.claude/plans/guild-config.md, implement the /guild-config command. Stage changes in worktree." \
-  --task "Implement /guild-config command: allow server admins to set music genre filters, auto-disconnect timeout, and DJ role."
+## Dispatch Pattern
 
-agent dispatch \
-  --name reviewer \
-  --model sonnet \
-  --prompt "Read the Builder's staged changes and the Architect's plan at ~/.claude/plans/guild-config.md. Run tests. Check each phase acceptance criteria. Output a review summary." \
-  --task "Implement /guild-config command: allow server admins to set music genre filters, auto-disconnect timeout, and DJ role."
-```
-
-All three run in parallel. Architect writes the plan. Builder and Reviewer can start immediately once the plan exists (or Builder starts and Reviewer waits).
+See [references/dispatch-pattern.md](references/dispatch-pattern.md) for the pseudo-code invocation and parallel execution flow.
 
 **Result**: Complex feature planned, implemented, and validated in ~3 turns instead of 10+.
 
@@ -108,12 +92,12 @@ All three run in parallel. Architect writes the plan. Builder and Reviewer can s
 
 ## Acceptance Criteria
 
-[OK] All three agents complete without errors  
-[OK] Architect's plan includes phase breakdown & acceptance criteria  
-[OK] Builder's changes align with plan scope  
-[OK] Reviewer confirms all acceptance criteria met  
-[OK] Tests pass with >90% coverage on new code  
-[OK] PR ready for human review
+✅ All three agents complete without errors  
+✅ Architect's plan includes phase breakdown & acceptance criteria  
+✅ Builder's changes align with plan scope  
+✅ Reviewer confirms all acceptance criteria met  
+✅ Tests pass with >90% coverage on new code  
+✅ PR ready for human review
 
 ---
 
