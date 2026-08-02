@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.2] - 2026-08-02
+
+### Fixed
+
+- Release workflow's `publish` job pinned Node 20 for the npm publish step; npm's own engine floor moved to `^22.22.2 || ^24.15.0 || >=26.0.0`, so `npm install -g npm@latest` failed with `EBADENGINE` and no npm publish happened for v0.6.1 (PyPI, GitHub Release binaries, and the Homebrew tap all published fine on that tag). Bumped to Node 22, already covered by CI's test matrix.
+
 ## [0.6.1] - 2026-08-02
 
 ### Changed

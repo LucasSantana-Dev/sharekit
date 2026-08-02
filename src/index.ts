@@ -24,7 +24,7 @@ import { parseApplied } from './backup.js';
 const HOME = os.homedir();
 const STATE = path.join(HOME, '.sharekit');
 
-const VERSION = '0.6.1';
+const VERSION = '0.6.2';
 const USAGE = `${kleur.bold('sharekit')} v${VERSION} — share your AI coding setup
 
   ${kleur.cyan('init')}       [skill...]              scaffold a publishable profile in ./sharekit-profile
