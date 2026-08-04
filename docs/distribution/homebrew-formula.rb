@@ -2,7 +2,7 @@ class Sharekit < Formula
   desc "Share your AI coding setup — install profiles from GitHub with one command"
   homepage "https://github.com/LucasSantana-Dev/sharekit"
   license "MIT"
-  version "0.5.0"
+  version "0.6.2" # seed only — release-brew CI job regenerates this file with the real version on every release
 
   on_macos do
     on_arm do
