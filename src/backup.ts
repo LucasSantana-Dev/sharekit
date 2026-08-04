@@ -10,6 +10,7 @@ export interface BackupInfo {
 export interface RestoreMetadata {
   filesRestored: number;
   filesRemoved: number;
+  filesSkipped: number;
   sourceVersion?: string;
   sourceCommit?: string | null;
 }
@@ -138,6 +139,7 @@ export function restoreBackupInternal(
 
   let filesRestored = 0;
   let filesRemoved = 0;
+  let filesSkipped = 0;
 
   // Resolve home directory once for bounds checking
   const resolvedHome = path.resolve(dirs.home);
@@ -147,6 +149,7 @@ export function restoreBackupInternal(
     const resolvedDest = path.resolve(a.dest);
     if (!resolvedDest.startsWith(resolvedHome + path.sep)) {
       console.warn(`Skipping out-of-bounds entry: ${a.dest}`);
+      filesSkipped++;
       continue;
     }
 
@@ -168,10 +171,14 @@ export function restoreBackupInternal(
   const sourceVersion = sourceBackupMetadata.sourceVersion;
   const sourceCommit = sourceBackupMetadata.sourceCommit;
 
-  return { filesRestored, filesRemoved, sourceVersion, sourceCommit };
+  return { filesRestored, filesRemoved, filesSkipped, sourceVersion, sourceCommit };
 }
 
-export function restoreBackupToStamp(user: string, stamp: string, dirs: Dirs = DEFAULT_DIRS): void {
+export function restoreBackupToStamp(
+  user: string,
+  stamp: string,
+  dirs: Dirs = DEFAULT_DIRS
+): RestoreMetadata {
   const root = path.join(dirs.state, 'backups');
   const backupDir = path.join(root, `${user}-${stamp}`);
 
@@ -179,7 +186,7 @@ export function restoreBackupToStamp(user: string, stamp: string, dirs: Dirs = D
     throw new Error(`No backup found for ${user} with stamp ${stamp}.`);
   }
 
-  restoreBackupInternal(user, backupDir, dirs);
+  return restoreBackupInternal(user, backupDir, dirs);
 }
 
 export function restoreBackup(user: string, dirs: Dirs = DEFAULT_DIRS): RestoreMetadata {

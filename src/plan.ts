@@ -34,6 +34,10 @@ export const DANGEROUS_SHARED_DOTFILES = new Set([
 // Track skipped symlinks for the current plan
 let currentPlanSkippedSymlinks: string[] = [];
 
+export function getSkippedSymlinks(): string[] {
+  return currentPlanSkippedSymlinks;
+}
+
 export function plan(profileDir: string, roots = ROOTS): PlanFile[] {
   const files: PlanFile[] = [];
   currentPlanSkippedSymlinks = []; // Reset for this plan
@@ -116,6 +120,13 @@ export function printPlan(
     console.log(
       kleur.yellow(
         `\n  ⚠  shared/ contains executable dotfiles (.zshrc, .bashrc, etc.); skipped for security. Use --include-dotfiles to merge.`
+      )
+    );
+  const skipped = getSkippedSymlinks();
+  if (skipped.length)
+    console.log(
+      kleur.yellow(
+        `\n  ⚠  ${skipped.length} symlink${skipped.length === 1 ? '' : 's'} skipped (not followed): ${skipped.map(tildify).join(', ')}`
       )
     );
 }
