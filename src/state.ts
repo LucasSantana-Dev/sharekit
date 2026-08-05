@@ -28,7 +28,11 @@ export function recordInstall(
     }).trim();
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
-    console.warn(kleur.yellow(`  Warning: couldn't read commit sha (${msg}) — install record will show no commit`));
+    console.warn(
+      kleur.yellow(
+        `  Warning: couldn't read commit sha (${msg}) — install record will show no commit`
+      )
+    );
   }
   const record: InstallRecord = { user, ref, commit, version, appliedAt: new Date().toISOString() };
   const stateFile = path.join(dirs.state, 'installed.json');
