@@ -230,11 +230,9 @@ export async function main(argv = process.argv.slice(2)) {
         return;
       }
 
-      restoreBackupToStamp(user, toStamp);
-      const filesRestored = applied.filter((a) => a.status === 'changed').length;
-      const filesRemoved = applied.filter((a) => a.status === 'new').length;
-      const summary = `${filesRestored} file(s) restored${
-        filesRemoved > 0 ? `, ${filesRemoved} removed` : ''
+      const restoreMetadata = restoreBackupToStamp(user, toStamp);
+      const summary = `${restoreMetadata.filesRestored} file(s) restored${
+        restoreMetadata.filesRemoved > 0 ? `, ${restoreMetadata.filesRemoved} removed` : ''
       }`;
 
       // Handle null sourceCommit (offline cache case)
@@ -246,6 +244,13 @@ export async function main(argv = process.argv.slice(2)) {
       }
 
       console.log(kleur.green(`\n  ✓ ${summary}${versionSuffix}`));
+      if (restoreMetadata.filesSkipped > 0) {
+        console.log(
+          kleur.yellow(
+            `  ⚠  ${restoreMetadata.filesSkipped} entr${restoreMetadata.filesSkipped === 1 ? 'y' : 'ies'} skipped (out-of-bounds path) — restore is incomplete, see warnings above`
+          )
+        );
+      }
       console.log();
       return;
     }

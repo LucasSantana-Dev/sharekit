@@ -59,6 +59,7 @@ export function walkWithSymlinks(dir: string): WalkResult {
     const realDir = fs.realpathSync(currentDir);
     if (visited.has(realDir)) {
       console.warn(`  Warning: symlink loop detected at ${currentDir} — skipping`);
+      skippedSymlinks.push(currentDir);
       return;
     }
     visited.add(realDir);

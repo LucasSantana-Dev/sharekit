@@ -5,7 +5,7 @@ import * as readline from 'node:readline/promises';
 import { stdin as input, stdout as output } from 'node:process';
 import kleur from 'kleur';
 import { parseUserRef, fetchProfile, readManifest } from './fetch.js';
-import { plan, printPlan, isExecutable, applyProfile } from './plan.js';
+import { plan, printPlan, isExecutable, applyProfile, getSkippedSymlinks } from './plan.js';
 import { restoreBackup, listBackups, restoreBackupToStamp, parseApplied } from './backup.js';
 import {
   recordInstall,
@@ -432,8 +432,20 @@ export async function inspect(user: string): Promise<void> {
   );
   if (manifest.description) console.log(kleur.dim('  ' + manifest.description));
 
+  const skipped = getSkippedSymlinks();
+  const printSkipped = () => {
+    if (skipped.length)
+      console.log(
+        kleur.yellow(
+          `\n  ⚠  ${skipped.length} symlink${skipped.length === 1 ? '' : 's'} skipped (not followed): ${skipped.map(tildify).join(', ')}`
+        )
+      );
+  };
+
   if (files.length === 0) {
-    console.log(kleur.dim('\n  (empty profile)\n'));
+    console.log(kleur.dim('\n  (empty profile)'));
+    printSkipped();
+    console.log();
     return;
   }
 
@@ -451,6 +463,7 @@ export async function inspect(user: string): Promise<void> {
       console.log(`    ${rel}`);
     }
   }
+  printSkipped();
   console.log();
 }
 
@@ -521,6 +534,13 @@ export async function rollback(user: string, opts?: InstallOpts): Promise<void> 
     }
 
     console.log(kleur.green(`\n  ✓ ${summary}${versionSuffix}`));
+    if (metadata.filesSkipped > 0) {
+      console.log(
+        kleur.yellow(
+          `  ⚠  ${metadata.filesSkipped} entr${metadata.filesSkipped === 1 ? 'y' : 'ies'} skipped (out-of-bounds path) — restore is incomplete, see warnings above`
+        )
+      );
+    }
     console.log();
   } finally {
     releaseLock(lockPath);

@@ -26,15 +26,17 @@ export function recordInstall(
       encoding: 'utf8',
       timeout: 30_000,
     }).trim();
-  } catch {}
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    console.warn(
+      kleur.yellow(
+        `  Warning: couldn't read commit sha (${msg}) — install record will show no commit`
+      )
+    );
+  }
   const record: InstallRecord = { user, ref, commit, version, appliedAt: new Date().toISOString() };
   const stateFile = path.join(dirs.state, 'installed.json');
-  let installed: Record<string, InstallRecord> = {};
-  if (fs.existsSync(stateFile)) {
-    try {
-      installed = JSON.parse(fs.readFileSync(stateFile, 'utf8'));
-    } catch {}
-  }
+  const installed = readInstalled(dirs);
   installed[user] = record;
   fs.mkdirSync(dirs.state, { recursive: true });
   const tmp = stateFile + '.tmp';
