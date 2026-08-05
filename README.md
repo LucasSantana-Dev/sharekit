@@ -8,7 +8,7 @@ Distribute your CLAUDE.md, skills, cursorrules, and dotfiles to team members, co
 
 [![npm version](https://img.shields.io/npm/v/@lucassantana/sharekit.svg)](https://www.npmjs.com/package/@lucassantana/sharekit)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-![Node.js](https://img.shields.io/badge/node-%3E%3D18-brightgreen)
+![Node.js](https://img.shields.io/badge/node-%3E%3D20-brightgreen)
 
 ---
 
@@ -42,6 +42,7 @@ npx @lucassantana/sharekit rollback <github-user>
 | `install <user>` | Install a profile and apply its configuration |
 | `preview <user>` | See what would change without applying anything |
 | `rollback <user>` | Restore the last backup for a profile |
+| `uninstall <user>` | Remove an installed profile's files cleanly |
 | `list` | View all installed profiles with versions and dates |
 | `update <user>` | Sync an installed profile to its latest version |
 | `search [keyword]` | Discover published profiles on GitHub |
