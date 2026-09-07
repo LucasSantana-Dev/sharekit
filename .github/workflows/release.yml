@@ -107,7 +107,7 @@ jobs:
           bun build --compile --target=bun-darwin-arm64 src/index.ts --outfile=dist/sharekit-macos-arm64
           bun build --compile --target=bun-windows-x64  src/index.ts --outfile=dist/sharekit-windows-x64.exe
       - name: Create GitHub Release with binaries
-        uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2
+        uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
         with:
           files: |
             dist/sharekit-linux-x64
