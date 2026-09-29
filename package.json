@@ -1,6 +1,6 @@
 {
   "name": "@lucassantana/sharekit",
-  "version": "0.6.3",
+  "version": "0.6.4",
   "description": "Share your AI coding setup with anyone — one command to install, one to rollback.",
   "keywords": [
     "ai",
