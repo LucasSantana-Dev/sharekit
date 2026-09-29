@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- `sharekit update <user>` failed with `ref 'HEAD' not found in <user>'s profile` for every profile installed without a pinned ref. `install` records such a profile as ref `HEAD`, and `update` passed it to `git clone --branch HEAD`, which looks for a branch literally named HEAD. `fetchProfile` now treats `HEAD` as unpinned and reuses the same cache `install` created.
+
 ## [0.6.2] - 2026-08-02
 
 ### Fixed

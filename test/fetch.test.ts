@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
+import { execFileSync } from 'node:child_process';
 import { parseUserRef, fetchProfile } from '../src/fetch.ts';
 
 test('parseUserRef: valid cases', () => {
@@ -184,4 +185,21 @@ test('fetchProfile: malicious input rejected at parseUserRef level', () => {
   // user/../etc contains both '..' and '/', we check '..' first
   assert.throws(() => parseUserRef('user/../etc'), /username cannot contain '\.\.'/);
   assert.throws(() => parseUserRef('user@../../main'), /ref cannot contain '\.\.'/);
+});
+
+test("fetchProfile: ref 'HEAD' reuses the unpinned cache instead of cloning --branch HEAD", () => {
+  // install records an unpinned profile as ref 'HEAD' and caches it under <user>;
+  // update passes that ref back, and `git clone --branch HEAD` has no such branch.
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'sk-fetch-head-'));
+  const cacheRoot = path.join(tmp, 'cache');
+  const unpinned = path.join(cacheRoot, 'testuser');
+  fs.mkdirSync(unpinned, { recursive: true });
+  execFileSync('git', ['init', '-q'], { cwd: unpinned });
+
+  // Unreachable base URL: any clone attempt fails, so success proves the cache was used.
+  const dir = fetchProfile('testuser', 'HEAD', path.join(tmp, 'no-remote'), cacheRoot);
+
+  assert.equal(dir, unpinned);
+  assert.ok(!fs.existsSync(path.join(cacheRoot, 'testuser@HEAD')));
+  fs.rmSync(tmp, { recursive: true });
 });
