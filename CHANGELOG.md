@@ -7,9 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.3] - 2026-09-29
+
 ### Fixed
 
 - `sharekit update <user>` failed with `ref 'HEAD' not found in <user>'s profile` for every profile installed without a pinned ref. `install` records such a profile as ref `HEAD`, and `update` passed it to `git clone --branch HEAD`, which looks for a branch literally named HEAD. `fetchProfile` now treats `HEAD` as unpinned and reuses the same cache `install` created.
+- Error paths that failed silently now report: `recordInstall` warns with the real error when the commit lookup fails, rollback surfaces skipped out-of-bounds entries (`filesSkipped`), and `rollback --to <stamp>` summarizes the actual restore instead of the planned diff (#178).
 
 ## [0.6.2] - 2026-08-02
 
