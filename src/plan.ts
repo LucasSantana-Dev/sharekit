@@ -13,6 +13,10 @@ export interface PlanFile {
   dest: string;
   rel: string;
   status: Status;
+  // settings.json with --include-hooks: 'hooks' = merged content in `merged`,
+  // 'invalid' = user's (or profile's) file is not valid JSON, skip and warn.
+  merge?: 'hooks' | 'invalid';
+  merged?: string;
 }
 
 // Denylist of executable-on-load dotfiles in shared/ that bypass shell gate
@@ -50,7 +54,11 @@ export function plan(profileDir: string, roots = ROOTS): PlanFile[] {
     for (const src of walkResult.files) {
       const rel = path.relative(base, src);
       const dest = path.join(root, rel);
-      files.push({ tool, src, dest, rel, status: classify(src, dest) });
+      const f: PlanFile = { tool, src, dest, rel, status: classify(src, dest) };
+      if (f.status === 'changed' && tool === 'claude' && path.basename(dest) === 'settings.json') {
+        applySettingsMerge(f);
+      }
+      files.push(f);
     }
 
     // Collect skipped symlinks for this tool
@@ -60,6 +68,66 @@ export function plan(profileDir: string, roots = ROOTS): PlanFile[] {
     }
   }
   return files.filter((f) => f.status !== 'same');
+}
+
+type Json = Record<string, unknown>;
+const isObj = (v: unknown): v is Json => typeof v === 'object' && v !== null && !Array.isArray(v);
+
+function canon(v: unknown): string {
+  if (Array.isArray(v)) return `[${v.map(canon).join(',')}]`;
+  if (isObj(v))
+    return `{${Object.keys(v)
+      .sort()
+      .map((k) => JSON.stringify(k) + ':' + canon(v[k]))
+      .join(',')}}`;
+  return JSON.stringify(v);
+}
+
+// Merge rule: user's file wins. Profile hook groups are appended per event when not
+// already present (deep-equal); top-level keys the user lacks are added; nothing else changes.
+export function mergeSettings(user: Json, profile: Json): Json {
+  const out: Json = { ...user };
+  for (const [k, v] of Object.entries(profile)) {
+    if (k !== 'hooks') {
+      if (!(k in out)) out[k] = v;
+      continue;
+    }
+    if (!isObj(v)) continue;
+    if (!('hooks' in out)) {
+      out.hooks = v;
+      continue;
+    }
+    if (!isObj(out.hooks)) continue;
+    const hooks: Json = { ...out.hooks };
+    for (const [event, groups] of Object.entries(v)) {
+      if (!Array.isArray(groups)) continue;
+      if (!(event in hooks)) {
+        hooks[event] = groups;
+        continue;
+      }
+      const cur = hooks[event];
+      if (!Array.isArray(cur)) continue;
+      const seen = new Set(cur.map(canon));
+      const add = groups.filter((g) => !seen.has(canon(g)));
+      hooks[event] = [...cur, ...add];
+    }
+    out.hooks = hooks;
+  }
+  return out;
+}
+
+function applySettingsMerge(f: PlanFile): void {
+  try {
+    const user: unknown = JSON.parse(fs.readFileSync(f.dest, 'utf8'));
+    const prof: unknown = JSON.parse(fs.readFileSync(f.src, 'utf8'));
+    if (!isObj(user) || !isObj(prof)) throw new Error('not an object');
+    const merged = JSON.stringify(mergeSettings(user, prof), null, 2) + '\n';
+    f.merge = 'hooks';
+    f.merged = merged;
+    if (canon(JSON.parse(merged)) === canon(user)) f.status = 'same';
+  } catch {
+    f.merge = 'invalid';
+  }
 }
 
 function classify(src: string, dest: string): Status {
@@ -80,6 +148,7 @@ function classify(src: string, dest: string): Status {
 // shared/ dotfiles (.zshrc, .bashrc, etc.) are sourced on shell startup → RCE on install.
 //           add `--include-dotfiles` when someone explicitly requests.
 export const isExecutable = (f: PlanFile, includeHooks = false, includeDotfiles = false) => {
+  if (includeHooks && f.merge === 'invalid') return true;
   if (!includeHooks && f.tool === 'claude' && path.basename(f.dest) === 'settings.json') {
     return true;
   }
@@ -106,7 +175,15 @@ export function printPlan(
     const g = files.filter((f) => f.status === s);
     if (!g.length) return;
     console.log(c(`\n  ${label} (${g.length})`));
-    for (const f of g) console.log(c(`    ${tildify(f.dest)}`));
+    for (const f of g) {
+      const note =
+        f.merge === 'hooks'
+          ? '  (merged (hooks))'
+          : f.merge === 'invalid'
+            ? '  (invalid JSON, will not be merged)'
+            : '';
+      console.log(c(`    ${tildify(f.dest)}${note}`));
+    }
   };
   show('new', '+ new', kleur.green);
   show('changed', '~ changed', kleur.yellow);
@@ -136,10 +213,18 @@ function write(files: PlanFile[], includeHooks = false, includeDotfiles = false)
   for (const f of files) {
     if (f.status === 'same' || isExecutable(f, includeHooks, includeDotfiles)) continue;
     fs.mkdirSync(path.dirname(f.dest), { recursive: true });
-    cp(f.src, f.dest);
+    place(f);
     n++;
   }
   return n;
+}
+
+function place(f: PlanFile): void {
+  if (f.merge === 'hooks' && f.merged !== undefined) {
+    const mode = fs.statSync(f.dest).mode;
+    fs.writeFileSync(f.dest, f.merged);
+    fs.chmodSync(f.dest, mode);
+  } else cp(f.src, f.dest);
 }
 
 export function writeAtomic(
@@ -155,10 +240,18 @@ export function writeAtomic(
     (f) => f.status !== 'same' && !isExecutable(f, includeHooks, includeDotfiles)
   );
 
+  if (includeHooks) {
+    for (const f of files.filter((f) => f.merge === 'invalid')) {
+      console.warn(
+        `warning: ${tildify(f.dest)} (or the profile's settings.json) is not valid JSON; skipping settings.json, other files still apply`
+      );
+    }
+  }
+
   try {
     for (const f of applied) {
       fs.mkdirSync(path.dirname(f.dest), { recursive: true });
-      cp(f.src, f.dest);
+      place(f);
       n++;
     }
     return n;

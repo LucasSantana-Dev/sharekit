@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- `--include-hooks` now merges the profile's `settings.json` into your existing `~/.claude/settings.json` instead of overwriting it. Your keys (permissions, model, env, plugins, statusLine, ...) are preserved, the profile's hook groups are appended per event when not already present (idempotent), and keys you lack are added without overriding existing values. An invalid-JSON user file is left untouched with a warning; with no existing file the profile's file is written as before. The plan shows `merged (hooks)`, and backup/rollback restore the original file exactly.
+
 ## [0.6.3] - 2026-09-29
 
 ### Fixed
