@@ -83,36 +83,52 @@ function canon(v: unknown): string {
   return JSON.stringify(v);
 }
 
-// Merge rule: user's file wins. Profile hook groups are appended per event when not
-// already present (deep-equal); top-level keys the user lacks are added; nothing else changes.
+// Merge rule: only the `hooks` key is touched; every other key of the user's file is kept
+// as is and no other profile key is copied. Per event and per profile group: if the user has
+// a group with the same matcher (undefined and "" equal), append only the inner hooks whose
+// (type, command) is not already in a same-matcher group; otherwise append the whole group.
+const matcherOf = (g: unknown): string =>
+  isObj(g) && typeof g.matcher === 'string' ? g.matcher : '';
+const hookKey = (h: unknown): string =>
+  isObj(h) && typeof h.command === 'string'
+    ? canon({ type: h.type, command: h.command })
+    : canon(h);
+
 export function mergeSettings(user: Json, profile: Json): Json {
   const out: Json = { ...user };
-  for (const [k, v] of Object.entries(profile)) {
-    if (k !== 'hooks') {
-      if (!(k in out)) out[k] = v;
+  const v = profile.hooks;
+  if (!isObj(v)) return out;
+  if (!('hooks' in out)) {
+    out.hooks = v;
+    return out;
+  }
+  if (!isObj(out.hooks)) return out;
+  const hooks: Json = { ...out.hooks };
+  for (const [event, groups] of Object.entries(v)) {
+    if (!Array.isArray(groups)) continue;
+    if (!(event in hooks)) {
+      hooks[event] = groups;
       continue;
     }
-    if (!isObj(v)) continue;
-    if (!('hooks' in out)) {
-      out.hooks = v;
-      continue;
-    }
-    if (!isObj(out.hooks)) continue;
-    const hooks: Json = { ...out.hooks };
-    for (const [event, groups] of Object.entries(v)) {
-      if (!Array.isArray(groups)) continue;
-      if (!(event in hooks)) {
-        hooks[event] = groups;
+    const cur = hooks[event];
+    if (!Array.isArray(cur)) continue;
+    const next = cur.map((g) => (isObj(g) ? { ...g } : g));
+    for (const pg of groups) {
+      const m = matcherOf(pg);
+      const same = next.filter(
+        (g): g is Json => isObj(g) && Array.isArray(g.hooks) && matcherOf(g) === m
+      );
+      if (!same.length || !isObj(pg) || !Array.isArray(pg.hooks)) {
+        if (!next.some((g) => canon(g) === canon(pg))) next.push(pg);
         continue;
       }
-      const cur = hooks[event];
-      if (!Array.isArray(cur)) continue;
-      const seen = new Set(cur.map(canon));
-      const add = groups.filter((g) => !seen.has(canon(g)));
-      hooks[event] = [...cur, ...add];
+      const seen = new Set(same.flatMap((g) => (g.hooks as unknown[]).map(hookKey)));
+      const add = pg.hooks.filter((h) => !seen.has(hookKey(h)));
+      if (add.length) same[0].hooks = [...(same[0].hooks as unknown[]), ...add];
     }
-    out.hooks = hooks;
+    hooks[event] = next;
   }
+  out.hooks = hooks;
   return out;
 }
 

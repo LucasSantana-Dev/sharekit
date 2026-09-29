@@ -90,7 +90,7 @@ npx @lucassantana/sharekit install <github-user> --include-hooks
 
 You'll get a second confirmation before the settings file is written.
 
-If you already have a `~/.claude/settings.json`, it is **merged, not replaced**. Your file wins: every key you have stays exactly as is. For each hook event in the profile, the profile's hook groups are appended after yours unless an identical group (deep-equal) is already there, so re-running is idempotent. Top-level keys you don't have (for example `env`) are added from the profile, but an existing value is never overridden. If your file is not valid JSON it is left untouched, a warning is printed, and the other profile files still apply. With no existing file, the profile's `settings.json` is written as-is. The plan lists it as `merged (hooks)`, and `rollback` restores your original file byte for byte.
+If you already have a `~/.claude/settings.json`, it is **merged, not replaced**. Your file wins: every key you have stays exactly as is. Re-running is idempotent. Only the `hooks` key is touched: no other profile key (permissions, env, statusLine, ...) is copied into your file. Within an event, if you already have a hook group with the same `matcher`, only the profile's inner hooks whose `type` and `command` are missing are added to it; otherwise the whole group is appended. If your file is not valid JSON it is left untouched, a warning is printed, and the other profile files still apply. With no existing file, the profile's `settings.json` is written as-is. The plan lists it as `merged (hooks)`, and `rollback` restores your original file byte for byte.
 
 #### Executable dotfiles in `shared/`
 

@@ -49,8 +49,10 @@ test('include-hooks merges profile hooks into existing settings.json, keeping us
   const out = read(s.settingsPath);
   assert.deepEqual(out.permissions, userSettings.permissions);
   assert.equal(out.model, 'opus', 'existing user value never overridden');
-  assert.deepEqual(out.env, profileSettings.env, 'missing key added from profile');
-  assert.deepEqual(out.hooks.Stop, [userHookGroup, profileSettings.hooks.Stop[0]]);
+  assert.equal(out.env, undefined, 'profile keys other than hooks are not injected');
+  assert.deepEqual(out.hooks.Stop, [
+    { hooks: [...userHookGroup.hooks, ...profileSettings.hooks.Stop[0].hooks] },
+  ]);
   assert.deepEqual(out.hooks.PreToolUse, profileSettings.hooks.PreToolUse);
   assert.equal(fs.readFileSync(path.join(s.roots.claude, 'CLAUDE.md'), 'utf8'), 'profile md');
 });
@@ -60,7 +62,7 @@ test('include-hooks merge is idempotent (no duplicate groups on second run)', ()
   applyProfile(plan(s.profile, s.roots), 'u', true, s.dirs);
   const first = fs.readFileSync(s.settingsPath, 'utf8');
   assert.ok(first.includes('echo mine'));
-  assert.equal(read(s.settingsPath).hooks.Stop.length, 2);
+  assert.equal(read(s.settingsPath).hooks.Stop[0].hooks.length, 2);
   const second = plan(s.profile, s.roots);
   assert.ok(!second.some((f) => f.rel === 'settings.json'), 'settings.json now classified same');
   applyProfile(second, 'u', true, s.dirs);
@@ -101,4 +103,32 @@ test('rollback restores the exact original settings.json bytes after merge', () 
   assert.notEqual(fs.readFileSync(s.settingsPath, 'utf8'), raw);
   restoreBackupInternal('u', backupDir, s.dirs);
   assert.equal(fs.readFileSync(s.settingsPath, 'utf8'), raw);
+});
+
+test('merge touches only hooks: other profile keys are not injected', () => {
+  const s = setup(JSON.stringify({ model: 'opus' }));
+  fs.writeFileSync(
+    path.join(s.profile, 'claude', 'settings.json'),
+    JSON.stringify({
+      permissions: { allow: ['Bash(*)'] },
+      env: { A: '1' },
+      statusLine: { type: 'command', command: 'x' },
+      hooks: profileSettings.hooks,
+    })
+  );
+  applyProfile(plan(s.profile, s.roots), 'u', true, s.dirs);
+  assert.deepEqual(read(s.settingsPath), { model: 'opus', hooks: profileSettings.hooks });
+});
+
+test('merge dedupes at inner-hook level within same-matcher group, idempotent', () => {
+  const X = { type: 'command', command: 'echo x' };
+  const Y = { type: 'command', command: 'echo y' };
+  const s = setup(JSON.stringify({ hooks: { PreToolUse: [{ matcher: 'Bash', hooks: [X] }] } }));
+  fs.writeFileSync(
+    path.join(s.profile, 'claude', 'settings.json'),
+    JSON.stringify({ hooks: { PreToolUse: [{ matcher: 'Bash', hooks: [X, Y] }] } })
+  );
+  applyProfile(plan(s.profile, s.roots), 'u', true, s.dirs);
+  assert.deepEqual(read(s.settingsPath).hooks.PreToolUse, [{ matcher: 'Bash', hooks: [X, Y] }]);
+  assert.ok(!plan(s.profile, s.roots).some((f) => f.rel === 'settings.json'));
 });
