@@ -58,6 +58,9 @@ export function fetchProfile(
   baseUrl = 'https://github.com',
   cacheRoot = path.join(STATE, 'profiles')
 ): string {
+  // install records an unpinned profile as ref 'HEAD'; it means "default branch",
+  // not a branch named HEAD (`git clone --branch HEAD` fails), so treat it as unpinned.
+  if (ref === 'HEAD') ref = undefined;
   // Cache key: <user> for HEAD, <user>@<ref> for a pinned ref
   const cacheKey = ref ? `${user}@${ref}` : user;
   const dir = path.join(cacheRoot, cacheKey);
