@@ -17,6 +17,8 @@ export interface PlanFile {
   // 'invalid' = user's (or profile's) file is not valid JSON, skip and warn.
   merge?: 'hooks' | 'invalid';
   merged?: string;
+  mergeReason?: string;
+  added?: AddedHook[];
 }
 
 // Denylist of executable-on-load dotfiles in shared/ that bypass shell gate
@@ -94,55 +96,83 @@ const hookKey = (h: unknown): string =>
     ? canon({ type: h.type, command: h.command })
     : canon(h);
 
-export function mergeSettings(user: Json, profile: Json): Json {
+export interface AddedHook {
+  event: string;
+  matcher: string;
+  command: string;
+}
+export class UnmergeableError extends Error {}
+
+const BLOCKED_EVENTS = new Set(['__proto__', 'constructor', 'prototype']);
+const hookLabel = (h: unknown): string =>
+  isObj(h) && typeof h.command === 'string' ? h.command : canon(h);
+const listAdded = (event: string, g: unknown, hooks: unknown[]): AddedHook[] =>
+  hooks.map((h) => ({ event, matcher: matcherOf(g), command: hookLabel(h) }));
+
+export function mergeSettings(user: Json, profile: Json): { out: Json; added: AddedHook[] } {
   const out: Json = { ...user };
+  const added: AddedHook[] = [];
   const v = profile.hooks;
-  if (!isObj(v)) return out;
-  if (!('hooks' in out)) {
-    out.hooks = v;
-    return out;
+  if (!isObj(v)) return { out, added };
+  const events = Object.entries(v).filter(([e, g]) => !BLOCKED_EVENTS.has(e) && Array.isArray(g));
+  if (!Object.hasOwn(out, 'hooks')) {
+    out.hooks = Object.fromEntries(events);
+    for (const [e, gs] of events)
+      for (const g of gs as unknown[])
+        added.push(...listAdded(e, g, isObj(g) && Array.isArray(g.hooks) ? g.hooks : []));
+    return { out, added };
   }
-  if (!isObj(out.hooks)) return out;
+  if (!isObj(out.hooks)) throw new UnmergeableError('hooks has unexpected shape');
   const hooks: Json = { ...out.hooks };
-  for (const [event, groups] of Object.entries(v)) {
-    if (!Array.isArray(groups)) continue;
-    if (!(event in hooks)) {
+  for (const [event, groups] of events) {
+    if (!Object.hasOwn(hooks, event)) {
       hooks[event] = groups;
+      for (const g of groups as unknown[])
+        added.push(...listAdded(event, g, isObj(g) && Array.isArray(g.hooks) ? g.hooks : []));
       continue;
     }
     const cur = hooks[event];
-    if (!Array.isArray(cur)) continue;
+    if (!Array.isArray(cur)) throw new UnmergeableError('hooks has unexpected shape');
     const next = cur.map((g) => (isObj(g) ? { ...g } : g));
-    for (const pg of groups) {
+    for (const pg of groups as unknown[]) {
       const m = matcherOf(pg);
-      const same = next.filter(
-        (g): g is Json => isObj(g) && Array.isArray(g.hooks) && matcherOf(g) === m
-      );
+      const same = next.filter((g): g is Json => isObj(g) && matcherOf(g) === m);
+      if (same.some((g) => !Array.isArray(g.hooks)))
+        throw new UnmergeableError('hooks has unexpected shape');
       if (!same.length || !isObj(pg) || !Array.isArray(pg.hooks)) {
-        if (!next.some((g) => canon(g) === canon(pg))) next.push(pg);
+        if (!next.some((g) => canon(g) === canon(pg))) {
+          next.push(pg);
+          added.push(...listAdded(event, pg, isObj(pg) && Array.isArray(pg.hooks) ? pg.hooks : []));
+        }
         continue;
       }
       const seen = new Set(same.flatMap((g) => (g.hooks as unknown[]).map(hookKey)));
       const add = pg.hooks.filter((h) => !seen.has(hookKey(h)));
-      if (add.length) same[0].hooks = [...(same[0].hooks as unknown[]), ...add];
+      if (add.length) {
+        same[0].hooks = [...(same[0].hooks as unknown[]), ...add];
+        added.push(...listAdded(event, pg, add));
+      }
     }
     hooks[event] = next;
   }
   out.hooks = hooks;
-  return out;
+  return { out, added };
 }
 
 function applySettingsMerge(f: PlanFile): void {
   try {
     const user: unknown = JSON.parse(fs.readFileSync(f.dest, 'utf8'));
     const prof: unknown = JSON.parse(fs.readFileSync(f.src, 'utf8'));
-    if (!isObj(user) || !isObj(prof)) throw new Error('not an object');
-    const merged = JSON.stringify(mergeSettings(user, prof), null, 2) + '\n';
+    if (!isObj(user) || !isObj(prof)) throw new UnmergeableError('invalid JSON');
+    const { out, added } = mergeSettings(user, prof);
+    const merged = JSON.stringify(out, null, 2) + '\n';
     f.merge = 'hooks';
     f.merged = merged;
+    f.added = added;
     if (canon(JSON.parse(merged)) === canon(user)) f.status = 'same';
-  } catch {
+  } catch (e) {
     f.merge = 'invalid';
+    f.mergeReason = e instanceof UnmergeableError ? e.message : 'invalid JSON';
   }
 }
 
@@ -196,9 +226,13 @@ export function printPlan(
         f.merge === 'hooks'
           ? '  (merged (hooks))'
           : f.merge === 'invalid'
-            ? '  (invalid JSON, will not be merged)'
+            ? `  (${f.mergeReason ?? 'invalid JSON'}, will not be merged)`
             : '';
       console.log(c(`    ${tildify(f.dest)}${note}`));
+      for (const a of f.added ?? []) {
+        const cmd = a.command.length > 100 ? a.command.slice(0, 100) + '...' : a.command;
+        console.log(c(`      + ${a.event}${a.matcher ? ` [${a.matcher}]` : ''} -> ${cmd}`));
+      }
     }
   };
   show('new', '+ new', kleur.green);
@@ -259,7 +293,7 @@ export function writeAtomic(
   if (includeHooks) {
     for (const f of files.filter((f) => f.merge === 'invalid')) {
       console.warn(
-        `warning: ${tildify(f.dest)} (or the profile's settings.json) is not valid JSON; skipping settings.json, other files still apply`
+        `warning: ${tildify(f.dest)} (or the profile's settings.json) cannot be merged (${f.mergeReason ?? 'invalid JSON'}); skipping settings.json, other files still apply`
       );
     }
   }

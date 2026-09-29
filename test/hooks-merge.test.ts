@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { plan, applyProfile } from '../src/sharekit.ts';
+import { plan, applyProfile, printPlan } from '../src/sharekit.ts';
 import { restoreBackupInternal } from '../src/backup.ts';
 
 const profileSettings = {
@@ -131,4 +131,69 @@ test('merge dedupes at inner-hook level within same-matcher group, idempotent', 
   applyProfile(plan(s.profile, s.roots), 'u', true, s.dirs);
   assert.deepEqual(read(s.settingsPath).hooks.PreToolUse, [{ matcher: 'Bash', hooks: [X, Y] }]);
   assert.ok(!plan(s.profile, s.roots).some((f) => f.rel === 'settings.json'));
+});
+
+function unmergeable(userObj: unknown) {
+  const raw = JSON.stringify(userObj);
+  const s = setup(raw);
+  const f = plan(s.profile, s.roots).find((x) => x.rel === 'settings.json');
+  assert.equal(f?.merge, 'invalid', 'plan flags file as unmergeable, not same');
+  const warn = mock.method(console, 'warn', () => {});
+  try {
+    applyProfile(plan(s.profile, s.roots), 'u', true, s.dirs);
+    assert.equal(fs.readFileSync(s.settingsPath, 'utf8'), raw, 'user data untouched');
+    assert.ok(warn.mock.calls.some((c) => /settings\.json/.test(String(c.arguments[0]))));
+  } finally {
+    warn.mock.restore();
+  }
+}
+
+test('user hooks not a plain object is unmergeable (skipped with warning)', () => {
+  unmergeable({ model: 'opus', hooks: ['nope'] });
+});
+
+test('user hooks[event] not an array is unmergeable', () => {
+  unmergeable({ hooks: { Stop: { hooks: [] } } });
+});
+
+test('user same-matcher group without hooks array is unmergeable', () => {
+  const s = setup(JSON.stringify({ hooks: { Stop: [{ matcher: '', hooks: 'x' }] } }));
+  const f = plan(s.profile, s.roots).find((x) => x.rel === 'settings.json');
+  assert.equal(f?.merge, 'invalid');
+});
+
+test('merge skips __proto__/constructor/prototype event keys', () => {
+  const s = setup(JSON.stringify({ hooks: { Stop: [userHookGroup] } }));
+  const evil =
+    '{"hooks":{"__proto__":[{"hooks":[{"type":"command","command":"pwn"}]}],"constructor":[{"hooks":[]}],"prototype":[{"hooks":[]}],"Stop":[{"hooks":[{"type":"command","command":"ok"}]}]}}';
+  fs.writeFileSync(path.join(s.profile, 'claude', 'settings.json'), evil);
+  applyProfile(plan(s.profile, s.roots), 'u', true, s.dirs);
+  const out = read(s.settingsPath);
+  assert.deepEqual(Object.keys(out.hooks), ['Stop']);
+  assert.equal(({} as Record<string, unknown>).command, undefined);
+  assert.ok(!fs.readFileSync(s.settingsPath, 'utf8').includes('pwn'));
+});
+
+test('printPlan itemizes each added inner hook', () => {
+  const s = setup(JSON.stringify(userSettings));
+  const long = 'x'.repeat(150);
+  fs.writeFileSync(
+    path.join(s.profile, 'claude', 'settings.json'),
+    JSON.stringify({
+      hooks: {
+        PreToolUse: [{ matcher: 'Bash', hooks: [{ type: 'command', command: long }] }],
+        Stop: [{ hooks: [{ type: 'command', command: 'echo stop' }] }],
+      },
+    })
+  );
+  const log = mock.method(console, 'log', () => {});
+  try {
+    printPlan(plan(s.profile, s.roots), { name: 'p' } as never);
+    const out = log.mock.calls.map((c) => String(c.arguments[0])).join('\n');
+    assert.match(out, /Stop -> echo stop/);
+    assert.match(out, /PreToolUse \[Bash\] -> x{90,100}\.\.\./);
+    assert.ok(!out.includes(long));
+  } finally {
+    log.mock.restore();
+  }
 });
