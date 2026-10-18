@@ -14,13 +14,13 @@ Distribute your CLAUDE.md, skills, cursorrules, and dotfiles to team members, co
 
 ## Quick Start
 
-Install a profile from GitHub in seconds:
+Install a profile from GitHub:
 
 ```bash
 npx @lucassantana/sharekit install <github-user>
 ```
 
-That's it. sharekit will:
+The command does the following:
 - Fetch the profile from `github.com/<github-user>/sharekit-profile`
 - Show you a preview of changes (files, counts, paths)
 - Ask for confirmation
@@ -57,11 +57,11 @@ npx @lucassantana/sharekit rollback <github-user>
 
 sharekit copies files from a profile into your local environment:
 
-- **`claude/`** → `~/.claude/` — CLAUDE.md, skills, settings, hooks, standards
-- **`cursor/`** → `~/.cursor/` — Cursor IDE configuration
-- **`opencode/`** → `~/.config/opencode/` — OpenCode configuration
-- **`gjc/`** → `~/.gjc/` — gajae-code configuration
-- **`shared/`** → `~/` — Root dotfiles and shared config
+- **`claude/`** → `~/.claude/`: CLAUDE.md, skills, settings, hooks, standards
+- **`cursor/`** → `~/.cursor/`: Cursor IDE configuration
+- **`opencode/`** → `~/.config/opencode/`: OpenCode configuration
+- **`gjc/`** → `~/.gjc/`: gajae-code configuration
+- **`shared/`** → `~/`: Root dotfiles and shared config
 
 Files are copied as-is (TOML, text, binary). Use `preview` to spot conflicts before applying.
 
@@ -78,7 +78,7 @@ Update only works on HEAD-tracked profiles. Pinned refs are skipped.
 
 ### Hooks & Safety
 
-Sharekit gates two types of executable files by default: hooks in `.claude/settings.json` and shell startup files in `shared/`. Both are **flagged but not installed by default** because they run commands under your account and require explicit trust.
+sharekit gates two types of executable files by default: hooks in `.claude/settings.json` and shell startup files in `shared/`. Both are **flagged but not installed by default** because they run commands under your account and require explicit trust.
 
 #### Hooks in `settings.json`
 
@@ -94,7 +94,7 @@ If you already have a `~/.claude/settings.json`, it is **merged, not replaced**.
 
 #### Executable dotfiles in `shared/`
 
-Shell startup files in `shared/` like `.zshrc`, `.bashrc`, `.profile`, `.xinitrc` and similar files are **automatically skipped for security** — these are sourced on every shell startup and could execute arbitrary code when you open a terminal. Review the profile in `preview`, then optionally include them:
+Shell startup files in `shared/` like `.zshrc`, `.bashrc`, `.profile`, `.xinitrc` and similar files are **automatically skipped for security**. These are sourced on every shell startup and could execute arbitrary code when you open a terminal. Review the profile in `preview`, then optionally include them:
 
 ```bash
 npx @lucassantana/sharekit install <github-user> --include-dotfiles
@@ -102,7 +102,7 @@ npx @lucassantana/sharekit install <github-user> --include-dotfiles
 
 You'll get a second confirmation before dotfiles are written.
 
-Both flags also work with `update` and are independent—you can install hooks without dotfiles, dotfiles without hooks, or both.
+Both flags also work with `update` and are independent: you can install hooks without dotfiles, dotfiles without hooks, or both.
 
 ---
 
@@ -197,20 +197,20 @@ npx @lucassantana/sharekit scan ./sharekit-profile --force
 
 sharekit works with any tool that stores config in `~/`, `~/.claude/`, `~/.cursor/`, or similar:
 
-- ✅ **Claude Code** — CLAUDE.md, skills, settings, hooks, standards
-- ✅ **Cursor** — settings.json, keyboard shortcuts
-- ✅ **Windsurf** — configuration
-- ✅ **Codex** — setup files
-- ✅ **VS Code** — via `shared/` dotfiles
-- ✅ **Neovim** — via `shared/` dotfiles
-- ✅ Any tool with home-relative paths
+- **Claude Code**: CLAUDE.md, skills, settings, hooks, standards
+- **Cursor**: settings.json, keyboard shortcuts
+- **Windsurf**: configuration
+- **Codex**: setup files
+- **VS Code**: via `shared/` dotfiles
+- **Neovim**: via `shared/` dotfiles
+- Any tool with home-relative paths
 
 ---
 
 ## Security Model
 
 - **Hooks are never auto-installed.** Settings with hooks are flagged in `preview` and skipped. Merge them manually after reviewing.
-- **Preview before applying.** `sharekit preview` shows exact diffs (new/changed/unchanged counts, file paths) — inspect before any write.
+- **Preview before applying.** `sharekit preview` shows exact diffs (new/changed/unchanged counts, file paths). Inspect before any write.
 - **Everything is backed up.** Changed files are saved to `~/.sharekit/backups/<user>-<timestamp>/` before apply. `rollback` restores them instantly.
 
 For the full trust model, path assumptions, and responsible disclosure policy, see [SECURITY.md](SECURITY.md).
@@ -227,13 +227,13 @@ For the full trust model, path assumptions, and responsible disclosure policy, s
 - ✅ Secret scanning
 - ⏳ Multi-tool merge logic (planned)
 
-File-copy only for now—no smart merging. Use `preview` to spot conflicts.
+File-copy only for now, with no smart merging. Use `preview` to spot conflicts.
 
 ---
 
 ## License
 
-[MIT](LICENSE) — Share freely.
+[MIT](LICENSE). Share freely.
 
 ---
 
