@@ -4,7 +4,7 @@
 
 **Share your entire AI coding setup in one command.**
 
-Distribute your CLAUDE.md, skills, cursorrules, and dotfiles to team members, colleagues, or the public. One command to install. One command to rollback. Built for Claude Code, Cursor, Windsurf, Codex, and more.
+Distribute your CLAUDE.md, skills, cursorrules, and dotfiles to team members, colleagues, or the public. One command to install. One command to rollback. Built for Claude Code, Cursor, and opencode; other tools work through `shared/` home-relative files.
 
 [![npm version](https://img.shields.io/npm/v/@lucassantana/sharekit.svg)](https://www.npmjs.com/package/@lucassantana/sharekit)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
@@ -195,21 +195,23 @@ npx @lucassantana/sharekit scan ./sharekit-profile --force
 
 ## Supported Tools
 
-sharekit works with any tool that stores config in `~/`, `~/.claude/`, `~/.cursor/`, or similar:
+sharekit maps a profile directory to these home paths:
 
-- **Claude Code**: CLAUDE.md, skills, settings, hooks, standards
-- **Cursor**: settings.json, keyboard shortcuts
-- **Windsurf**: configuration
-- **Codex**: setup files
-- **VS Code**: via `shared/` dotfiles
-- **Neovim**: via `shared/` dotfiles
-- Any tool with home-relative paths
+| Profile dir | Installs to | Support |
+|---|---|---|
+| `claude/` | `~/.claude` | Direct. CLAUDE.md, skills, agents, standards, `settings.json` (hooks need `--include-hooks`) |
+| `cursor/` | `~/.cursor` | Direct |
+| `opencode/` | `~/.config/opencode` | Direct |
+| `gjc/` | `~/.gjc` | Direct |
+| `shared/` | `~` | Any file under your home directory, such as Windsurf, Codex, VS Code or Neovim config. No tool-specific handling: you choose the path. Shell startup files need `--include-dotfiles` |
+
+Tools with no home-relative config path are not supported.
 
 ---
 
 ## Security Model
 
-- **Hooks are never auto-installed.** Settings with hooks are flagged in `preview` and skipped. Merge them manually after reviewing.
+- **Hooks are not installed by default.** Settings with hooks are flagged in `preview` and skipped. Pass `--include-hooks` to merge them into your `settings.json` after reviewing, behind a second confirmation.
 - **Preview before applying.** `sharekit preview` shows exact diffs (new/changed/unchanged counts, file paths). Inspect before any write.
 - **Everything is backed up.** Changed files are saved to `~/.sharekit/backups/<user>-<timestamp>/` before apply. `rollback` restores them instantly.
 
